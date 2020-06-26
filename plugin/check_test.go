@@ -1,0 +1,139 @@
+/*******************************************************************************
+*
+* Copyright 2020 SAP SE
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You should have received a copy of the License along with this
+* program. If not, you may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*******************************************************************************/
+
+package plugin
+
+import (
+	"errors"
+
+	"github.com/elastic/go-ucfg"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
+
+type trueCheck struct {
+	Invoked int
+}
+
+func (c *trueCheck) Check(params Parameters) (bool, error) {
+	c.Invoked++
+	return true, nil
+}
+
+func (c *trueCheck) New(config *ucfg.Config) (Checker, error) {
+	return &trueCheck{}, nil
+}
+
+type falseCheck struct {
+	Invoked int
+}
+
+func (c *falseCheck) Check(params Parameters) (bool, error) {
+	c.Invoked++
+	return false, nil
+}
+
+func (c *falseCheck) New(config *ucfg.Config) (Checker, error) {
+	return &falseCheck{}, nil
+}
+
+type errorCheck struct {
+	Invoked int
+}
+
+func (c *errorCheck) Check(params Parameters) (bool, error) {
+	c.Invoked++
+	return false, errors.New("this check is expected to fail")
+}
+
+func (c *errorCheck) New(config *ucfg.Config) (Checker, error) {
+	return &errorCheck{}, nil
+}
+
+var _ = Describe("CheckChain", func() {
+
+	var emptyParams Parameters
+
+	Context("is empty", func() {
+
+		var chain CheckChain
+		It("should not error", func() {
+			result, err := chain.Execute(emptyParams)
+			Expect(result).To(BeTrue())
+			Expect(err).To(Succeed())
+		})
+
+	})
+
+	Context("contains plugins", func() {
+
+		var (
+			trueInstance  CheckInstance
+			falseInstance CheckInstance
+			errorInstance CheckInstance
+		)
+
+		BeforeEach(func() {
+			trueInstance = CheckInstance{
+				Plugin: &trueCheck{},
+				Name:   "true",
+			}
+			falseInstance = CheckInstance{
+				Plugin: &falseCheck{},
+				Name:   "false",
+			}
+			errorInstance = CheckInstance{
+				Plugin: &errorCheck{},
+				Name:   "error",
+			}
+		})
+
+		It("should return true if all plugins pass", func() {
+			chain := CheckChain{
+				Plugins: []CheckInstance{trueInstance, trueInstance, trueInstance},
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result).To(BeTrue())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
+		})
+
+		It("should return false if at least one check does not pass", func() {
+			chain := CheckChain{
+				Plugins: []CheckInstance{trueInstance, falseInstance, trueInstance, falseInstance},
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result).To(BeFalse())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
+			Expect(falseInstance.Plugin.(*falseCheck).Invoked).To(Equal(2))
+		})
+
+		It("should propagate errors", func() {
+			chain := CheckChain{
+				Plugins: []CheckInstance{trueInstance, errorInstance, trueInstance, trueInstance},
+			}
+			_, err := chain.Execute(emptyParams)
+			Expect(err).To(HaveOccurred())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(1))
+			Expect(errorInstance.Plugin.(*errorCheck).Invoked).To(Equal(1))
+		})
+
+	})
+})
