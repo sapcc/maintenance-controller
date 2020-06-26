@@ -1,0 +1,3 @@
+domain: my.domain
+repo: github.com/sapcc/maintenance-controller
+version: "2"
