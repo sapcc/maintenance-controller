@@ -20,6 +20,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -48,8 +49,9 @@ func (e *ChainError) Unwrap() error {
 
 // Parameters desecribes the parameters plugins get to work with.
 type Parameters struct {
-	Node   corev1.Node
+	Node   *corev1.Node
 	Client client.Client
+	Ctx    context.Context
 	Log    logr.Logger
 }
 
@@ -63,7 +65,7 @@ type Registry struct {
 	TriggerPlugins        map[string]Trigger
 }
 
-// NewRegistry creates a new regsitry and appends all kown plugins to the according plugin maps.
+// NewRegistry creates a new regsitry with non-null maps
 func NewRegistry() Registry {
 	registry := Registry{
 		NotificationInstances: make(map[string]NotificationInstance),
@@ -79,6 +81,9 @@ func NewRegistry() Registry {
 // NewCheckChain creates a CheckChain based the given config string.
 func (r *Registry) NewCheckChain(config string) (CheckChain, error) {
 	var chain CheckChain
+	if config == "" {
+		return chain, nil
+	}
 	for _, name := range strings.Split(config, AndSeparator) {
 		instance, ok := r.CheckInstances[name]
 		if !ok {
@@ -92,6 +97,9 @@ func (r *Registry) NewCheckChain(config string) (CheckChain, error) {
 // NewNotificationChain creates a NotificaitonChain based the given config string.
 func (r *Registry) NewNotificationChain(config string) (NotificationChain, error) {
 	var chain NotificationChain
+	if config == "" {
+		return chain, nil
+	}
 	for _, name := range strings.Split(config, AndSeparator) {
 		instance, ok := r.NotificationInstances[name]
 		if !ok {
@@ -105,6 +113,9 @@ func (r *Registry) NewNotificationChain(config string) (NotificationChain, error
 // NewTriggerChain creates a TriggerChain based the given config string.
 func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 	var chain TriggerChain
+	if config == "" {
+		return chain, nil
+	}
 	for _, name := range strings.Split(config, AndSeparator) {
 		instance, ok := r.TriggerInstances[name]
 		if !ok {
