@@ -40,15 +40,15 @@ func (s *inMaintenance) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *inMaintenance) Notify(params plugin.Parameters, data Data) error {
+func (s *inMaintenance) Notify(params plugin.Parameters, data *Data) error {
 	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
 }
 
-func (s *inMaintenance) Trigger(params plugin.Parameters, data Data) error {
+func (s *inMaintenance) Trigger(params plugin.Parameters, data *Data) error {
 	return s.chains.Trigger.Execute(params)
 }
 
-func (s *inMaintenance) Transition(params plugin.Parameters, data Data) (NodeStateLabel, error) {
+func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
 	// if no checks are configured the node is considered as operational again
 	if len(s.chains.Check.Plugins) == 0 {
 		return Operational, nil

@@ -20,6 +20,7 @@
 package state
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -56,15 +57,29 @@ type NodeState interface {
 	// Label is the Label associated with the state
 	Label() NodeStateLabel
 	// Notify executes the notification chain if required
-	Notify(params plugin.Parameters, data Data) error
+	Notify(params plugin.Parameters, data *Data) error
 	// Trigger executes the trigger chain
-	Trigger(params plugin.Parameters, data Data) error
-	// Trigger executes the check chain and determines, which state should be the next one
-	Transition(params plugin.Parameters, data Data) (NodeStateLabel, error)
+	Trigger(params plugin.Parameters, data *Data) error
+	// Trigger executes the check chain and determines, which state should be the next one.
+	// If an error is returned the NodeStateLabel must match the current state.
+	Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error)
+}
+
+// FromLabel creates a new NodeState instance identified by the label with given chains and notification interval
+func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration) (NodeState, error) {
+	switch label {
+	case Operational:
+		return newOperational(chains, interval), nil
+	case Required:
+		return newMaintenanceRequired(chains, interval), nil
+	case InMaintenance:
+		return newInMaintenance(chains, interval), nil
+	}
+	return nil, fmt.Errorf("node state \"%v\" is not known", label)
 }
 
 // notifyDefault is a default NodeState.Notify implemention that executes the notification chain again after a specified interval
-func notifyDefault(params plugin.Parameters, data Data, interval time.Duration, chain *plugin.NotificationChain, label NodeStateLabel) error {
+func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration, chain *plugin.NotificationChain, label NodeStateLabel) error {
 	// ensure there is a new state or the interval has passed
 	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
 		return nil

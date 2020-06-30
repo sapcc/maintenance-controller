@@ -119,7 +119,7 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should not execute the notification chain if the interval has not passed", func() {
 		chain, notification := mockNotificationChain()
-		err := notifyDefault(plugin.Parameters{}, Data{
+		err := notifyDefault(plugin.Parameters{}, &Data{
 			LastTransition:        time.Now(),
 			LastNotification:      time.Now(),
 			LastNotificationState: Operational,
@@ -136,7 +136,7 @@ var _ = Describe("NotifyDefault", func() {
 			LastNotificationState: Operational,
 		}
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{}, data, 30*time.Millisecond, &chain, Operational)
+		err := notifyDefault(plugin.Parameters{}, &data, 30*time.Millisecond, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})

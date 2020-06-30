@@ -40,15 +40,15 @@ func (s *maintenanceRequired) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *maintenanceRequired) Notify(params plugin.Parameters, data Data) error {
+func (s *maintenanceRequired) Notify(params plugin.Parameters, data *Data) error {
 	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
 }
 
-func (s *maintenanceRequired) Trigger(params plugin.Parameters, data Data) error {
+func (s *maintenanceRequired) Trigger(params plugin.Parameters, data *Data) error {
 	return s.chains.Trigger.Execute(params)
 }
 
-func (s *maintenanceRequired) Transition(params plugin.Parameters, data Data) (NodeStateLabel, error) {
+func (s *maintenanceRequired) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
 	// if there are no checks configured the node can be put into maintenance, because no additional approvals are required
 	if len(s.chains.Check.Plugins) == 0 {
 		return InMaintenance, nil

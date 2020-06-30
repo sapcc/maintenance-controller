@@ -40,15 +40,15 @@ func (s *operational) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *operational) Notify(params plugin.Parameters, data Data) error {
+func (s *operational) Notify(params plugin.Parameters, data *Data) error {
 	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
 }
 
-func (s *operational) Trigger(params plugin.Parameters, data Data) error {
+func (s *operational) Trigger(params plugin.Parameters, data *Data) error {
 	return s.chains.Trigger.Execute(params)
 }
 
-func (s *operational) Transition(params plugin.Parameters, data Data) (NodeStateLabel, error) {
+func (s *operational) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
 	// if no checks are configured the node will be ignored by the controller (by staying in operational state all the time)
 	if len(s.chains.Check.Plugins) == 0 {
 		return Operational, nil
