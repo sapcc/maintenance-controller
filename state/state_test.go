@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -109,8 +110,11 @@ func mockCheckChain() (plugin.CheckChain, *mockCheck) {
 		Plugin: p,
 		Name:   "mock",
 	}
+	eval, err := gval.Full().NewEvaluable("mock")
+	Expect(err).To(Succeed())
 	chain := plugin.CheckChain{
-		Plugins: []plugin.CheckInstance{instance},
+		Plugins:   []plugin.CheckInstance{instance},
+		Evaluable: eval,
 	}
 	return chain, p
 }

@@ -22,6 +22,7 @@ package plugin
 import (
 	"fmt"
 
+	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 )
 
@@ -41,13 +42,19 @@ type CheckInstance struct {
 
 // CheckChain represents a collection of multiple TriggerInstance that can be executed one after another.
 type CheckChain struct {
-	Plugins []CheckInstance
+	Plugins   []CheckInstance
+	Evaluable gval.Evaluable
 }
 
 // Execute invokes Trigger on each TriggerInstance in the chain and aborts when a plugin returns an error.
 // It returns true if all checks passed.
 func (chain *CheckChain) Execute(params Parameters) (bool, error) {
-	returnVal := true
+	// no checks configured
+	if chain.Evaluable == nil && len(chain.Plugins) == 0 {
+		return true, nil
+	}
+	// execute all plugins and build gval parameter map
+	evalParams := make(map[string]interface{})
 	for _, check := range chain.Plugins {
 		result, err := check.Plugin.Check(params)
 		if err != nil {
@@ -56,7 +63,12 @@ func (chain *CheckChain) Execute(params Parameters) (bool, error) {
 				Err:     err,
 			}
 		}
-		returnVal = returnVal && result
+		evalParams[check.Name] = result
 	}
-	return returnVal, nil
+	// evaluate boolean expression
+	result, err := chain.Evaluable.EvalBool(params.Ctx, evalParams)
+	if err != nil {
+		return false, err
+	}
+	return result, nil
 }

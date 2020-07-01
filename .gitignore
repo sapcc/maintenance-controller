@@ -7,6 +7,9 @@
 maintenance-controller
 bin/
 
+# local config file
+maintenance_config.yaml
+
 # Test binary, built with `go test -c`
 *.test
 

@@ -22,6 +22,7 @@ package plugin
 import (
 	"errors"
 
+	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -92,21 +93,25 @@ var _ = Describe("CheckChain", func() {
 		BeforeEach(func() {
 			trueInstance = CheckInstance{
 				Plugin: &trueCheck{},
-				Name:   "true",
+				Name:   "True",
 			}
 			falseInstance = CheckInstance{
 				Plugin: &falseCheck{},
-				Name:   "false",
+				Name:   "False",
 			}
 			errorInstance = CheckInstance{
 				Plugin: &errorCheck{},
-				Name:   "error",
+				Name:   "Error",
 			}
 		})
 
-		It("should return true if all plugins pass", func() {
+		It("should return true if all plugins of an and chain pass", func() {
+			eval, err := gval.Full().NewEvaluable("True && True && True")
+			Expect(err).To(Succeed())
+
 			chain := CheckChain{
-				Plugins: []CheckInstance{trueInstance, trueInstance, trueInstance},
+				Plugins:   []CheckInstance{trueInstance, trueInstance, trueInstance},
+				Evaluable: eval,
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
@@ -114,15 +119,61 @@ var _ = Describe("CheckChain", func() {
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
 		})
 
-		It("should return false if at least one check does not pass", func() {
+		It("should return false if at least one check of an and chain does not pass", func() {
+			eval, err := gval.Full().NewEvaluable("True && False && True && False")
+			Expect(err).To(Succeed())
+
 			chain := CheckChain{
-				Plugins: []CheckInstance{trueInstance, falseInstance, trueInstance, falseInstance},
+				Plugins:   []CheckInstance{trueInstance, falseInstance, trueInstance, falseInstance},
+				Evaluable: eval,
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result).To(BeFalse())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
 			Expect(falseInstance.Plugin.(*falseCheck).Invoked).To(Equal(2))
+		})
+
+		It("should return true if all plugins of an or chain pass", func() {
+			eval, err := gval.Full().NewEvaluable("True || True || True")
+			Expect(err).To(Succeed())
+
+			chain := CheckChain{
+				Plugins:   []CheckInstance{trueInstance, trueInstance, trueInstance},
+				Evaluable: eval,
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result).To(BeTrue())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
+		})
+
+		It("should return true if one plugin of an or chain does not pass", func() {
+			eval, err := gval.Full().NewEvaluable("True || False || True")
+			Expect(err).To(Succeed())
+
+			chain := CheckChain{
+				Plugins:   []CheckInstance{trueInstance, falseInstance, trueInstance},
+				Evaluable: eval,
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result).To(BeTrue())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
+		})
+
+		It("should return false if a passing plugin is negated", func() {
+			eval, err := gval.Full().NewEvaluable("!True")
+			Expect(err).To(Succeed())
+
+			chain := CheckChain{
+				Plugins:   []CheckInstance{trueInstance},
+				Evaluable: eval,
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result).To(BeFalse())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(1))
 		})
 
 		It("should propagate errors", func() {

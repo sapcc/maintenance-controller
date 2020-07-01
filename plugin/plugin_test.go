@@ -139,7 +139,7 @@ var _ = Describe("Registry", func() {
 			)
 
 			BeforeEach(func() {
-				config = "instance&instance"
+				config = "instance && instance"
 				registry = NewRegistry()
 				registry.CheckInstances["instance"] = CheckInstance{Plugin: &trueCheck{}, Name: "instance"}
 				registry.NotificationInstances["instance"] = NotificationInstance{Plugin: &successfulNotification{}, Name: "instance"}
@@ -150,6 +150,16 @@ var _ = Describe("Registry", func() {
 				chain, err := registry.NewCheckChain(config)
 				Expect(err).To(Succeed())
 				Expect(chain.Plugins).To(HaveLen(2))
+			})
+
+			It("should create CheckChains using all possible operators", func() {
+				config := "instance && !(instance || instance)"
+				chain, err := registry.NewCheckChain(config)
+				Expect(err).To(Succeed())
+				Expect(chain.Plugins).To(HaveLen(3))
+				Expect(chain.Plugins[0].Name).To(Equal("instance"))
+				Expect(chain.Plugins[1].Name).To(Equal("instance"))
+				Expect(chain.Plugins[2].Name).To(Equal("instance"))
 			})
 
 			It("should create NotificationChains", func() {

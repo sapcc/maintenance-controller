@@ -51,7 +51,6 @@ keys:
   chain: chain
 instances:
   notify: null
-  trigger: null
   check:
   - hasLabel:
       name: transition

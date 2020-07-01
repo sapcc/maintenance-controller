@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +32,10 @@ import (
 )
 
 // AndSeparator is a string that is used to combine two plugin instance within a config string.
-const AndSeparator = "&"
+const AndSeparator = "&&"
+
+// OrSeparator is a string that is used to combine two plugin instance within a config string.
+const OrSeparator = "||"
 
 // ChainError wraps an error that causes a PluginChain to fail.
 type ChainError struct {
@@ -84,14 +88,31 @@ func (r *Registry) NewCheckChain(config string) (CheckChain, error) {
 	if config == "" {
 		return chain, nil
 	}
-	for _, name := range strings.Split(config, AndSeparator) {
-		instance, ok := r.CheckInstances[name]
+	stripped := stripSymbols(config, AndSeparator, OrSeparator, "(", ")", "!")
+	for _, name := range strings.Split(stripped, " ") {
+		// due to stripping multiple whitespace may pile up so that empty strings can be created while splitting
+		if name == "" {
+			continue
+		}
+		instance, ok := r.CheckInstances[strings.Trim(name, " ")]
 		if !ok {
 			return chain, fmt.Errorf("the requested check instance \"%v\" is not known to the registry", name)
 		}
 		chain.Plugins = append(chain.Plugins, instance)
 	}
+	eval, err := gval.Full().NewEvaluable(config)
+	if err != nil {
+		return chain, err
+	}
+	chain.Evaluable = eval
 	return chain, nil
+}
+
+func stripSymbols(base string, symbols ...string) string {
+	for _, symbol := range symbols {
+		base = strings.ReplaceAll(base, symbol, "")
+	}
+	return base
 }
 
 // NewNotificationChain creates a NotificaitonChain based the given config string.
@@ -101,7 +122,7 @@ func (r *Registry) NewNotificationChain(config string) (NotificationChain, error
 		return chain, nil
 	}
 	for _, name := range strings.Split(config, AndSeparator) {
-		instance, ok := r.NotificationInstances[name]
+		instance, ok := r.NotificationInstances[strings.Trim(name, " ")]
 		if !ok {
 			return chain, fmt.Errorf("the requested notification instance \"%v\" is not known to the registry", name)
 		}
@@ -117,7 +138,7 @@ func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 		return chain, nil
 	}
 	for _, name := range strings.Split(config, AndSeparator) {
-		instance, ok := r.TriggerInstances[name]
+		instance, ok := r.TriggerInstances[strings.Trim(name, " ")]
 		if !ok {
 			return chain, fmt.Errorf("the requested trigger instance \"%v\" is not known to the registry", name)
 		}

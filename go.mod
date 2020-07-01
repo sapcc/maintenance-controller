@@ -3,6 +3,7 @@ module github.com/sapcc/maintenance-controller
 go 1.13
 
 require (
+	github.com/PaesslerAG/gval v1.0.1
 	github.com/elastic/go-ucfg v0.8.3
 	github.com/go-logr/logr v0.1.0
 	github.com/onsi/ginkgo v1.11.0
