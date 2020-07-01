@@ -68,4 +68,32 @@ var _ = Describe("The controller", func() {
 		}).Should(BeTrue())
 	})
 
+	It("should use the chains described in the annotations", func() {
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		unmodifiedNode := node.DeepCopy()
+		Expect(err).To(Succeed())
+
+		node.Annotations = make(map[string]string)
+		node.Labels = make(map[string]string)
+		node.Annotations["chain-operational-check"] = "transition"
+		node.Annotations["chain-operational-trigger"] = "alter"
+		node.Labels["transition"] = "true"
+		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
+		Expect(err).To(Succeed())
+
+		Eventually(func() string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			Expect(err).To(Succeed())
+
+			val := node.Labels["state"]
+			return val
+		}).Should(Equal(string(state.InMaintenance)))
+
+		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		Expect(err).To(Succeed())
+		Expect(node.Labels["alter"]).To(Equal("true"))
+	})
+
 })

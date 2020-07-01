@@ -50,9 +50,21 @@ keys:
   state: state
   chain: chain
 instances:
-  check: null
   notify: null
   trigger: null
+  check:
+  - hasLabel:
+      name: transition
+      config:
+        key: transition
+        value: "true"
+  trigger:
+  - alterLabel:
+      name: alter
+      config:
+        key: alter
+        value: "true"
+        remove: false
 
 `
 

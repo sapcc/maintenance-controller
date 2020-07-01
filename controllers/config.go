@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/plugin/impl"
 )
 
 // Config represents the controllers global configuration
@@ -82,9 +83,17 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 		return nil, err
 	}
 	c.Registry = plugin.NewRegistry()
+	addPluginsToRegistry(&c.Registry)
 	err = c.Registry.LoadInstances(instances)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+// addPluginsToRegistry adds known plugins to the registry
+func addPluginsToRegistry(registry *plugin.Registry) {
+	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
+
+	registry.TriggerPlugins["alterLabel"] = &impl.AlterLabel{}
 }
