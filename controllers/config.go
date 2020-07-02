@@ -95,5 +95,7 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
 
+	registry.NotificationPlugins["slack"] = &impl.Slack{}
+
 	registry.TriggerPlugins["alterLabel"] = &impl.AlterLabel{}
 }

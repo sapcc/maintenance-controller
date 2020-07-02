@@ -168,6 +168,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	json.Unmarshal([]byte(dataStr), &data)
 	params := plugin.Parameters{
 		Node:   node,
+		State:  stateStr,
 		Client: r.Client,
 		Ctx:    ctx,
 		Log:    r.Log,
