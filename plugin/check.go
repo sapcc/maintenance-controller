@@ -28,7 +28,8 @@ import (
 
 // Checker is the interface that check plugins need to implement.
 // Check plugins have to be idempotent, as they are invoked multiple times.
-// A zero-initalized check plugin should not actually work as it is used to create the actual usable configured instances.
+// A zero-initialized check plugin should not actually work as it is used
+// to create the actual usable configured instances.
 type Checker interface {
 	Check(params Parameters) (bool, error)
 	New(config *ucfg.Config) (Checker, error)

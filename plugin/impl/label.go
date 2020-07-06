@@ -24,13 +24,13 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// HasLabel is a check plugin that checks whether a node has a label or a label with a certain value
+// HasLabel is a check plugin that checks whether a node has a label or a label with a certain value.
 type HasLabel struct {
 	Key   string
 	Value string
 }
 
-// New creates a new HasLabel instance with the given config
+// New creates a new HasLabel instance with the given config.
 func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key   string `config:"key" validate:"required"`
@@ -43,7 +43,7 @@ func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
 	return &HasLabel{Key: conf.Key, Value: conf.Value}, nil
 }
 
-// Check checks whether a node has a label (if h.Value == "") or a label with a certain value (if h.Value != "")
+// Check checks whether a node has a label (if h.Value == "") or a label with a certain value (if h.Value != "").
 func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	val, ok := params.Node.Labels[h.Key]
 	if !ok {
@@ -55,14 +55,14 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
-// AlterLabel is a trigger plugins, which can add, change or remove a label
+// AlterLabel is a trigger plugins, which can add, change or remove a label.
 type AlterLabel struct {
 	Key    string
 	Value  string
 	Remove bool
 }
 
-// New creates a new AlterLabel instance with the given config
+// New creates a new AlterLabel instance with the given config.
 func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
 	conf := struct {
 		Key    string `config:"key" validate:"required"`
@@ -77,7 +77,7 @@ func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
 }
 
 // Trigger ensures the label with the provided key is removed if removes is set to true.
-// Otherwise it sets the label with the provided key to the provided value adding the label if required
+// Otherwise it sets the label with the provided key to the provided value adding the label if required.
 func (a *AlterLabel) Trigger(params plugin.Parameters) error {
 	_, ok := params.Node.Labels[a.Key]
 	if !a.Remove {

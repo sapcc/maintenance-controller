@@ -27,7 +27,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 )
 
-// Config represents the controllers global configuration
+// Config represents the controllers global configuration.
 type Config struct {
 	// RequeueInterval defines a duration after the a node is reconceiled again by the controller
 	RequeueInterval time.Duration
@@ -41,7 +41,7 @@ type Config struct {
 	Registry plugin.Registry
 }
 
-// LoadConfig (re-)initializes the config with values provided by the given ucfg.Config
+// LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
 func LoadConfig(config *ucfg.Config) (*Config, error) {
 	c := &Config{}
 	intervals, err := config.Child("intervals", -1)
@@ -91,7 +91,7 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 	return c, nil
 }
 
-// addPluginsToRegistry adds known plugins to the registry
+// addPluginsToRegistry adds known plugins to the registry.
 func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}

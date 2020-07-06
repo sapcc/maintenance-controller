@@ -27,7 +27,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// Mail is a notification plugins that sends an e-mail
+// Mail is a notification plugins that sends an e-mail.
 type Mail struct {
 	Auth     bool
 	Message  string
@@ -39,7 +39,7 @@ type Mail struct {
 	Password string
 }
 
-// New creates a new Mail instance with the given config
+// New creates a new Mail instance with the given config.
 func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Auth     bool     `config:"auth" validate:"required"`
@@ -67,7 +67,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 	}, nil
 }
 
-// Notify performs connects to the provided SMTP server and transmits the configured message
+// Notify performs connects to the provided SMTP server and transmits the configured message.
 func (m *Mail) Notify(params plugin.Parameters) error {
 	var auth smtp.Auth
 	if m.Auth {

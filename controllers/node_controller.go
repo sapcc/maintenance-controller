@@ -35,19 +35,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CheckPluginSuffix is the check plugin configuration suffix for node annotations
+// CheckPluginSuffix is the check plugin configuration suffix for node annotations.
 const CheckPluginSuffix = "check"
 
-// NotificationPluginSuffix is the notification plugin configuration suffix for node annotations
+// NotificationPluginSuffix is the notification plugin configuration suffix for node annotations.
 const NotificationPluginSuffix = "notify"
 
-// TriggerPluginSuffix is the notification plugin configuration suffix for node annotations
+// TriggerPluginSuffix is the notification plugin configuration suffix for node annotations.
 const TriggerPluginSuffix = "trigger"
 
-// ConfigFilePath is the path to the configuration file
+// ConfigFilePath is the path to the configuration file.
 const ConfigFilePath = "./maintenance_config.yaml"
 
-// ReconcileError signals if a reconciliation failed
+// ReconcileError signals if a reconciliation failed.
 type ReconcileError struct {
 	Message string
 	Err     error
@@ -61,12 +61,12 @@ func (e ReconcileError) Error() string {
 	return fmt.Sprintf("reconciliation failed: %v", e.Message)
 }
 
-// NewReconcileError creates a new ReconcileError from the given root Error and a custom message
+// NewReconcileError creates a new ReconcileError from the given root Error and a custom message.
 func NewReconcileError(err error, message string) ReconcileError {
 	return ReconcileError{Message: message, Err: err}
 }
 
-// NodeReconciler reconciles a Node object
+// NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
 	Log    logr.Logger
@@ -76,7 +76,7 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
 
-// Reconcile reconciles the given request
+// Reconcile reconciles the given request.
 func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	globalContext := context.Background()
 
@@ -98,7 +98,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var theNode corev1.Node
 	err = r.Get(globalContext, req.NamespacedName, &theNode)
 	if err != nil {
-		r.Log.Error(err, "Failed to retrive node information from the API server", "node", req.NamespacedName)
+		r.Log.Error(err, "Failed to retrieve node information from the API server", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 	}
 	unmodifiedNode := theNode.DeepCopy()
@@ -119,68 +119,40 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Node, config *Config) error {
-	// get the current node state
-	stateStr, ok := node.Labels[config.StateKey]
-	// if not found attach operational state
-	if !ok {
-		if node.Labels == nil {
-			node.Labels = make(map[string]string)
-		}
-		node.Labels[config.StateKey] = string(state.Operational)
-		stateStr = string(state.Operational)
-	}
-	stateLabel := state.NodeStateLabel(stateStr)
+	// fetch the current node state
+	stateLabel := parseNodeState(node, config.StateKey)
+	stateStr := string(stateLabel)
 
 	// get the plugin configurations for the current state
-	currentStateKey := config.AnnotationBaseKey + "-" + stateStr
-	checkStr := node.Annotations[currentStateKey+"-"+CheckPluginSuffix]
-	notificationStr := node.Annotations[currentStateKey+"-"+NotificationPluginSuffix]
-	triggerStr := node.Annotations[currentStateKey+"-"+TriggerPluginSuffix]
-	registry := &config.Registry
-
-	checkChain, err := registry.NewCheckChain(checkStr)
+	chains, err := parsePluginChains(node, config, stateStr)
 	if err != nil {
-		return NewReconcileError(err, "failed to parse check chain config")
-	}
-	notificationChain, err := registry.NewNotificationChain(notificationStr)
-	if err != nil {
-		return NewReconcileError(err, "failed to parse notification chain config")
-	}
-	triggerChain, err := registry.NewTriggerChain(triggerStr)
-	if err != nil {
-		return NewReconcileError(err, "failed to parse trigger chain config")
-	}
-	chains := state.PluginChains{
-		Check:        checkChain,
-		Notification: notificationChain,
-		Trigger:      triggerChain,
+		return err
 	}
 
 	// construct state
 	stateObj, err := state.FromLabel(stateLabel, chains, config.NotificationInterval)
 	if err != nil {
-		return NewReconcileError(err, "failed to create internal state from unkown label value")
+		return NewReconcileError(err, "failed to create internal state from unknown label value")
 	}
 
 	// build plugin arguments
 	dataStr := node.Annotations[config.AnnotationBaseKey+"-data"]
 	var data state.Data
-	json.Unmarshal([]byte(dataStr), &data)
-	params := plugin.Parameters{
-		Node:   node,
-		State:  stateStr,
-		Client: r.Client,
-		Ctx:    ctx,
-		Log:    r.Log,
+	if dataStr != "" {
+		err = json.Unmarshal([]byte(dataStr), &data)
+		if err != nil {
+			return NewReconcileError(err, "failed to parse json value in data annotation")
+		}
 	}
+	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node, State: stateStr}
 
+	// invoke notifications and check for transition
 	err = stateObj.Notify(params, &data)
 	if err != nil {
 		return NewReconcileError(err, "failed to notify")
 	}
 	next, err := stateObj.Transition(params, &data)
 	if err != nil {
-		// return NewReconcileError(err, "failed to check for state transition")
 		r.Log.Error(err, "Failed to check for state transition", "state", stateStr)
 	}
 
@@ -208,7 +180,48 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	return nil
 }
 
-// SetupWithManager attaches the controller to the given manager
+func parseNodeState(node *corev1.Node, key string) state.NodeStateLabel {
+	// get the current node state
+	stateStr, ok := node.Labels[key]
+	if ok {
+		return state.NodeStateLabel(stateStr)
+	}
+	// if not found attach operational state
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+	node.Labels[key] = string(state.Operational)
+	return state.Operational
+}
+
+func parsePluginChains(node *corev1.Node, config *Config, stateStr string) (state.PluginChains, error) {
+	// construct annotation keys
+	currentStateKey := config.AnnotationBaseKey + "-" + stateStr
+	checkStr := node.Annotations[currentStateKey+"-"+CheckPluginSuffix]
+	notificationStr := node.Annotations[currentStateKey+"-"+NotificationPluginSuffix]
+	triggerStr := node.Annotations[currentStateKey+"-"+TriggerPluginSuffix]
+
+	// invoke parsers
+	var chains state.PluginChains
+	checkChain, err := config.Registry.NewCheckChain(checkStr)
+	if err != nil {
+		return chains, NewReconcileError(err, "failed to parse check chain config")
+	}
+	notificationChain, err := config.Registry.NewNotificationChain(notificationStr)
+	if err != nil {
+		return chains, NewReconcileError(err, "failed to parse notification chain config")
+	}
+	triggerChain, err := config.Registry.NewTriggerChain(triggerStr)
+	if err != nil {
+		return chains, NewReconcileError(err, "failed to parse trigger chain config")
+	}
+	chains.Check = checkChain
+	chains.Notification = notificationChain
+	chains.Trigger = triggerChain
+	return chains, nil
+}
+
+// SetupWithManager attaches the controller to the given manager.
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Node{}).

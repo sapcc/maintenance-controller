@@ -27,7 +27,8 @@ import (
 
 // Trigger is the interface that trigger plugins need to implement.
 // It is recommend to make trigger plugins idempotent, as the same trigger might be invoked multiple times.
-// A zero-initalized trigger plugin should not actually work as it is used to create the actual usable configured instances.
+// A zero-initialized trigger plugin should not actually work as it is used to create
+// the actual usable configured instances.
 type Trigger interface {
 	Trigger(params Parameters) error
 	New(config *ucfg.Config) (Trigger, error)

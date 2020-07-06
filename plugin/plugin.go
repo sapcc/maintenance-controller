@@ -70,7 +70,7 @@ type Registry struct {
 	TriggerPlugins        map[string]Trigger
 }
 
-// NewRegistry creates a new regsitry with non-null maps
+// NewRegistry creates a new registry with non-null maps.
 func NewRegistry() Registry {
 	registry := Registry{
 		NotificationInstances: make(map[string]NotificationInstance),
@@ -188,6 +188,9 @@ func (r *Registry) loadCheckInstances(config *ucfg.Config) error {
 			return err
 		}
 		err = r.loadCheckInstance(pluginConfig, pluginType)
+		if err != nil {
+			return nil
+		}
 	}
 	return nil
 }
@@ -238,6 +241,9 @@ func (r *Registry) loadNotificationInstances(config *ucfg.Config) error {
 			return err
 		}
 		err = r.loadNotificationInstance(pluginConfig, pluginType)
+		if err != nil {
+			return nil
+		}
 	}
 	return nil
 }
@@ -288,6 +294,9 @@ func (r *Registry) loadTriggerInstances(config *ucfg.Config) error {
 			return err
 		}
 		err = r.loadTriggerInstance(pluginConfig, pluginType)
+		if err != nil {
+			return nil
+		}
 	}
 	return nil
 }

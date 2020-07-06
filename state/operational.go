@@ -25,7 +25,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// operational implements the transition and notification logic if a node is in the operational state
+// operational implements the transition and notification logic if a node is in the operational state.
 type operational struct {
 	chains   PluginChains
 	label    NodeStateLabel
@@ -49,7 +49,8 @@ func (s *operational) Trigger(params plugin.Parameters, data *Data) error {
 }
 
 func (s *operational) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if no checks are configured the node will be ignored by the controller (by staying in operational state all the time)
+	// if no checks are configured the node will be ignored by the controller
+	// (by staying in operational state all the time)
 	if len(s.chains.Check.Plugins) == 0 {
 		return Operational, nil
 	}

@@ -27,7 +27,8 @@ import (
 
 // Notifier is the interface that notification plugins need to implement.
 // It is recommend to make notification plugins idempotent, as the same message might be send multiple times.
-// A zero-initalized notification plugin should not actually work as it is used to create the actual usable configured instances.
+// A zero-initialized notification plugin should not actually work as it is used to create
+// the actual usable configured instances.
 type Notifier interface {
 	Notify(params Parameters) error
 	New(config *ucfg.Config) (Notifier, error)

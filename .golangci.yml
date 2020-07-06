@@ -1,0 +1,24 @@
+linters:
+  enable:
+  - gosec
+  - unconvert
+  - goconst
+  - gocyclo
+  - asciicheck
+  - maligned
+  - misspell
+  - lll
+  - unparam
+  - dogsled
+  - nakedret
+  - prealloc
+  - gocritic
+  - godox
+  - funlen
+  - whitespace
+  - gomnd
+  - godot
+  - nestif
+  - nolintlint
+  disable-all: false
+  fast: false

@@ -31,23 +31,27 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// Slack is a notification plugin that uses a slack webhook and a channel to post a notification about the nodes state in slack
+// Slack is a notification plugin that uses a slack webhook and a channel
+// to post a notification about the nodes state in slack.
 type Slack struct {
 	Hook    string
 	Channel string
 }
 
-// New creates a new Slack instance with the given config
+// New creates a new Slack instance with the given config.
 func (s *Slack) New(config *ucfg.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Hook    string
 		Channel string
 	}{}
-	config.Unpack(&conf)
+	err := config.Unpack(&conf)
+	if err != nil {
+		return nil, err
+	}
 	return &Slack{Hook: conf.Hook, Channel: conf.Channel}, nil
 }
 
-// Notify performs a POST-Request to the slack API to create a message within slack
+// Notify performs a POST-Request to the slack API to create a message within slack.
 func (s *Slack) Notify(params plugin.Parameters) error {
 	msg := struct {
 		Text    string `json:"text"`

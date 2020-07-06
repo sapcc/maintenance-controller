@@ -58,13 +58,15 @@ var _ = Describe("The slack plugin", func() {
 			requestBytes, err := ioutil.ReadAll(r.Body)
 			Expect(err).To(Succeed())
 			requestChan <- string(requestBytes)
-			w.Write([]byte("ok"))
+			_, err = w.Write([]byte("ok"))
+			Expect(err).To(Succeed())
 		})
 		go func() {
 			defer GinkgoRecover()
-			server.ListenAndServe()
+			err := server.ListenAndServe()
+			Expect(err).To(HaveOccurred())
 		}()
-		defer server.Shutdown(context.Background())
+		defer server.Shutdown(context.Background()) //nolint:errcheck
 
 		// wait for the server to come up
 		time.Sleep(20 * time.Millisecond)

@@ -25,7 +25,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// inMaintenance implements the transition and notification logic if a node is in the InMaintenance state
+// inMaintenance implements the transition and notification logic if a node is in the InMaintenance state.
 type inMaintenance struct {
 	chains   PluginChains
 	label    NodeStateLabel

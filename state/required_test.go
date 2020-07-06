@@ -45,7 +45,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 	})
 
-	Context("with initalized chains", func() {
+	Context("with initialized chains", func() {
 
 		var chains PluginChains
 		var trigger *successfulTrigger

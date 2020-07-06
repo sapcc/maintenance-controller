@@ -26,33 +26,33 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// NodeStateLabel reprensents labels which nodes a marked with
+// NodeStateLabel reprensents labels which nodes a marked with.
 type NodeStateLabel string
 
-// Operational is a label that marks a node which is operational
+// Operational is a label that marks a node which is operational.
 const Operational NodeStateLabel = "operational"
 
-// Required is a label that marks a node which needs to be maintenaned
+// Required is a label that marks a node which needs to be maintenaned.
 const Required NodeStateLabel = "required"
 
-// InMaintenance is a label that marks a node which is currently in maintenance
+// InMaintenance is a label that marks a node which is currently in maintenance.
 const InMaintenance NodeStateLabel = "in-maintenance"
 
-// PluginChains is a struct containing a plugin chain of each plugin type
+// PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
 	Check        plugin.CheckChain
 	Notification plugin.NotificationChain
 	Trigger      plugin.TriggerChain
 }
 
-// Data represents global state which is saved with a node annotation
+// Data represents global state which is saved with a node annotation.
 type Data struct {
 	LastTransition        time.Time
 	LastNotification      time.Time
 	LastNotificationState NodeStateLabel
 }
 
-// NodeState represents the state a node can be in
+// NodeState represents the state a node can be in.
 type NodeState interface {
 	// Label is the Label associated with the state
 	Label() NodeStateLabel
@@ -65,7 +65,7 @@ type NodeState interface {
 	Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error)
 }
 
-// FromLabel creates a new NodeState instance identified by the label with given chains and notification interval
+// FromLabel creates a new NodeState instance identified by the label with given chains and notification interval.
 func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration) (NodeState, error) {
 	switch label {
 	case Operational:
@@ -78,8 +78,10 @@ func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration
 	return nil, fmt.Errorf("node state \"%v\" is not known", label)
 }
 
-// notifyDefault is a default NodeState.Notify implemention that executes the notification chain again after a specified interval
-func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration, chain *plugin.NotificationChain, label NodeStateLabel) error {
+// notifyDefault is a default NodeState.Notify implemention that executes
+// the notification chain again after a specified interval.
+func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration,
+	chain *plugin.NotificationChain, label NodeStateLabel) error {
 	// ensure there is a new state or the interval has passed
 	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
 		return nil

@@ -25,7 +25,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// maintenanceRequired implements the transition and notification logic if a node is in the MaintenanceRequired state
+// maintenanceRequired implements the transition and notification logic if a node is in the MaintenanceRequired state.
 type maintenanceRequired struct {
 	chains   PluginChains
 	label    NodeStateLabel

@@ -48,14 +48,14 @@ var weekdayMap = map[string]time.Weekday{
 
 const timeFormat = "15:04"
 
-// TimeWindow is a check plugin that checks whether it is invoked on a certain weekday with a specified timewindow
+// TimeWindow is a check plugin that checks whether it is invoked on a certain weekday with a specified timewindow.
 type TimeWindow struct {
 	Start    time.Time
 	End      time.Time
 	Weekdays []time.Weekday
 }
 
-// New creates a new TimeWindow instance with the given config
+// New creates a new TimeWindow instance with the given config.
 func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
 		Start    string
@@ -101,12 +101,12 @@ func weekdayFromString(s string) (time.Weekday, error) {
 	return weekday, nil
 }
 
-// Check checks whether the current time is within specified time window on allowed weekdays
+// Check checks whether the current time is within specified time window on allowed weekdays.
 func (tw *TimeWindow) Check(params plugin.Parameters) (bool, error) {
 	return tw.checkInternal(time.Now().UTC()), nil
 }
 
-// checkInternal expects a time in UTC
+// checkInternal expects a time in UTC.
 func (tw *TimeWindow) checkInternal(current time.Time) bool {
 	containsWeekday := false
 	for _, weekday := range tw.Weekdays {
@@ -118,6 +118,7 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 		return false
 	}
 	// It is required to set the date to the configured values only keeping the time
-	compare := time.Date(tw.Start.Year(), tw.Start.Month(), tw.Start.Day(), current.Hour(), current.Minute(), current.Second(), current.Nanosecond(), time.UTC)
+	compare := time.Date(tw.Start.Year(), tw.Start.Month(), tw.Start.Day(), current.Hour(),
+		current.Minute(), current.Second(), current.Nanosecond(), time.UTC)
 	return compare.After(tw.Start) && compare.Before(tw.End)
 }

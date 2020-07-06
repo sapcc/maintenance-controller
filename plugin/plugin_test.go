@@ -52,7 +52,7 @@ var _ = Describe("CheckError", func() {
 
 var _ = Describe("Registry", func() {
 
-	Context("is uninitalized", func() {
+	Context("is uninitialized", func() {
 
 		It("should find plugins", func() {
 			registry := NewRegistry()
@@ -129,7 +129,7 @@ var _ = Describe("Registry", func() {
 
 	})
 
-	Context("is initalized", func() {
+	Context("is initialized", func() {
 
 		Context("gets valid config strings", func() {
 
@@ -141,9 +141,18 @@ var _ = Describe("Registry", func() {
 			BeforeEach(func() {
 				config = "instance && instance"
 				registry = NewRegistry()
-				registry.CheckInstances["instance"] = CheckInstance{Plugin: &trueCheck{}, Name: "instance"}
-				registry.NotificationInstances["instance"] = NotificationInstance{Plugin: &successfulNotification{}, Name: "instance"}
-				registry.TriggerInstances["instance"] = TriggerInstance{Plugin: &successfulTrigger{}, Name: "instance"}
+				registry.CheckInstances["instance"] = CheckInstance{
+					Plugin: &trueCheck{},
+					Name:   "instance",
+				}
+				registry.NotificationInstances["instance"] = NotificationInstance{
+					Plugin: &successfulNotification{},
+					Name:   "instance",
+				}
+				registry.TriggerInstances["instance"] = TriggerInstance{
+					Plugin: &successfulTrigger{},
+					Name:   "instance",
+				}
 			})
 
 			It("should create CheckChains", func() {

@@ -119,7 +119,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	err = ioutil.WriteFile(ConfigFilePath, []byte(config), 0644)
+	err = ioutil.WriteFile(ConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 
 	close(done)
