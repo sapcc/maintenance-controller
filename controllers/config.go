@@ -93,11 +93,13 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 
 // addPluginsToRegistry adds known plugins to the registry.
 func addPluginsToRegistry(registry *plugin.Registry) {
+	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
 
 	registry.NotificationPlugins["slack"] = &impl.Slack{}
 	registry.NotificationPlugins["mail"] = &impl.Mail{}
 
+	registry.TriggerPlugins["alterAnnotation"] = &impl.AlterAnnotation{}
 	registry.TriggerPlugins["alterLabel"] = &impl.AlterLabel{}
 }

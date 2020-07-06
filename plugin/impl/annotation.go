@@ -24,14 +24,14 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// HasLabel is a check plugin that checks whether a node has a label or a label with a certain value.
-type HasLabel struct {
+// HasAnnotation is a check plugin that checks whether a node has an annotation or an annotation with a certain value.
+type HasAnnotation struct {
 	Key   string
 	Value string
 }
 
-// New creates a new HasLabel instance with the given config.
-func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
+// New creates a new HasAnnotation instance with the given config.
+func (h *HasAnnotation) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
@@ -40,12 +40,13 @@ func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &HasLabel{Key: conf.Key, Value: conf.Value}, nil
+	return &HasAnnotation{Key: conf.Key, Value: conf.Value}, nil
 }
 
-// Check checks whether a node has a label (if h.Value == "") or a label with a certain value (if h.Value != "").
-func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
-	val, ok := params.Node.Labels[h.Key]
+// Check checks whether a node has an annotation (if h.Value == "")
+// or an annotation with a certain value (if h.Value != "").
+func (h *HasAnnotation) Check(params plugin.Parameters) (bool, error) {
+	val, ok := params.Node.Annotations[h.Key]
 	if !ok {
 		return false, nil
 	}
@@ -55,15 +56,15 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
-// AlterLabel is a trigger plugin, which can add, change or remove a label.
-type AlterLabel struct {
+// AlterAnnotation is a trigger plugin, which can add, change or remove an annotation.
+type AlterAnnotation struct {
 	Key    string
 	Value  string
 	Remove bool
 }
 
-// New creates a new AlterLabel instance with the given config.
-func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
+// New creates a new AlterAnnotation instance with the given config.
+func (a *AlterAnnotation) New(config *ucfg.Config) (plugin.Trigger, error) {
 	conf := struct {
 		Key    string `config:"key" validate:"required"`
 		Value  string `config:"value"`
@@ -73,19 +74,19 @@ func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AlterLabel{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil
+	return &AlterAnnotation{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil
 }
 
-// Trigger ensures the label with the provided key is removed if removes is set to true.
-// Otherwise it sets the label with the provided key to the provided value adding the label if required.
-func (a *AlterLabel) Trigger(params plugin.Parameters) error {
-	_, ok := params.Node.Labels[a.Key]
+// Trigger ensures the annotation with the provided key is removed if removes is set to true.
+// Otherwise it sets the annotation with the provided key to the provided value adding the annotation if required.
+func (a *AlterAnnotation) Trigger(params plugin.Parameters) error {
+	_, ok := params.Node.Annotations[a.Key]
 	if !a.Remove {
-		params.Node.Labels[a.Key] = a.Value
+		params.Node.Annotations[a.Key] = a.Value
 		return nil
 	}
 	if ok {
-		delete(params.Node.Labels, a.Key)
+		delete(params.Node.Annotations, a.Key)
 	}
 	return nil
 }
