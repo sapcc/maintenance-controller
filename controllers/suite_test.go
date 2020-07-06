@@ -119,6 +119,8 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
+	err = os.MkdirAll("./config", 0700)
+	Expect(err).To(Succeed())
 	err = ioutil.WriteFile(ConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 
@@ -131,5 +133,7 @@ var _ = AfterSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = os.Remove(ConfigFilePath)
+	Expect(err).To(Succeed())
+	err = os.Remove("./config")
 	Expect(err).To(Succeed())
 })

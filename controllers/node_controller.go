@@ -45,7 +45,7 @@ const NotificationPluginSuffix = "notify"
 const TriggerPluginSuffix = "trigger"
 
 // ConfigFilePath is the path to the configuration file.
-const ConfigFilePath = "./maintenance_config.yaml"
+const ConfigFilePath = "./config/maintenance.yaml"
 
 // ReconcileError signals if a reconciliation failed.
 type ReconcileError struct {
