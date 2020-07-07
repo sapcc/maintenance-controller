@@ -38,7 +38,7 @@ import (
 var _ = Describe("The slack plugin", func() {
 
 	It("should parse its config", func() {
-		configStr := "hook: http://example.com\nchannel: thechannel"
+		configStr := "hook: http://example.com\nchannel: thechannel\nmessage: msg"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Slack
@@ -46,6 +46,7 @@ var _ = Describe("The slack plugin", func() {
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Slack).Hook).To(Equal("http://example.com"))
 		Expect(plugin.(*Slack).Channel).To(Equal("thechannel"))
+		Expect(plugin.(*Slack).Message).To(Equal("msg"))
 	})
 
 	It("should send a message", func() {
@@ -80,7 +81,7 @@ var _ = Describe("The slack plugin", func() {
 			},
 			State: string(state.Operational),
 		}
-		plugin := Slack{Hook: "http://localhost:25566/", Channel: "thechannel"}
+		plugin := Slack{Hook: "http://localhost:25566/", Channel: "thechannel", Message: "abc"}
 		err := plugin.Notify(params)
 		Expect(err).To(Succeed())
 

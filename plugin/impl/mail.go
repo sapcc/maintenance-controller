@@ -69,12 +69,16 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 
 // Notify performs connects to the provided SMTP server and transmits the configured message.
 func (m *Mail) Notify(params plugin.Parameters) error {
+	theMessage, err := plugin.RenderNotificationTemplate(m.Message, params)
+	if err != nil {
+		return err
+	}
 	var auth smtp.Auth
 	if m.Auth {
 		server := strings.Split(m.Address, ":")[0]
 		auth = smtp.PlainAuth(m.Identity, m.User, m.Password, server)
 	}
-	err := smtp.SendMail(m.Address, auth, m.From, m.To, []byte(m.Message))
+	err = smtp.SendMail(m.Address, auth, m.From, m.To, []byte(theMessage))
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -36,27 +35,33 @@ import (
 type Slack struct {
 	Hook    string
 	Channel string
+	Message string
 }
 
 // New creates a new Slack instance with the given config.
 func (s *Slack) New(config *ucfg.Config) (plugin.Notifier, error) {
 	conf := struct {
-		Hook    string
-		Channel string
+		Hook    string `config:"hook" validate:"required"`
+		Channel string `config:"channel" validate:"required"`
+		Message string `config:"message" validate:"required"`
 	}{}
 	err := config.Unpack(&conf)
 	if err != nil {
 		return nil, err
 	}
-	return &Slack{Hook: conf.Hook, Channel: conf.Channel}, nil
+	return &Slack{Hook: conf.Hook, Channel: conf.Channel, Message: conf.Message}, nil
 }
 
 // Notify performs a POST-Request to the slack API to create a message within slack.
 func (s *Slack) Notify(params plugin.Parameters) error {
+	theMessage, err := plugin.RenderNotificationTemplate(s.Message, params)
+	if err != nil {
+		return err
+	}
 	msg := struct {
 		Text    string `json:"text"`
 		Channel string `json:"channel"`
-	}{Text: fmt.Sprintf("The node '%v' is in state '%v'", params.Node.Name, params.State), Channel: s.Channel}
+	}{Text: theMessage, Channel: s.Channel}
 	marshaled, err := json.Marshal(msg)
 	if err != nil {
 		return err

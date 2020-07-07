@@ -21,6 +21,8 @@ package plugin
 
 import (
 	"fmt"
+	"strings"
+	"text/template"
 
 	"github.com/elastic/go-ucfg"
 )
@@ -57,4 +59,17 @@ func (chain *NotificationChain) Execute(params Parameters) error {
 		}
 	}
 	return nil
+}
+
+func RenderNotificationTemplate(templateStr string, params Parameters) (string, error) {
+	templateObj, err := template.New("template").Parse(templateStr)
+	if err != nil {
+		return "", err
+	}
+	var buf strings.Builder
+	err = templateObj.Execute(&buf, params)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
