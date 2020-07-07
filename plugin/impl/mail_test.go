@@ -33,7 +33,8 @@ import (
 var _ = Describe("The mail plugin", func() {
 
 	It("should parse its config", func() {
-		configStr := "auth: true\naddress: addr\nfrom: from\nidentity: ident\nmessage: msg\npassword: pw\nto: to\nuser: user"
+		configStr := "auth: true\naddress: addr\nfrom: from\nidentity: ident\nmessage: msg\n"
+		configStr += "password: pw\nto: to\nuser: user\nsubject: sub"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Mail
@@ -48,6 +49,17 @@ var _ = Describe("The mail plugin", func() {
 		Expect(mail.Password).To(Equal("pw"))
 		Expect(mail.To[0]).To(Equal("to"))
 		Expect(mail.User).To(Equal("user"))
+		Expect(mail.Subject).To(Equal("sub"))
+	})
+
+	It("should build a valid header", func() {
+		plugin := Mail{
+			To:      []string{"To1", "To2"},
+			From:    "From",
+			Subject: "Sub",
+		}
+		header := plugin.buildMailHeader()
+		Expect(header).To(Equal("From: From\r\nTo: To1,To2\r\nSubject: Sub\r\n\r\n"))
 	})
 
 	It("should send an email", func(done Done) {
@@ -63,22 +75,36 @@ var _ = Describe("The mail plugin", func() {
 			Expect(err).To(Succeed())
 			_, err = conn.Write([]byte("220 127.0.0.1 SMTP\r\n"))
 			Expect(err).To(Succeed())
-			err = nil
 			var request bytes.Buffer
+			isDataBlock := false
 			// the loop asembles client requests and replies to them after reading a \n
-			for err == nil {
+			for {
 				buf := make([]byte, 1)
 				_, err = conn.Read(buf)
+				if err != nil {
+					break
+				}
 				if string(buf) == "\n" {
+					// the default reply is 250 OK
 					reply := "250 OK\r\n"
+					// on newlines in data block we do not need to reply
+					if isDataBlock {
+						reply = ""
+					}
 					switch request.String() {
+					// assert that the message has been tranmitted
 					case "themessage\r":
 						messageArrived <- true
-						continue
+					// data block starts
 					case "DATA\r":
+						isDataBlock = true
 						reply = "354 start mail input\r\n"
+					// end of communication
 					case "QUIT\r":
 						reply = "221 closing channel\r\n"
+					// end of data block
+					case ".\r":
+						reply = "250 OK\r\n"
 					}
 					_, err = conn.Write([]byte(reply))
 					Expect(err).To(Succeed())

@@ -31,6 +31,7 @@ import (
 type Mail struct {
 	Auth     bool
 	Message  string
+	Subject  string
 	Address  string
 	From     string
 	To       []string
@@ -44,6 +45,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Auth     bool     `config:"auth" validate:"required"`
 		Message  string   `config:"message" validate:"required"`
+		Subject  string   `config:"subject" validate:"required"`
 		Address  string   `config:"address" validate:"required"`
 		From     string   `config:"from" validate:"required"`
 		To       []string `config:"to" validate:"required"`
@@ -61,6 +63,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 		From:     conf.From,
 		Identity: conf.Identity,
 		Message:  conf.Message,
+		Subject:  conf.Subject,
 		Password: conf.Password,
 		To:       conf.To,
 		User:     conf.User,
@@ -70,6 +73,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 // Notify performs connects to the provided SMTP server and transmits the configured message.
 func (m *Mail) Notify(params plugin.Parameters) error {
 	theMessage, err := plugin.RenderNotificationTemplate(m.Message, params)
+	theMessage = m.buildMailHeader() + theMessage
 	if err != nil {
 		return err
 	}
@@ -83,4 +87,9 @@ func (m *Mail) Notify(params plugin.Parameters) error {
 		return err
 	}
 	return nil
+}
+
+func (m *Mail) buildMailHeader() string {
+	recipients := strings.Join(m.To, ",")
+	return "From: " + m.From + "\r\nTo: " + recipients + "\r\nSubject: " + m.Subject + "\r\n\r\n"
 }

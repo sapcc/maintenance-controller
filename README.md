@@ -111,9 +111,10 @@ __mail__: Sends an e-mail
 ```yaml
 config:
   auth: boolean value, which defines if the plugin should use plain auth or no auth at all, required
-  address: address of the smtp server, required
+  address: address of the smtp server with port, required
   from: e-mail address of the sender, required
   identity: the identity used for authentification against the smtp server, optional
+  subject: the subject of the mail
   message: the content of the mail, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
   password: the password used for authentification against the smtp server, optional
   to: array of recipients, required
