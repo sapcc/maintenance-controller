@@ -96,6 +96,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
+	registry.CheckPlugins["wait"] = &impl.Wait{}
 
 	registry.NotificationPlugins["slack"] = &impl.Slack{}
 	registry.NotificationPlugins["mail"] = &impl.Mail{}

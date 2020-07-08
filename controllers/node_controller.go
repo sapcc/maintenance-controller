@@ -144,7 +144,8 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 			return NewReconcileError(err, "failed to parse json value in data annotation")
 		}
 	}
-	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node, State: stateStr}
+	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node,
+		State: stateStr, LastTransition: data.LastTransition}
 
 	// invoke notifications and check for transition
 	err = stateObj.Notify(params, &data)
@@ -163,7 +164,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 			r.Log.Error(err, "Failed to execute triggers", "state", stateStr)
 		} else {
 			node.Labels[config.StateKey] = string(next)
-			data.LastTransition = time.Now()
+			data.LastTransition = time.Now().UTC()
 		}
 	}
 

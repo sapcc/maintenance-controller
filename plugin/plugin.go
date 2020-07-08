@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
@@ -53,11 +54,12 @@ func (e *ChainError) Unwrap() error {
 
 // Parameters desecribes the parameters plugins get to work with.
 type Parameters struct {
-	Node   *corev1.Node
-	State  string
-	Client client.Client
-	Ctx    context.Context
-	Log    logr.Logger
+	Node           *corev1.Node
+	State          string
+	Client         client.Client
+	Ctx            context.Context
+	Log            logr.Logger
+	LastTransition time.Time
 }
 
 // Registry is a central storage for all plugins and their instances.

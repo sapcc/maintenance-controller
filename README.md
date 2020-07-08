@@ -42,7 +42,7 @@ Execute ```make deploy```.
 ## Configuration
 
 There is a global configuration, which defines some general options, and the configuration of plugin chains via node annotations.
-The global configuration should be named ```maintenance_config.yaml``` and should be placed in the controllers working directory preferably via a Kubernetes secret or a config map.
+The global configuration should be named ```./config/maintenance.yaml``` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
 The basic structure looks like this:
 ```yaml
 intervals:
@@ -78,11 +78,11 @@ instances:
         value: "true"
         remove: false
 ```
-Spzified instances can than be used to configure node specific transition behavior by defining plugin chains.
+Specified instances can than be used to configure node specific transition behavior by defining plugin chains.
 The controller looks up annotations of the form ```prefix-state-plugintype``` where ```prefix``` is the configured prefix of the global configuration, ```state``` is one of ```operational, required or in-maintenance``` and ```plugintype``` is one of ```check, trigger or notify```.
 So there are nine chains to be configured if desired.
 Chains be undefined or empty.
-Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```prefix-operational-trigger=alter && othercheckplugin```
+Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```prefix-operational-trigger=alter && othertriggerplugin```
 Check chains be build using boolean expression, e.g. ```prefix-in-maintenance-check=transition && !(a || b)```
 
 ### Check Plugins
@@ -104,6 +104,11 @@ config:
   start: the timewindows start time in "hh:mm" format, required
   end: the timewindows end time in "hh:mm" format, required
   weekdays: weekdays when the time window is valid as array e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
+```
+__wait:__ Checks if a certain duration has passed since the last state transition
+```yaml
+config:
+  duration: a duration according to the rules of golangs time.ParseDuration(), required
 ```
 
 ### Notification Plugins
