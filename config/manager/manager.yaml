@@ -5,6 +5,25 @@ metadata:
     control-plane: controller-manager
   name: system
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maintenance-config
+type: Opaque
+stringData:
+  maintenance.yaml: |
+    intervals:
+      requeue: 10s
+      notify: 24h
+    keys:
+      state: maintenance-state
+      chain: maintenance
+    instances:
+      notify: null
+      check: null
+      trigger: null
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,8 +46,12 @@ spec:
         - /manager
         args:
         - --enable-leader-election
-        image: controller:latest
+        image: controller
         name: manager
+        volumeMounts:
+        - name: config
+          mountPath: "/config"
+          readOnly: true
         resources:
           limits:
             cpu: 100m
@@ -36,4 +59,8 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+      volumes:
+      - name: config
+        secret:
+          secretName: maintenance-config
       terminationGracePeriodSeconds: 10

@@ -37,7 +37,7 @@ It is possible to check labels, to alter labels, to be notified via Slack, ...
 
 ## Installation
 
-Execute ```make deploy```.
+Execute ```make deploy IMG=sapcc/maintenance-controller```.
 
 ## Configuration
 
@@ -63,7 +63,7 @@ instances:
   check:
   # the list enttries define the chosen plugin type
   - hasLabel:
-      # name of the instance, which is used in the plugin chain configurations
+      # name of the instance, which is used in the plugin chain configurations. Do not use spaces or other special characters
       name: transition
       # the configuration for the plugin. That block depends obviously on the plugin type
       config:
