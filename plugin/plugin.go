@@ -56,6 +56,7 @@ func (e *ChainError) Unwrap() error {
 type Parameters struct {
 	Node           *corev1.Node
 	State          string
+	StateKey       string
 	Client         client.Client
 	Ctx            context.Context
 	Log            logr.Logger

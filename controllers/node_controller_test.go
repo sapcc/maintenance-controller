@@ -25,6 +25,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -94,6 +96,35 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal("true"))
+	})
+
+})
+
+var _ = Describe("The MaxMaintenance plugin", func() {
+
+	var targetNode *corev1.Node
+
+	BeforeEach(func() {
+		targetNode = &corev1.Node{}
+		targetNode.Name = "targetnode"
+		targetNode.Labels = make(map[string]string)
+		targetNode.Labels["state"] = string(state.InMaintenance)
+		err := k8sClient.Create(context.Background(), targetNode)
+		Expect(err).To(Succeed())
+	})
+
+	AfterEach(func() {
+		err := k8sClient.Delete(context.Background(), targetNode)
+		Expect(err).To(Succeed())
+	})
+
+	// The test below requires a connection to an api server,
+	// which is not simulated within the plugin/impl package
+	It("should fetch data from the api server", func() {
+		max := impl.MaxMaintenance{MaxNodes: 1}
+		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: "state", Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
 	})
 
 })

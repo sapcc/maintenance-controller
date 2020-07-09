@@ -145,7 +145,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 		}
 	}
 	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node,
-		State: stateStr, LastTransition: data.LastTransition}
+		State: stateStr, StateKey: config.StateKey, LastTransition: data.LastTransition}
 
 	// invoke notifications and check for transition
 	err = stateObj.Notify(params, &data)

@@ -98,6 +98,11 @@ config:
   key: the annotation key, required
   value: the expect annotation value, if empty only the key is checked, optional
 ```
+__maxMaintenance:__ Checks that less than the specified amount of nodes are in the in-maintenance state. Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
+```yaml
+config:
+  max: the limit of nodes that are in-maintenance
+```
 __timeWindow:__ Checks if the current systemtime is within the specified weekly UTC time window.
 ```yaml
 config:

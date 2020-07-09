@@ -95,6 +95,7 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
+	registry.CheckPlugins["maxMaintenance"] = &impl.MaxMaintenance{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
 	registry.CheckPlugins["wait"] = &impl.Wait{}
 
