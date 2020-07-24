@@ -23,8 +23,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/sapcc/maintenance-controller/controllers"
@@ -46,15 +47,27 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var kubecontext string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	if kubecontext == "" {
+		kubecontext = os.Getenv("KUBECONTEXT")
+	}
+	restConfig, err := config.GetConfigWithContext(kubecontext)
+	if err != nil {
+		setupLog.Error(err, "Failed to load kubeconfig")
+		os.Exit(1)
+	}
+	setupLog.Info("Loaded kubeconfig", "context", kubecontext, "host", restConfig.Host)
+
+	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443, //nolint:gomnd
