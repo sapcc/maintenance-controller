@@ -47,25 +47,6 @@ const TriggerPluginSuffix = "trigger"
 // ConfigFilePath is the path to the configuration file.
 const ConfigFilePath = "./config/maintenance.yaml"
 
-// ReconcileError signals if a reconciliation failed.
-type ReconcileError struct {
-	Message string
-	Err     error
-}
-
-func (e ReconcileError) Unwrap() error {
-	return e.Err
-}
-
-func (e ReconcileError) Error() string {
-	return fmt.Sprintf("reconciliation failed: %v", e.Message)
-}
-
-// NewReconcileError creates a new ReconcileError from the given root Error and a custom message.
-func NewReconcileError(err error, message string) ReconcileError {
-	return ReconcileError{Message: message, Err: err}
-}
-
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
@@ -132,7 +113,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	// construct state
 	stateObj, err := state.FromLabel(stateLabel, chains, config.NotificationInterval)
 	if err != nil {
-		return NewReconcileError(err, "failed to create internal state from unknown label value")
+		return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 	}
 
 	// build plugin arguments
@@ -141,7 +122,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	if dataStr != "" {
 		err = json.Unmarshal([]byte(dataStr), &data)
 		if err != nil {
-			return NewReconcileError(err, "failed to parse json value in data annotation")
+			return fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
 	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node,
@@ -150,7 +131,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	// invoke notifications and check for transition
 	err = stateObj.Notify(params, &data)
 	if err != nil {
-		return NewReconcileError(err, "failed to notify")
+		return fmt.Errorf("failed to notify: %w", err)
 	}
 	next, err := stateObj.Transition(params, &data)
 	if err != nil {
@@ -171,7 +152,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	// update data annotation
 	dataBytes, err := json.Marshal(&data)
 	if err != nil {
-		return NewReconcileError(err, "failed to marshal internal data")
+		return fmt.Errorf("failed to marshal internal data: %w", err)
 	}
 	if node.Annotations == nil {
 		node.Annotations = make(map[string]string)
@@ -206,15 +187,15 @@ func parsePluginChains(node *corev1.Node, config *Config, stateStr string) (stat
 	var chains state.PluginChains
 	checkChain, err := config.Registry.NewCheckChain(checkStr)
 	if err != nil {
-		return chains, NewReconcileError(err, "failed to parse check chain config")
+		return chains, fmt.Errorf("failed to parse check chain config: %w", err)
 	}
 	notificationChain, err := config.Registry.NewNotificationChain(notificationStr)
 	if err != nil {
-		return chains, NewReconcileError(err, "failed to parse notification chain config")
+		return chains, fmt.Errorf("failed to parse notification chain config: %w", err)
 	}
 	triggerChain, err := config.Registry.NewTriggerChain(triggerStr)
 	if err != nil {
-		return chains, NewReconcileError(err, "failed to parse trigger chain config")
+		return chains, fmt.Errorf("failed to parse trigger chain config: %w", err)
 	}
 	chains.Check = checkChain
 	chains.Notification = notificationChain
