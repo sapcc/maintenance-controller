@@ -45,6 +45,11 @@ type PluginChains struct {
 	Trigger      plugin.TriggerChain
 }
 
+type Profile struct {
+	Name   string
+	Chains map[NodeStateLabel]PluginChains
+}
+
 // Data represents global state which is saved with a node annotation.
 type Data struct {
 	LastTransition        time.Time

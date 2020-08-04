@@ -35,17 +35,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CheckPluginSuffix is the check plugin configuration suffix for node annotations.
-const CheckPluginSuffix = "check"
-
-// NotificationPluginSuffix is the notification plugin configuration suffix for node annotations.
-const NotificationPluginSuffix = "notify"
-
-// TriggerPluginSuffix is the notification plugin configuration suffix for node annotations.
-const TriggerPluginSuffix = "trigger"
+// DefaultProfileName is the name of the default maintenance profile.
+const DefaultProfileName = "default"
 
 // ConfigFilePath is the path to the configuration file.
 const ConfigFilePath = "./config/maintenance.yaml"
+
+// StateLabelKey is the full label key, which the controller attaches the node state information to.
+const StateLabelKey = "cloud.sap/maintenance-state"
+
+// ProfileLabelKey is the full label key, where the user can attach profile information to a node.
+const ProfileLabelKey = "cloud.sap/maintenance-profile"
+
+// DataAnnotationKey is the full annotation key, to which the controller serializes internal data.
+const DataAnnotationKey = "cloud.sap/maintenance-data"
 
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
@@ -101,23 +104,23 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Node, config *Config) error {
 	// fetch the current node state
-	stateLabel := parseNodeState(node, config.StateKey)
+	stateLabel := parseNodeState(node, StateLabelKey)
 	stateStr := string(stateLabel)
 
-	// get the plugin configurations for the current state
-	chains, err := parsePluginChains(node, config, stateStr)
+	// get the current profile
+	profile, err := getProfile(node, config)
 	if err != nil {
 		return err
 	}
 
 	// construct state
-	stateObj, err := state.FromLabel(stateLabel, chains, config.NotificationInterval)
+	stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], config.NotificationInterval)
 	if err != nil {
 		return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 	}
 
 	// build plugin arguments
-	dataStr := node.Annotations[config.AnnotationBaseKey+"-data"]
+	dataStr := node.Annotations[DataAnnotationKey]
 	var data state.Data
 	if dataStr != "" {
 		err = json.Unmarshal([]byte(dataStr), &data)
@@ -126,7 +129,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 		}
 	}
 	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node,
-		State: stateStr, StateKey: config.StateKey, LastTransition: data.LastTransition}
+		State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition}
 
 	// invoke notifications and check for transition
 	err = stateObj.Notify(params, &data)
@@ -144,7 +147,7 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 		if err != nil {
 			r.Log.Error(err, "Failed to execute triggers", "state", stateStr)
 		} else {
-			node.Labels[config.StateKey] = string(next)
+			node.Labels[StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
 		}
 	}
@@ -157,9 +160,21 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 	if node.Annotations == nil {
 		node.Annotations = make(map[string]string)
 	}
-	node.Annotations[config.AnnotationBaseKey+"-data"] = string(dataBytes)
+	node.Annotations[DataAnnotationKey] = string(dataBytes)
 
 	return nil
+}
+
+func getProfile(node *corev1.Node, config *Config) (state.Profile, error) {
+	profileStr, ok := node.Labels[ProfileLabelKey]
+	if !ok {
+		profileStr = DefaultProfileName
+	}
+	profile, ok := config.Profiles[profileStr]
+	if !ok {
+		return state.Profile{}, fmt.Errorf("cannot find the requested maintenance profile %v", profileStr)
+	}
+	return profile, nil
 }
 
 func parseNodeState(node *corev1.Node, key string) state.NodeStateLabel {
@@ -174,33 +189,6 @@ func parseNodeState(node *corev1.Node, key string) state.NodeStateLabel {
 	}
 	node.Labels[key] = string(state.Operational)
 	return state.Operational
-}
-
-func parsePluginChains(node *corev1.Node, config *Config, stateStr string) (state.PluginChains, error) {
-	// construct annotation keys
-	currentStateKey := config.AnnotationBaseKey + "-" + stateStr
-	checkStr := node.Annotations[currentStateKey+"-"+CheckPluginSuffix]
-	notificationStr := node.Annotations[currentStateKey+"-"+NotificationPluginSuffix]
-	triggerStr := node.Annotations[currentStateKey+"-"+TriggerPluginSuffix]
-
-	// invoke parsers
-	var chains state.PluginChains
-	checkChain, err := config.Registry.NewCheckChain(checkStr)
-	if err != nil {
-		return chains, fmt.Errorf("failed to parse check chain config: %w", err)
-	}
-	notificationChain, err := config.Registry.NewNotificationChain(notificationStr)
-	if err != nil {
-		return chains, fmt.Errorf("failed to parse notification chain config: %w", err)
-	}
-	triggerChain, err := config.Registry.NewTriggerChain(triggerStr)
-	if err != nil {
-		return chains, fmt.Errorf("failed to parse trigger chain config: %w", err)
-	}
-	chains.Check = checkChain
-	chains.Notification = notificationChain
-	chains.Trigger = triggerChain
-	return chains, nil
 }
 
 // SetupWithManager attaches the controller to the given manager.

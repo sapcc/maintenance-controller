@@ -64,6 +64,19 @@ instances:
         key: alter
         value: "true"
         remove: false
+profiles:
+  count:
+    operational:
+      check: transition
+      trigger: alter
+    maintenance-required:
+      check: transition && transition
+    in-maintenance:
+      check: transition && transition && transition
+  test:
+    operational:
+      check: transition
+      trigger: alter
 
 `
 
