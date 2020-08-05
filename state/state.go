@@ -33,7 +33,7 @@ type NodeStateLabel string
 const Operational NodeStateLabel = "operational"
 
 // Required is a label that marks a node which needs to be maintenaned.
-const Required NodeStateLabel = "required"
+const Required NodeStateLabel = "maintenance-required"
 
 // InMaintenance is a label that marks a node which is currently in maintenance.
 const InMaintenance NodeStateLabel = "in-maintenance"
