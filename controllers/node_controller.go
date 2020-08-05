@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -53,8 +54,18 @@ const DataAnnotationKey = "cloud.sap/maintenance-data"
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
+}
+
+type reconcileParameters struct {
+	client   client.Client
+	config   *Config
+	ctx      context.Context
+	log      logr.Logger
+	recorder record.EventRecorder
+	node     *corev1.Node
 }
 
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -88,7 +99,14 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	unmodifiedNode := theNode.DeepCopy()
 
 	// perform the reconciliation
-	err = r.reconcileInternal(globalContext, &theNode, config)
+	err = reconcileInternal(reconcileParameters{
+		client:   r.Client,
+		config:   config,
+		ctx:      globalContext,
+		log:      r.Log.WithValues("node", req.NamespacedName),
+		node:     &theNode,
+		recorder: r.Recorder,
+	})
 	if err != nil {
 		r.Log.Error(err, "Failed to reconcile. Skipping node patching.", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
@@ -102,57 +120,80 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 }
 
-func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Node, config *Config) error {
+func reconcileInternal(params reconcileParameters) error {
+	node := params.node
+	log := params.log
+
 	// fetch the current node state
 	stateLabel := parseNodeState(node, StateLabelKey)
 	stateStr := string(stateLabel)
 
 	// get the current profile
-	profile, err := getProfile(node, config)
+	profile, err := getProfile(node, params.config)
 	if err != nil {
 		return err
 	}
 
 	// construct state
-	stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], config.NotificationInterval)
+	stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], params.config.NotificationInterval)
 	if err != nil {
 		return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 	}
 
 	// build plugin arguments
-	dataStr := node.Annotations[DataAnnotationKey]
-	var data state.Data
-	if dataStr != "" {
-		err = json.Unmarshal([]byte(dataStr), &data)
-		if err != nil {
-			return fmt.Errorf("failed to parse json value in data annotation: %w", err)
-		}
+	data, err := parseData(node)
+	if err != nil {
+		return err
 	}
-	params := plugin.Parameters{Client: r.Client, Ctx: ctx, Log: r.Log, Node: node,
+	pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log, Node: node,
 		State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition}
 
 	// invoke notifications and check for transition
-	err = stateObj.Notify(params, &data)
+	err = stateObj.Notify(pluginParams, &data)
 	if err != nil {
+		params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+			"At least one notification plugin failed: Will stay in %v state", stateStr)
 		return fmt.Errorf("failed to notify: %w", err)
 	}
-	next, err := stateObj.Transition(params, &data)
+	next, err := stateObj.Transition(pluginParams, &data)
 	if err != nil {
-		r.Log.Error(err, "Failed to check for state transition", "state", stateStr)
+		params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+			"At least one check plugin failed: Will stay in %v state", stateStr)
+		log.Error(err, "Failed to check for state transition", "state", stateStr)
 	}
 
 	// check if a transition should happen
 	if next != stateLabel {
-		err = stateObj.Trigger(params, &data)
+		err = stateObj.Trigger(pluginParams, &data)
 		if err != nil {
-			r.Log.Error(err, "Failed to execute triggers", "state", stateStr)
+			log.Error(err, "Failed to execute triggers", "state", stateStr)
+			params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+				"At least one trigger plugin failed: Will stay in %v state", stateStr)
 		} else {
 			node.Labels[StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
+			log.Info("Moved node to next state", "state", string(next))
+			params.recorder.Eventf(node, "Normal", "ChangedMaintenanceState", "The node is now in the %v state", string(next))
 		}
 	}
 
 	// update data annotation
+	return writeData(node, data)
+}
+
+func parseData(node *corev1.Node) (state.Data, error) {
+	dataStr := node.Annotations[DataAnnotationKey]
+	var data state.Data
+	if dataStr != "" {
+		err := json.Unmarshal([]byte(dataStr), &data)
+		if err != nil {
+			return state.Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
+		}
+	}
+	return data, nil
+}
+
+func writeData(node *corev1.Node, data state.Data) error {
 	dataBytes, err := json.Marshal(&data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal internal data: %w", err)
@@ -161,7 +202,6 @@ func (r *NodeReconciler) reconcileInternal(ctx context.Context, node *corev1.Nod
 		node.Annotations = make(map[string]string)
 	}
 	node.Annotations[DataAnnotationKey] = string(dataBytes)
-
 	return nil
 }
 
