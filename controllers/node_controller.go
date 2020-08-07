@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
@@ -30,7 +31,10 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,12 +116,44 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 	}
 
+	// if the controller did not change anything, there is no need to patch
+	if equality.Semantic.DeepEqual(&theNode, unmodifiedNode) {
+		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
+	}
+
 	// patch node
 	err = r.Patch(globalContext, &theNode, client.MergeFrom(unmodifiedNode))
 	if err != nil {
 		r.Log.Error(err, "Failed to patch node on the API server", "node", req.NamespacedName)
 	}
+
+	// await cache update
+	err = pollCacheUpdate(globalContext, r.Client, types.NamespacedName{
+		Name:      theNode.Name,
+		Namespace: theNode.Namespace,
+	}, theNode.ResourceVersion)
+	if err != nil {
+		r.Log.Error(err, "Failed to poll for cache update")
+	}
 	return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
+}
+
+func pollCacheUpdate(ctx context.Context, client client.Client, ref types.NamespacedName, targetVersion string) error {
+	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (done bool, err error) { //nolint:gomnd
+		var nextNode corev1.Node
+		if err = client.Get(ctx, ref, &nextNode); err != nil {
+			return false, err
+		}
+		nextVersion, err := strconv.Atoi(nextNode.ResourceVersion)
+		if err != nil {
+			return false, err
+		}
+		currentVersion, err := strconv.Atoi(targetVersion)
+		if err != nil {
+			return false, err
+		}
+		return nextVersion >= currentVersion, nil
+	})
 }
 
 func reconcileInternal(params reconcileParameters) error {

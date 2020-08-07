@@ -24,10 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -76,13 +73,6 @@ func main() {
 		Port:               9443, //nolint:gomnd
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "6a2f7a03.my.domain",
-		// use a client without caching this garantuess that a very recent version of the node is reconciled
-		// by changing labels the controller can trigger it's own executions
-		// accessing an outdated cache during such a triggered executions can lead to doubled notifications
-		// as old state information is processed again
-		NewClient: func(cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-			return client.New(restConfig, options)
-		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
