@@ -109,4 +109,34 @@ var _ = Describe("Operational State", func() {
 
 	})
 
+	It("should execute the notification chain if the state has changed", func() {
+		chain, notification := mockNotificationChain()
+		data := Data{
+			LastTransition:        time.Now(),
+			LastNotification:      time.Now(),
+			LastNotificationState: InMaintenance,
+		}
+		oper := operational{
+			chains: PluginChains{Notification: chain},
+		}
+		err := oper.Notify(plugin.Parameters{}, &data)
+		Expect(err).To(Succeed())
+		Expect(notification.Invoked).To(Equal(1))
+	})
+
+	It("should not execute the notification chain if the state has not changed", func() {
+		chain, notification := mockNotificationChain()
+		data := Data{
+			LastTransition:        time.Now(),
+			LastNotification:      time.Now(),
+			LastNotificationState: Operational,
+		}
+		oper := operational{
+			chains: PluginChains{Notification: chain},
+		}
+		err := oper.Notify(plugin.Parameters{}, &data)
+		Expect(err).To(Succeed())
+		Expect(notification.Invoked).To(Equal(0))
+	})
+
 })

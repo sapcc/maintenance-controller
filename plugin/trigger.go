@@ -55,6 +55,9 @@ func (chain *TriggerChain) Execute(params Parameters) error {
 				Err:     err,
 			}
 		}
+		if params.Log != nil {
+			params.Log.Info("Executed trigger instance", "instance", trigger.Name)
+		}
 	}
 	return nil
 }

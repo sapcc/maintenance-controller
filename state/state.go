@@ -33,7 +33,7 @@ type NodeStateLabel string
 const Operational NodeStateLabel = "operational"
 
 // Required is a label that marks a node which needs to be maintenaned.
-const Required NodeStateLabel = "required"
+const Required NodeStateLabel = "maintenance-required"
 
 // InMaintenance is a label that marks a node which is currently in maintenance.
 const InMaintenance NodeStateLabel = "in-maintenance"
@@ -43,6 +43,11 @@ type PluginChains struct {
 	Check        plugin.CheckChain
 	Notification plugin.NotificationChain
 	Trigger      plugin.TriggerChain
+}
+
+type Profile struct {
+	Name   string
+	Chains map[NodeStateLabel]PluginChains
 }
 
 // Data represents global state which is saved with a node annotation.

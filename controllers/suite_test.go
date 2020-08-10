@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -64,6 +65,19 @@ instances:
         key: alter
         value: "true"
         remove: false
+profiles:
+  count:
+    operational:
+      check: transition
+      trigger: alter
+    maintenance-required:
+      check: transition && transition
+    in-maintenance:
+      check: transition && transition && transition
+  test:
+    operational:
+      check: transition
+      trigger: alter
 
 `
 
@@ -104,9 +118,10 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&NodeReconciler{
-		Client: k8sManager.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("maintenance"),
-		Scheme: k8sManager.GetScheme(),
+		Client:   k8sManager.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
+		Scheme:   k8sManager.GetScheme(),
+		Recorder: record.NewFakeRecorder(1024),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

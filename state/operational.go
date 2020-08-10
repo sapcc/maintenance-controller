@@ -41,7 +41,16 @@ func (s *operational) Label() NodeStateLabel {
 }
 
 func (s *operational) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
+	if data.LastNotificationState == Operational {
+		return nil
+	}
+	err := s.chains.Notification.Execute(params)
+	if err != nil {
+		return err
+	}
+	data.LastNotification = time.Now()
+	data.LastNotificationState = Operational
+	return nil
 }
 
 func (s *operational) Trigger(params plugin.Parameters, data *Data) error {

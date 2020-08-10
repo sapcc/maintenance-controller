@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 // Config represents the controllers global configuration.
@@ -33,62 +34,123 @@ type Config struct {
 	RequeueInterval time.Duration
 	// NotificationInterval specifies a duration after which notifications are resend
 	NotificationInterval time.Duration
-	// StateKey is the full label key, which the controller attaches the node state information to
-	StateKey string
-	// AnnotationBaseKey serves as a base annotation keys, which the controllers uses to parse node plugin chains
-	AnnotationBaseKey string
 	// Registry is the global plugin Registry
 	Registry plugin.Registry
+	// Profiles contains all known profiles
+	Profiles map[string]state.Profile
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
 func LoadConfig(config *ucfg.Config) (*Config, error) {
 	c := &Config{}
-	intervals, err := config.Child("intervals", -1)
+	global := struct {
+		Intervals struct {
+			Requeue time.Duration `config:"requeue" validate:"required"`
+			Notify  time.Duration `config:"notify" validate:"required"`
+		} `config:"intervals" validate:"required"`
+		Instances *ucfg.Config
+		Profiles  *ucfg.Config
+	}{}
+	err := config.Unpack(&global)
 	if err != nil {
 		return nil, err
 	}
-	requeueStr, err := intervals.String("requeue", -1)
-	if err != nil {
-		return nil, err
-	}
-	c.RequeueInterval, err = time.ParseDuration(requeueStr)
-	if err != nil {
-		return nil, err
-	}
-	notificationStr, err := intervals.String("notify", -1)
-	if err != nil {
-		return nil, err
-	}
-	c.NotificationInterval, err = time.ParseDuration(notificationStr)
-	if err != nil {
-		return nil, err
-	}
+	c.RequeueInterval = global.Intervals.Requeue
+	c.NotificationInterval = global.Intervals.Notify
 
-	keys, err := config.Child("keys", -1)
-	if err != nil {
-		return nil, err
-	}
-	c.StateKey, err = keys.String("state", -1)
-	if err != nil {
-		return nil, err
-	}
-	c.AnnotationBaseKey, err = keys.String("chain", -1)
-	if err != nil {
-		return nil, err
-	}
-
-	instances, err := config.Child("instances", -1)
-	if err != nil {
-		return nil, err
-	}
 	c.Registry = plugin.NewRegistry()
 	addPluginsToRegistry(&c.Registry)
-	err = c.Registry.LoadInstances(instances)
+	err = c.Registry.LoadInstances(global.Instances)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Profiles = make(map[string]state.Profile)
+	err = loadProfiles(global.Profiles, c)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+func loadProfiles(config *ucfg.Config, c *Config) error {
+	// add an empty default profile
+	c.Profiles[DefaultProfileName] = state.Profile{
+		Name: DefaultProfileName,
+		Chains: map[state.NodeStateLabel]state.PluginChains{
+			state.Operational:   {},
+			state.InMaintenance: {},
+			state.Required:      {},
+		},
+	}
+	for _, profileName := range config.GetFields() {
+		currentProfile, err := config.Child(profileName, -1)
+		if err != nil {
+			return err
+		}
+		states := struct {
+			Operational *ucfg.Config `config:"operational"`
+			Required    *ucfg.Config `config:"maintenance-required"`
+			Maintenance *ucfg.Config `config:"in-maintenance"`
+		}{}
+		err = currentProfile.Unpack(&states)
+		if err != nil {
+			return err
+		}
+		operationalChain, err := loadPluginChains(states.Operational, &c.Registry)
+		if err != nil {
+			return err
+		}
+		requiredChain, err := loadPluginChains(states.Required, &c.Registry)
+		if err != nil {
+			return err
+		}
+		maintenanceChain, err := loadPluginChains(states.Maintenance, &c.Registry)
+		if err != nil {
+			return err
+		}
+		c.Profiles[profileName] = state.Profile{
+			Name: profileName,
+			Chains: map[state.NodeStateLabel]state.PluginChains{
+				state.Operational:   operationalChain,
+				state.Required:      requiredChain,
+				state.InMaintenance: maintenanceChain,
+			},
+		}
+	}
+	return nil
+}
+
+func loadPluginChains(config *ucfg.Config, registry *plugin.Registry) (state.PluginChains, error) {
+	var chains state.PluginChains
+	if config == nil {
+		return chains, nil
+	}
+	texts := struct {
+		Check   string
+		Notify  string
+		Trigger string
+	}{}
+	err := config.Unpack(&texts)
+	if err != nil {
+		return chains, err
+	}
+	checkChain, err := registry.NewCheckChain(texts.Check)
+	if err != nil {
+		return chains, err
+	}
+	chains.Check = checkChain
+	notificationChain, err := registry.NewNotificationChain(texts.Notify)
+	if err != nil {
+		return chains, err
+	}
+	chains.Notification = notificationChain
+	triggerChain, err := registry.NewTriggerChain(texts.Trigger)
+	if err != nil {
+		return chains, err
+	}
+	chains.Trigger = triggerChain
+	return chains, nil
 }
 
 // addPluginsToRegistry adds known plugins to the registry.

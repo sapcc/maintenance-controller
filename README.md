@@ -29,7 +29,8 @@ Kubernetes nodes are modelled as finite state machines and can be in one of thre
 
 A node's current state is saved within a configurable node label.
 Nodes transition to the state if a chain of configurable "check plugins" decides that the node's state should move on.
-Such plugin chains can be configured for each state individually via annotations.
+Such plugin chains can be configured for each state individually via maintenance profiles.
+Cluster administrators can assign a maintenance profile to a node using a label.
 Before the transition is finished a chain of "trigger plugins" can be invoked, which can perform any action related to termination or startup logic.
 While a node is in a certain state a chain of "notifications plugins" informs the cluster users and adminstrators regulary about the node being in that state.
 Multiple plugins exist.
@@ -41,7 +42,7 @@ Execute ```make deploy IMG=sapcc/maintenance-controller```.
 
 ## Configuration
 
-There is a global configuration, which defines some general options, and the configuration of plugin chains via node annotations.
+There is a global configuration, which defines some general options, plugin instances and maintenance profiles.
 The global configuration should be named ```./config/maintenance.yaml``` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
 The basic structure looks like this:
 ```yaml
@@ -50,11 +51,6 @@ intervals:
   requeue: 200ms
   # defines after which duration a reminder notification should be send
   notify: 500ms
-keys:
-  # defines the label key which the controller uses to save the current state of a node
-  state: state
-  # defines an annotation prefix which the controller uses to identify the configured plugin chains for a node
-  chain: chain
 # plugin instances are the combination of a plugin and its configuration
 instances:
   # the are no notification plugins configured here, but their configuration works the same way as for check and trigger plugins
@@ -63,7 +59,8 @@ instances:
   check:
   # the list enttries define the chosen plugin type
   - hasLabel:
-      # name of the instance, which is used in the plugin chain configurations. Do not use spaces or other special characters
+      # name of the instance, which is used in the plugin chain configurations
+      # do not use spaces or other special characters, besides the underscore, which is allowed
       name: transition
       # the configuration for the plugin. That block depends obviously on the plugin type
       config:
@@ -77,13 +74,39 @@ instances:
         key: alter
         value: "true"
         remove: false
+profiles:
+  # define a maintenance profile called someprofile
+  someprofile:
+    # define the plugin chains for the operational state
+    operational:
+      # the exit condition for the operational state refers to the "transition" plugin instance defined in the instances section
+      check: transition
+      # the notification instances to invoke while in the operational state
+      notify: somenotificationplugin
+      # the trigger instances which are invoked when leaving the operational state
+      trigger: alter
+    # define the plugin chains for the maintenance-required state
+    maintenance-required:
+      # define chains as shown with the operational state
+      check: null
+      notify: null
+      trigger: null
+    # define plugin chains for the in-maintenance state
+    in-maintenance:
+      # check chains support boolean operations which evaluate multiple instances
+      check: transition && !(a || b)
+      # multiple notification instances can be used also
+      notify: g && h
+      # multiple trigger instances can be used also
+      trigger: t && u
 ```
-Specified instances can than be used to configure node specific transition behavior by defining plugin chains.
-The controller looks up annotations of the form ```prefix-state-plugintype``` where ```prefix``` is the configured prefix of the global configuration, ```state``` is one of ```operational, required or in-maintenance``` and ```plugintype``` is one of ```check, trigger or notify```.
-So there are nine chains to be configured if desired.
 Chains be undefined or empty.
 Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```prefix-operational-trigger=alter && othertriggerplugin```
-Check chains be build using boolean expression, e.g. ```prefix-in-maintenance-check=transition && !(a || b)```
+Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
+To attach a maintenance profile to a node the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
+If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
+The dafult profile can be reconfigured if it is defined within the config file.
+The controllers state is tracked with the ```cloud.sap/maintenance-state``` label and the ```cloud.sap/maintenance-data``` annotation.
 
 ### Check Plugins
 __hasAnnotation:__ Checks if a node has an annotation with the given key. Optionally asserts the annotation value.
