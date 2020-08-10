@@ -1,4 +1,7 @@
 # Maintenance Controller
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/sapcc/maintenance-controller/Build%20and%20run%20tests)
+![Docker Pulls](https://img.shields.io/docker/pulls/sapcc/maintenance-controller)
+
 A Kubernetes controller to manage node maintenance.
 
 ## Table of Contents
