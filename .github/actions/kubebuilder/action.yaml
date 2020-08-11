@@ -1,5 +1,0 @@
-name: 'kubebuilder'
-description: 'Builds the project and runs the unit tests'
-runs:
-  using: 'docker'
-  image: 'Dockerfile'

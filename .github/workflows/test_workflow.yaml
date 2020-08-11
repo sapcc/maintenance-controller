@@ -10,8 +10,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+
+      - name: Cache kubebuilder binaries
+        id: cache-kubebuilder
+        uses: actions/cache@v2
+        with:
+          path: kubebuilder/bin
+          # Use SHA-256 hash of the .kubebuilder-version file as the key.
+          key: ${{ runner.os }}-kubebuilder-${{ hashFiles('.github/.kubebuilder-version') }}
+
+      # This will only run if the cache was not found.
+      - name: Download kubebuilder binaries
+        if: steps.cache-kubebuilder.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p kubebuilder/bin
+          version="$(cat .github/.kubebuilder-version)"
+          curl -L https://go.kubebuilder.io/dl/${version}/linux/amd64 | tar -xz -C /tmp/
+          mv /tmp/kubebuilder*/bin/* kubebuilder/bin
+
       - name: Run tests and generate coverage
-        uses: ./.github/actions/kubebuilder
+        run: |
+          KUBEBUILDER_ASSETS="${PWD}/kubebuilder/bin" go test -coverprofile=coverage.out ./...
+          go tool cover -html=coverage.out -o coverage.html
+
       - name: Upload coverage results
         uses: actions/upload-artifact@v1
         with:
