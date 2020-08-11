@@ -15,7 +15,6 @@ jobs:
         with:
           # always uses the latest patch version.
           version: v1.30
-          args: --timeout 2m0s
   test:
     # This job runs on Linux
     runs-on: ubuntu-latest
@@ -57,6 +56,11 @@ jobs:
         run: |
           KUBEBUILDER_ASSETS="${PWD}/kubebuilder/bin" go test -coverprofile=coverage.out ./...
           go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage results to coveralls
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverage.out
 
       - name: Upload coverage results
         uses: actions/upload-artifact@v1
