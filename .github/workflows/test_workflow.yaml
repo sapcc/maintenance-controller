@@ -3,6 +3,19 @@ name: Build and run tests
 on: [push, pull_request]
 
 jobs:
+  lint:
+    # This job runs on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          # always uses the latest patch version.
+          version: v1.30
+          args: --timeout 2m0s
   test:
     # This job runs on Linux
     runs-on: ubuntu-latest
