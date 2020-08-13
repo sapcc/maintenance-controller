@@ -1,5 +1,6 @@
 # Maintenance Controller
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/sapcc/maintenance-controller/Build%20and%20run%20tests)
+[![Coverage Status](https://coveralls.io/repos/github/sapcc/maintenance-controller/badge.svg)](https://coveralls.io/github/sapcc/maintenance-controller)
 ![Docker Pulls](https://img.shields.io/docker/pulls/sapcc/maintenance-controller)
 
 A Kubernetes controller to manage node maintenance.
@@ -12,6 +13,7 @@ A Kubernetes controller to manage node maintenance.
   - Check Plugins
   - Notification Plugins
   - Trigger Plugins
+- Example configuration for flatcar update agents
 
 ## Motivation
 Sometimes the nodes of a Kubernetes cluster need to be put into maintenance.
@@ -178,4 +180,68 @@ config:
   key: the labels key, required
   value: the value to set, optional
   remove: boolean value, if true the label is removed, if false the label is added or changed, optional
+```
+
+## Example configuration for flatcar update agents
+```yaml
+intervals:
+    requeue: 60s
+    notify: 5h
+instances:
+    notify:
+    - slack:
+        name: approval_required
+        config:
+          hook: Your hook
+          channel: Your channel
+          message: |
+            The node {{ .Node.Name }} requires maintenace. Manual approval is required.
+            Approve to drain and reboot this node by running:
+            `kubectl annotate node {{ .Node.Name }} cloud.sap/maintenance-approved=true`
+    - slack:
+        name: maintenance_started
+        config:
+          hook: Your hook
+          channel: Your channel
+          message: |
+            Maintenace for node {{ .Node.Name }} has started.
+    check:
+    - hasAnnotation:
+        name: reboot_needed
+        config:
+            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
+            value: "true"
+    - hasAnnotation:
+        name: check_approval
+        config:
+            key: cloud.sap/maintenance-approved
+            value: "true"
+    trigger:
+    - alterAnnotation:
+        name: reboot-ok
+        config:
+            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+            value: "true"
+    - alterAnnotation:
+        name: remove_approval
+        config:
+            key: cloud.sap/maintenance-approved
+            remove: true
+    - alterAnnotation:
+        name: remove_reboot_ok
+        config:
+            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+            remove: true
+profiles:
+  flatcar:
+    operational:
+      check: reboot_needed
+    maintenance-required:
+      check: check_approval
+      notify: approval_required
+      trigger: remove_approval && reboot-ok
+    in-maintenance:
+      check: "!reboot_needed"
+      notify: maintenance_started
+      trigger: remove_reboot_ok
 ```
