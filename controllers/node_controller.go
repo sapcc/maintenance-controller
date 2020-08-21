@@ -74,6 +74,7 @@ type reconcileParameters struct {
 
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
 
 // Reconcile reconciles the given request.
 func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
