@@ -24,8 +24,6 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -50,13 +48,7 @@ func (m *MaxMaintenance) New(config *ucfg.Config) (plugin.Checker, error) {
 // Check asserts that no more then the specified amount of nodes is in the in-maintenance state.
 func (m *MaxMaintenance) Check(params plugin.Parameters) (bool, error) {
 	var nodeList corev1.NodeList
-	selector := labels.NewSelector()
-	req, err := labels.NewRequirement(params.StateKey, selection.Equals, []string{string(state.InMaintenance)})
-	if err != nil {
-		return false, err
-	}
-	selector.Add(*req)
-	err = params.Client.List(params.Ctx, &nodeList, &client.ListOptions{LabelSelector: selector})
+	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{params.StateKey: string(state.InMaintenance)})
 	if err != nil {
 		return false, err
 	}
