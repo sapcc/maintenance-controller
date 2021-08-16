@@ -1,3 +1,6 @@
-domain: my.domain
+domain: github.com/sapcc/maintenance-controller
+layout:
+- go.kubebuilder.io/v3
+projectName: maintenance-controller-migrate
 repo: github.com/sapcc/maintenance-controller
-version: "2"
+version: "3"

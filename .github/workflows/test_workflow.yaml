@@ -14,7 +14,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           # always uses the latest patch version.
-          version: v1.30
+          version: v1.41
           args: "--timeout 5m"
   test:
     # This job runs on Linux
@@ -26,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14
+          go-version: 1.16
 
       - name: Cache Go modules
         uses: actions/cache@v2
@@ -44,18 +44,28 @@ jobs:
           # Use SHA-256 hash of the .kubebuilder-version file as the key.
           key: ${{ runner.os }}-kubebuilder-${{ hashFiles('.github/.kubebuilder-version') }}
 
+      - name: Cache testbin binaries
+        id: cache-testbin
+        uses: actions/cache@v2
+        with:
+          path: testbin
+          # Use SHA-256 hash of the Makefile file as the key.
+          # Swapping testbinary versions usally requrie to change the Makefile
+          key: ${{ runner.os }}-kubebuilder-${{ hashFiles('Makefile') }}
+
       # This will only run if the cache was not found.
       - name: Download kubebuilder binaries
         if: steps.cache-kubebuilder.outputs.cache-hit != 'true'
         run: |
-          mkdir -p kubebuilder/bin
+          mkdir kubebuilder
           version="$(cat .github/.kubebuilder-version)"
-          curl -L https://go.kubebuilder.io/dl/${version}/linux/amd64 | tar -xz -C /tmp/
-          mv /tmp/kubebuilder*/bin/* kubebuilder/bin
+          cd kubebuilder
+          curl -L https://go.kubebuilder.io/dl/${version}/linux/amd64
+          cd ..
 
       - name: Run tests and generate coverage
         run: |
-          KUBEBUILDER_ASSETS="${PWD}/kubebuilder/bin" go test -coverprofile=coverage.out ./...
+          make test
           go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload coverage results to coveralls
