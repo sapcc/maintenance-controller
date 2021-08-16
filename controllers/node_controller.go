@@ -77,9 +77,7 @@ type reconcileParameters struct {
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
 
 // Reconcile reconciles the given request.
-func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	globalContext := context.Background()
-
+func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// load the configuration
 	conf, err := yaml.NewConfigWithFile(ConfigFilePath)
 	if err != nil {
@@ -96,7 +94,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// fetch the current node from the api server
 	var theNode corev1.Node
-	err = r.Get(globalContext, req.NamespacedName, &theNode)
+	err = r.Get(ctx, req.NamespacedName, &theNode)
 	if err != nil {
 		r.Log.Error(err, "Failed to retrieve node information from the API server", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
@@ -107,7 +105,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	err = reconcileInternal(reconcileParameters{
 		client:   r.Client,
 		config:   config,
-		ctx:      globalContext,
+		ctx:      ctx,
 		log:      r.Log.WithValues("node", req.NamespacedName),
 		node:     &theNode,
 		recorder: r.Recorder,
@@ -123,13 +121,13 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// patch node
-	err = r.Patch(globalContext, &theNode, client.MergeFrom(unmodifiedNode))
+	err = r.Patch(ctx, &theNode, client.MergeFrom(unmodifiedNode))
 	if err != nil {
 		r.Log.Error(err, "Failed to patch node on the API server", "node", req.NamespacedName)
 	}
 
 	// await cache update
-	err = pollCacheUpdate(globalContext, r.Client, types.NamespacedName{
+	err = pollCacheUpdate(ctx, r.Client, types.NamespacedName{
 		Name:      theNode.Name,
 		Namespace: theNode.Namespace,
 	}, theNode.ResourceVersion)

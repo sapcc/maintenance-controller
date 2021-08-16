@@ -142,11 +142,22 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	// The test below requires a connection to an api server,
 	// which is not simulated within the plugin/impl package
-	It("should fetch data from the api server", func() {
+	It("should should fail if a node is in maintenance", func() {
 		max := impl.MaxMaintenance{MaxNodes: 1}
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: StateLabelKey, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeFalse())
+	})
+
+	It("should pass if no node is in maintenance", func() {
+		patched := targetNode.DeepCopy()
+		patched.Labels[StateLabelKey] = string(state.Operational)
+		err := k8sClient.Patch(context.Background(), patched, client.MergeFrom(targetNode))
+		Expect(err).To(Succeed())
+		max := impl.MaxMaintenance{MaxNodes: 1}
+		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: StateLabelKey, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
 	})
 
 })

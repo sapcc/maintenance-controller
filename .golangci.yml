@@ -5,7 +5,6 @@ linters:
   - goconst
   - gocyclo
   - asciicheck
-  - maligned
   - misspell
   - lll
   - unparam
