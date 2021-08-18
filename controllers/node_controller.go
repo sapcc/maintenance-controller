@@ -155,6 +155,7 @@ func pollCacheUpdate(ctx context.Context, client client.Client, ref types.Namesp
 	})
 }
 
+// Implements the reconciliation logic.
 func reconcileInternal(params reconcileParameters) error {
 	node := params.node
 	log := params.log
@@ -162,53 +163,48 @@ func reconcileInternal(params reconcileParameters) error {
 	// fetch the current node state
 	stateLabel := parseNodeState(node, StateLabelKey)
 	stateStr := string(stateLabel)
-
-	// get the current profile
-	profile, err := getProfile(node, params.config)
-	if err != nil {
-		return err
-	}
-
-	// construct state
-	stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], params.config.NotificationInterval)
-	if err != nil {
-		return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
-	}
-
-	// build plugin arguments
 	data, err := parseData(node)
 	if err != nil {
 		return err
 	}
-	pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log, Node: node,
-		State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition}
-
-	// invoke notifications and check for transition
-	err = stateObj.Notify(pluginParams, &data)
-	if err != nil {
-		params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one notification plugin failed: Will stay in %v state", stateStr)
-		return fmt.Errorf("failed to notify: %w", err)
-	}
-	next, err := stateObj.Transition(pluginParams, &data)
-	if err != nil {
-		params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one check plugin failed: Will stay in %v state", stateStr)
-		log.Error(err, "Failed to check for state transition", "state", stateStr)
+	profilesStr, ok := node.Labels[ProfileLabelKey]
+	if !ok {
+		profilesStr = DefaultProfileName
 	}
 
-	// check if a transition should happen
-	if next != stateLabel {
-		err = stateObj.Trigger(pluginParams, &data)
+	// get applicable profiles
+	profiles, err := state.GetApplicableProfiles(state.ProfileSelector{
+		NodeState:         stateLabel,
+		NodeProfiles:      profilesStr,
+		AvailableProfiles: params.config.Profiles,
+		Data:              data,
+	})
+	if err != nil {
+		return fmt.Errorf("Has the %v label been changed while the node was non-operational? %w", ProfileLabelKey, err)
+	}
+
+	for _, profile := range profiles {
+		// construct state
+		stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], params.config.NotificationInterval)
 		if err != nil {
-			log.Error(err, "Failed to execute triggers", "state", stateStr)
-			params.recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-				"At least one trigger plugin failed: Will stay in %v state", stateStr)
-		} else {
+			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
+		}
+
+		// build plugin arguments
+		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log, Node: node,
+			State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition, Recorder: params.recorder}
+
+		next, err := state.Apply(stateObj, node, data, pluginParams)
+		if err != nil {
+			return fmt.Errorf("Failed to apply current state: %w", err)
+		}
+		// check if a tranition happened
+		if stateLabel != next {
 			node.Labels[StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
-			log.Info("Moved node to next state", "state", string(next))
-			params.recorder.Eventf(node, "Normal", "ChangedMaintenanceState", "The node is now in the %v state", string(next))
+			data.LastProfile = profile.Name
+			// break out of the loop to avoid multiple profiles to handle the same state transition
+			break
 		}
 	}
 
@@ -238,18 +234,6 @@ func writeData(node *corev1.Node, data state.Data) error {
 	}
 	node.Annotations[DataAnnotationKey] = string(dataBytes)
 	return nil
-}
-
-func getProfile(node *corev1.Node, config *Config) (state.Profile, error) {
-	profileStr, ok := node.Labels[ProfileLabelKey]
-	if !ok {
-		profileStr = DefaultProfileName
-	}
-	profile, ok := config.Profiles[profileStr]
-	if !ok {
-		return state.Profile{}, fmt.Errorf("cannot find the requested maintenance profile %v", profileStr)
-	}
-	return profile, nil
 }
 
 func parseNodeState(node *corev1.Node, key string) state.NodeStateLabel {
