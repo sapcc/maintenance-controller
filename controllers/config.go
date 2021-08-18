@@ -160,6 +160,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["maxMaintenance"] = &impl.MaxMaintenance{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
 	registry.CheckPlugins["wait"] = &impl.Wait{}
+	registry.CheckPlugins["condition"] = &impl.Condition{}
 
 	registry.NotificationPlugins["slack"] = &impl.Slack{}
 	registry.NotificationPlugins["mail"] = &impl.Mail{}

@@ -118,13 +118,19 @@ __hasAnnotation:__ Checks if a node has an annotation with the given key. Option
 ```yaml
 config:
   key: the annotation key, required
-  value: the expect annotation value, if empty only the key is checked, optional
+  value: the expected annotation value, if empty only the key is checked, optional
 ```
 __hasLabel__ Checks if a node has a label with the given key. Optionally asserts the labels value.
 ```yaml
 config:
   key: the annotation key, required
-  value: the expect annotation value, if empty only the key is checked, optional
+  value: the expected annotation value, if empty only the key is checked, optional
+```
+__condition__ Checks if a node condition has the definied status.
+```yaml
+config:
+  type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable)
+  status: the expected condition status (usually one of True, False or Unknown)
 ```
 __maxMaintenance:__ Checks that less than the specified amount of nodes are in the in-maintenance state. Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
 ```yaml
