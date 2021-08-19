@@ -105,12 +105,21 @@ profiles:
       # multiple trigger instances can be used also
       trigger: t && u
 ```
+<<<<<<< HEAD
 Chains may be undefined or empty.
 Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```prefix-operational-trigger=alter && othertriggerplugin```
+=======
+Chains be undefined or empty.
+Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```alter && othertriggerplugin```
+>>>>>>> a63d17f (Add multiple profiles to readme)
 Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
-To attach a maintenance profile to a node the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
+To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
-The dafult profile can be reconfigured if it is defined within the config file.
+The default profile can be reconfigured if it is defined within the config file.
+Multiple profiles can be assigned to a single node be setting ```cloud.sap/maintenance-profile=NAME1-NAME2-NAME3-...```.
+The operational state can then be left by the checks configured in all listed profiles.
+Any progress for the maintenance-required and in-maintenance states can only made using the profile, which initial triggered the whole maintenance workflow.
+That way specific maintenance workflows for different causes can be implemented.
 The controllers state is tracked with the ```cloud.sap/maintenance-state``` label and the ```cloud.sap/maintenance-data``` annotation.
 
 ### Check Plugins
