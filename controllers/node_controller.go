@@ -194,7 +194,7 @@ func reconcileInternal(params reconcileParameters) error {
 		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log, Node: node,
 			State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition, Recorder: params.recorder}
 
-		next, err := state.Apply(stateObj, node, data, pluginParams)
+		next, err := state.Apply(stateObj, node, &data, pluginParams)
 		if err != nil {
 			return fmt.Errorf("Failed to apply current state: %w", err)
 		}

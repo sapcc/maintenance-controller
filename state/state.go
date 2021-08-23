@@ -93,15 +93,15 @@ func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration
 // and invokes all trigger plugins if a transitions happens.
 // Returns the next node state.
 // In case of an error state.Label() is retuned alongside with the error.
-func Apply(state NodeState, node *v1.Node, data Data, params plugin.Parameters) (NodeStateLabel, error) {
+func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (NodeStateLabel, error) {
 	// invoke notifications and check for transition
-	err := state.Notify(params, &data)
+	err := state.Notify(params, data)
 	if err != nil {
 		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one notification plugin failed: Will stay in %v state", params.State)
 		return state.Label(), fmt.Errorf("failed to notify: %w", err)
 	}
-	next, err := state.Transition(params, &data)
+	next, err := state.Transition(params, data)
 	if err != nil {
 		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one check plugin failed: Will stay in %v state", params.State)
@@ -110,7 +110,7 @@ func Apply(state NodeState, node *v1.Node, data Data, params plugin.Parameters) 
 
 	// check if a transition should happen
 	if next != state.Label() {
-		err = state.Trigger(params, &data)
+		err = state.Trigger(params, data)
 		if err != nil {
 			params.Log.Error(err, "Failed to execute triggers", "state", params.State)
 			params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
