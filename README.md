@@ -105,13 +105,8 @@ profiles:
       # multiple trigger instances can be used also
       trigger: t && u
 ```
-<<<<<<< HEAD
-Chains may be undefined or empty.
-Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```prefix-operational-trigger=alter && othertriggerplugin```
-=======
 Chains be undefined or empty.
 Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```alter && othertriggerplugin```
->>>>>>> a63d17f (Add multiple profiles to readme)
 Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
