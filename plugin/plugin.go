@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -60,6 +61,7 @@ type Parameters struct {
 	Client         client.Client
 	Ctx            context.Context
 	Log            logr.Logger
+	Recorder       record.EventRecorder
 	LastTransition time.Time
 }
 

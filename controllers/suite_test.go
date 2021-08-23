@@ -78,7 +78,19 @@ profiles:
     operational:
       check: transition
       trigger: alter
-
+  multi:
+    operational:
+      check: transition
+      trigger: alter
+    maintenance-required:
+      check: transition
+    in-maintenance:
+      check: "!transition"
+  block:
+    operational:
+      check: transition
+    maintenance-required:
+      check: "!transition"
 `
 
 var cfg *rest.Config

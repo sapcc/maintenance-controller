@@ -22,6 +22,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
@@ -32,6 +33,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const trueStr = "true"
 
 var _ = Describe("The controller", func() {
 
@@ -74,13 +77,13 @@ var _ = Describe("The controller", func() {
 	It("should use the profile described in the annotation", func() {
 		var node corev1.Node
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-		unmodifiedNode := node.DeepCopy()
 		Expect(err).To(Succeed())
+		unmodifiedNode := node.DeepCopy()
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
 		node.Labels[ProfileLabelKey] = "test"
-		node.Labels["transition"] = "true"
+		node.Labels["transition"] = trueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
 
@@ -95,7 +98,61 @@ var _ = Describe("The controller", func() {
 
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
-		Expect(node.Labels["alter"]).To(Equal("true"))
+		Expect(node.Labels["alter"]).To(Equal(trueStr))
+	})
+
+	It("should annotate the last used profile", func() {
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		Expect(err).To(Succeed())
+		unmodifiedNode := node.DeepCopy()
+
+		node.Annotations = make(map[string]string)
+		node.Labels = make(map[string]string)
+		node.Labels[ProfileLabelKey] = "test"
+		node.Labels["transition"] = trueStr
+		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
+		Expect(err).To(Succeed())
+
+		Eventually(func() string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			Expect(err).To(Succeed())
+
+			dataStr := node.Annotations[DataAnnotationKey]
+			fmt.Printf("Data Annotation: %v\n", dataStr)
+			var data state.Data
+			err = json.Unmarshal([]byte(dataStr), &data)
+			Expect(err).To(Succeed())
+			return data.LastProfile
+		}).Should(Equal("test"))
+	})
+
+	It("should follow one profile after leaving the operational state", func() {
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		Expect(err).To(Succeed())
+		unmodifiedNode := node.DeepCopy()
+
+		node.Annotations = make(map[string]string)
+		node.Labels = make(map[string]string)
+		node.Labels[ProfileLabelKey] = "block-multi"
+		node.Labels["transition"] = trueStr
+		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
+		Expect(err).To(Succeed())
+
+		Eventually(func() string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			Expect(err).To(Succeed())
+
+			val := node.Labels[StateLabelKey]
+			return val
+		}).Should(Equal(string(state.Required)))
+
+		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		Expect(err).To(Succeed())
+		Expect(node.Labels).ToNot(HaveKey("alter"))
 	})
 
 	It("should parse the count profile", func() {
