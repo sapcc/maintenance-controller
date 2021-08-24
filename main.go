@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/sapcc/maintenance-controller/controllers"
+	"github.com/sapcc/maintenance-controller/esx"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -53,12 +54,15 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var enableESXMaintenance bool
 	var kubecontext string
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableESXMaintenance, "enable-esx-maintenance", false,
+		"Enables an other controller loop, which will indicate ESX host maintenance using labels.")
 	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
 	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	opts := zap.Options{
@@ -93,16 +97,8 @@ func main() {
 	}
 
 	setupChecks(mgr)
+	setupReconcilers(mgr, enableESXMaintenance)
 
-	if err = (&controllers.NodeReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Node"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
@@ -120,5 +116,31 @@ func setupChecks(mgr manager.Manager) {
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
+	}
+}
+
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
+	if err := (&controllers.NodeReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Maintenance"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
+		os.Exit(1)
+	}
+
+	if enableESXMaintenance {
+		err := (&esx.NodeReconciler{
+			Client:     mgr.GetClient(),
+			Log:        ctrl.Log.WithName("controllers").WithName("ESX"),
+			Scheme:     mgr.GetScheme(),
+			Recorder:   mgr.GetEventRecorderFor("esx-controller"),
+			Timestamps: esx.NewTimestamps(),
+		}).SetupWithManager(mgr)
+		if err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ESX")
+			os.Exit(1)
+		}
 	}
 }
