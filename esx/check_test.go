@@ -23,6 +23,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/vmware/govmomi/object"
@@ -93,7 +94,7 @@ var _ = Describe("Do", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}})
+		}, logr.Discard()})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(NoMaintenance))
 		Expect(timestamps.lastChecks).To(HaveKey(HostSystemName))
@@ -117,7 +118,7 @@ var _ = Describe("Do", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}})
+		}, logr.Discard()})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(InMaintenance))
 		Expect(timestamps.lastChecks).To(HaveKey(HostSystemName))
@@ -129,7 +130,7 @@ var _ = Describe("Do", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}})
+		}, logr.Discard()})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(NotRequired))
 	})
