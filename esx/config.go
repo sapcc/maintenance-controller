@@ -49,6 +49,8 @@ type Credential struct {
 type VCenters struct {
 	// URL to regional vCenters with the availability zone replaced by AvailabilityZoneReplacer.
 	Template string `config:"templateUrl" validate:"required"`
+	// If true the vCenters certificates are not validated
+	Insecure bool `config:"insecure"`
 	// Pair of credentials per availability zone.
 	Credentials map[string]Credential `config:"credentials" validate:"required"`
 }
@@ -74,7 +76,7 @@ func (vc *VCenters) Client(ctx context.Context, availabilityZone string) (*govmo
 	if err != nil {
 		return nil, fmt.Errorf("Failed to render vCenter URL: %w", err)
 	}
-	client, err := govmomi.NewClient(ctx, url, false)
+	client, err := govmomi.NewClient(ctx, url, vc.Insecure)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create vCenter client: %w", err)
 	}
