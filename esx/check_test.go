@@ -21,7 +21,6 @@ package esx
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
@@ -30,39 +29,9 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 )
 
-var _ = Describe("Timestamps", func() {
-
-	It("should pass if time since last timestamp > Interval", func() {
-		timestamps := NewTimestamps()
-		timestamps.lastChecks["host"] = time.Now().Add(-2 * timestamps.Interval)
-		result := timestamps.CheckRequired("host")
-		Expect(result).To(BeTrue())
-	})
-
-	It("should not pass if time since last timestamp < Interval", func() {
-		timestamps := NewTimestamps()
-		timestamps.lastChecks["host"] = time.Now().Add(timestamps.Interval / -2)
-		result := timestamps.CheckRequired("host")
-		Expect(result).To(BeFalse())
-	})
-
-	It("should pass if the host is not tracked", func() {
-		timestamps := NewTimestamps()
-		result := timestamps.CheckRequired("host")
-		Expect(result).To(BeTrue())
-	})
-
-	It("marks hosts as cheked", func() {
-		timestamps := NewTimestamps()
-		timestamps.MarkChecked("host")
-		Expect(timestamps.lastChecks).To(HaveKey("host"))
-	})
-
-})
-
 const HostSystemName string = "DC0_H0"
 
-var _ = Describe("Do", func() {
+var _ = Describe("CheckForMaintenance", func() {
 	var vCenters *VCenters
 
 	BeforeEach(func() {
@@ -90,14 +59,12 @@ var _ = Describe("Do", func() {
 	})
 
 	It("should return NoMaintenance if the host is not in maintenance", func() {
-		timestamps := NewTimestamps()
-		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
+		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}, logr.Discard()})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(NoMaintenance))
-		Expect(timestamps.lastChecks).To(HaveKey(HostSystemName))
 	})
 
 	It("should return InMaintenance if the host is in maintenance", func() {
@@ -114,25 +81,11 @@ var _ = Describe("Do", func() {
 		err = task.Wait(context.Background())
 		Expect(err).To(Succeed())
 
-		timestamps := NewTimestamps()
-		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
+		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}, logr.Discard()})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(InMaintenance))
-		Expect(timestamps.lastChecks).To(HaveKey(HostSystemName))
 	})
-
-	It("should respect the check interval", func() {
-		timestamps := NewTimestamps()
-		timestamps.lastChecks[HostSystemName] = time.Now()
-		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, &timestamps, Host{
-			AvailabilityZone: vcServer.URL.Host,
-			Name:             HostSystemName,
-		}, logr.Discard()})
-		Expect(err).To(Succeed())
-		Expect(result).To(Equal(NotRequired))
-	})
-
 })

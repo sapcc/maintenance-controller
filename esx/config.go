@@ -34,15 +34,15 @@ const AvailabilityZoneReplacer string = "$AZ"
 
 type Config struct {
 	Intervals struct {
-		Node time.Duration `config:"node" validate:"required"`
-		ESX  time.Duration `config:"esx" validate:"required"`
+		Jitter float64       `config:"jitter" validate:"min=1.0"`
+		Period time.Duration `config:"period" validate:"required"`
 	} `config:"intervals" validate:"required"`
 	VCenters VCenters `config:"vCenters" validate:"required"`
 }
 
 type Credential struct {
 	Username string `config:"username" validate:"required"`
-	Password string `config:"password" validate:"required"`
+	Password string `config:"password"`
 }
 
 // VCenters contains connection information to regional vCenters.

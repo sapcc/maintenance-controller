@@ -21,6 +21,7 @@ package esx
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -69,7 +70,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[MaintenanceLabelKey]
 			return val
-		}).Should(Equal(string(NoMaintenance)))
+		}, 2*time.Second).Should(Equal(string(NoMaintenance)))
 		Eventually(func() string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "second"}, &node)
@@ -77,7 +78,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[MaintenanceLabelKey]
 			return val
-		}).Should(Equal(string(NoMaintenance)))
+		}, 2*time.Second).Should(Equal(string(NoMaintenance)))
 	})
 
 	It("labels all nodes on a single EXS host in case of changes to the maintenance state", func() {
@@ -101,7 +102,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[MaintenanceLabelKey]
 			return val
-		}).Should(Equal(string(InMaintenance)))
+		}, 2*time.Second).Should(Equal(string(InMaintenance)))
 		Eventually(func() string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "second"}, &node)
@@ -109,7 +110,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[MaintenanceLabelKey]
 			return val
-		}).Should(Equal(string(InMaintenance)))
+		}, 2*time.Second).Should(Equal(string(InMaintenance)))
 	})
 
 })

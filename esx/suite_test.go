@@ -34,7 +34,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -54,8 +53,8 @@ const ESXName string = "DC0_H0"
 // Additionally the simulated vCenter binds to a random port.
 const configTemplate = `
 intervals:
-  node: 200ms
-  esx: 200ms
+  jitter: 1.1
+  period: 200ms
 vCenters:
   templateUrl: http://loc$AZlhost:{{ .Port }}
   credentials:
@@ -126,19 +125,12 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&NodeReconciler{
-		Client:     k8sManager.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("esx"),
-		Scheme:     k8sManager.GetScheme(),
-		Recorder:   record.NewFakeRecorder(1024),
-		Timestamps: NewTimestamps(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	go func() {
-		err = k8sManager.Start(SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
-	}()
+	controller := Runnable{
+		Client: k8sManager.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("esx"),
+	}
+	err = k8sManager.Add(&controller)
+	Expect(err).To(Succeed())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
@@ -157,6 +149,12 @@ var _ = BeforeSuite(func() {
 	}{Port: vcServer.URL.Port()}
 	err = tpl.Execute(file, data)
 	Expect(err).To(Succeed())
+
+	go func() {
+		defer GinkgoRecover()
+		err = k8sManager.Start(SetupSignalHandler())
+		Expect(err).ToNot(HaveOccurred())
+	}()
 })
 
 var _ = AfterSuite(func() {

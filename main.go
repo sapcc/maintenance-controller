@@ -122,7 +122,7 @@ func setupChecks(mgr manager.Manager) {
 func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
 	if err := (&controllers.NodeReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Maintenance"),
+		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
 	}).SetupWithManager(mgr); err != nil {
@@ -131,14 +131,11 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
 	}
 
 	if enableESXMaintenance {
-		err := (&esx.NodeReconciler{
-			Client:     mgr.GetClient(),
-			Log:        ctrl.Log.WithName("controllers").WithName("ESX"),
-			Scheme:     mgr.GetScheme(),
-			Recorder:   mgr.GetEventRecorderFor("esx-controller"),
-			Timestamps: esx.NewTimestamps(),
-		}).SetupWithManager(mgr)
-		if err != nil {
+		controller := esx.Runnable{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
+		}
+		if err := mgr.Add(&controller); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ESX")
 			os.Exit(1)
 		}

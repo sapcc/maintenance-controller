@@ -22,7 +22,6 @@ package esx
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/vmware/govmomi/property"
@@ -31,74 +30,22 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 )
 
-type ESXMaintenance string
+type Maintenance string
 
-const NoMaintenance ESXMaintenance = "false"
+const NoMaintenance Maintenance = "false"
 
-const InMaintenance ESXMaintenance = "true"
+const InMaintenance Maintenance = "true"
 
-const NotRequired ESXMaintenance = "not-required"
-
-const UnknownMaintenance ESXMaintenance = "unknown"
-
-// Timestamps tracks the last time esx hosts haven been checked.
-type Timestamps struct {
-	// Specifies how often the vCenter is queried for a specific esx host.
-	Interval time.Duration
-	// Maps an ESX Hosts to the time it was checked
-	lastChecks map[string]time.Time
-}
-
-func NewTimestamps() Timestamps {
-	return Timestamps{
-		Interval:   1 * time.Minute,
-		lastChecks: make(map[string]time.Time),
-	}
-}
-
-// Returns true if an esx host needs to be checked for maintenance.
-func (t *Timestamps) CheckRequired(host string) bool {
-	t.clean()
-	lastCheck, ok := t.lastChecks[host]
-	if !ok {
-		return true
-	}
-	return time.Since(lastCheck) > t.Interval
-}
-
-// Sets the time the given esx host was checked to time.Now().
-func (t *Timestamps) MarkChecked(host string) {
-	t.lastChecks[host] = time.Now()
-}
-
-// Cleanup not recently checked esx hosts to avoid "leaking" memory, if esx hosts get removed.
-func (t *Timestamps) clean() {
-	for host, stamp := range t.lastChecks {
-		if time.Since(stamp) > t.Interval {
-			delete(t.lastChecks, host)
-		}
-	}
-}
-
-// Describes an ESX host within an availability zone.
-type Host struct {
-	Name             string
-	AvailabilityZone string
-}
+const UnknownMaintenance Maintenance = "unknown"
 
 type CheckParameters struct {
-	VCenters   *VCenters
-	Timestamps *Timestamps
-	Host       Host
-	Log        logr.Logger
+	VCenters *VCenters
+	Host     HostInfo
+	Log      logr.Logger
 }
 
 // Performs a check for the specified host if allowed by timestamps.
-func CheckForMaintenance(ctx context.Context, params CheckParameters) (ESXMaintenance, error) {
-	if !params.Timestamps.CheckRequired(params.Host.Name) {
-		return NotRequired, nil
-	}
-	// Do the check
+func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenance, error) {
 	client, err := params.VCenters.Client(ctx, params.Host.AvailabilityZone)
 	if err != nil {
 		return UnknownMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
@@ -119,7 +66,6 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (ESXMainte
 	if len(hss) != 1 {
 		return UnknownMaintenance, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
 	}
-	params.Timestamps.MarkChecked(params.Host.Name)
 	if hss[0].Runtime.InMaintenanceMode {
 		return InMaintenance, nil
 	}
