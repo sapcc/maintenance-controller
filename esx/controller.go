@@ -91,7 +91,6 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	result, err := CheckForMaintenance(ctx, CheckParameters{&configuration.VCenters, &r.Timestamps, esxHost, r.Log})
 	if err != nil {
 		r.Log.Error(err, "Failed to check for ESX host maintenance", "node", req.NamespacedName)
-		return ctrl.Result{RequeueAfter: configuration.Intervals.Node}, nil
 	}
 	if result != NotRequired {
 		err = r.updateNodesOnESX(ctx, esxHost.Name, result)

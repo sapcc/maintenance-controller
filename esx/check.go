@@ -39,6 +39,8 @@ const InMaintenance ESXMaintenance = "true"
 
 const NotRequired ESXMaintenance = "not-required"
 
+const UnknownMaintenance ESXMaintenance = "unknown"
+
 // Timestamps tracks the last time esx hosts haven been checked.
 type Timestamps struct {
 	// Specifies how often the vCenter is queried for a specific esx host.
@@ -99,22 +101,23 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (ESXMainte
 	// Do the check
 	client, err := params.VCenters.Client(ctx, params.Host.AvailabilityZone)
 	if err != nil {
-		return NoMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
+		return UnknownMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
 	}
 	mgr := view.NewManager(client.Client)
 	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
 		[]string{"HostSystem"}, true)
 	if err != nil {
-		return NoMaintenance, fmt.Errorf("Failed to create container view: %w", err)
+		return UnknownMaintenance, fmt.Errorf("Failed to create container view: %w", err)
 	}
 	var hss []mo.HostSystem
 	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, []string{"runtime", "recentTask"},
 		&hss, property.Filter{"name": params.Host.Name})
 	if err != nil {
-		return NoMaintenance, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w", params.Host.Name, err)
+		return UnknownMaintenance, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w",
+			params.Host.Name, err)
 	}
 	if len(hss) != 1 {
-		return NoMaintenance, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
+		return UnknownMaintenance, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
 	}
 	params.Timestamps.MarkChecked(params.Host.Name)
 	if hss[0].Runtime.InMaintenanceMode {
@@ -137,12 +140,13 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (ESXMainte
 	var tasks []mo.Task
 	err = client.Retrieve(ctx, taskRefs, []string{"info"}, &tasks)
 	if err != nil {
-		return NoMaintenance, fmt.Errorf("Failed to fetch recent task information for esx host %v: %w", params.Host.Name, err)
+		return UnknownMaintenance, fmt.Errorf("Failed to fetch recent task information for esx host %v: %w",
+			params.Host.Name, err)
 	}
 	for _, task := range tasks {
 		params.Log.Info("Got a task for ESX", "esx", params.Host.Name, "name", task.Info.Name, "state", task.Info.State)
 		if task.Info.Name == "EnterMaintenanceMode_Task" {
-			// do not care about queued, error
+			// do not care about status queued and error
 			// success should already be handled by checking for Runtime.InMaintenanceMode
 			if task.Info.State == types.TaskInfoStateRunning {
 				return InMaintenance, nil
