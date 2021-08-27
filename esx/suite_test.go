@@ -53,8 +53,12 @@ const ESXName string = "DC0_H0"
 // Additionally the simulated vCenter binds to a random port.
 const configTemplate = `
 intervals:
-  jitter: 1.1
-  period: 200ms
+  check:
+    jitter: 0.1
+    period: 200ms
+  podDeletions:
+    period: 1s
+    timeout: 4s
 vCenters:
   templateUrl: http://loc$AZlhost:{{ .Port }}
   credentials:
@@ -124,6 +128,15 @@ var _ = BeforeSuite(func() {
 		MetricsBindAddress: "0",
 	})
 	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sManager.GetFieldIndexer().IndexField(context.Background(),
+		&corev1.Pod{},
+		"spec.nodeName",
+		func(o client.Object) []string {
+			pod := o.(*corev1.Pod)
+			return []string{pod.Spec.NodeName}
+		})
+	Expect(err).To(Succeed())
 
 	controller := Runnable{
 		Client: k8sManager.GetClient(),

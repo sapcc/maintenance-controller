@@ -34,8 +34,14 @@ const AvailabilityZoneReplacer string = "$AZ"
 
 type Config struct {
 	Intervals struct {
-		Jitter float64       `config:"jitter" validate:"min=1.0"`
-		Period time.Duration `config:"period" validate:"required"`
+		Check struct {
+			Jitter float64       `config:"jitter" validate:"min=0.001"`
+			Period time.Duration `config:"period" validate:"required"`
+		} `config:"check" validate:"required"`
+		PodDeletion struct {
+			Period  time.Duration
+			Timeout time.Duration
+		} `config:"podDeletion" validate:"required"`
 	} `config:"intervals" validate:"required"`
 	VCenters VCenters `config:"vCenters" validate:"required"`
 }

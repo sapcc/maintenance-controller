@@ -58,6 +58,20 @@ var _ = Describe("CheckForMaintenance", func() {
 		Expect(err).To(Succeed())
 	})
 
+	AfterEach(func() {
+		// set host out of maintenance
+		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
+		Expect(err).To(Succeed())
+		host := object.NewHostSystem(client.Client, types.ManagedObjectReference{
+			Type:  "HostSystem",
+			Value: "host-21",
+		})
+		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
+		Expect(err).To(Succeed())
+		err = task.Wait(context.Background())
+		Expect(err).To(Succeed())
+	})
+
 	It("should return NoMaintenance if the host is not in maintenance", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,

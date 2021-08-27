@@ -40,6 +40,14 @@ const ConfigFilePath = "config/esx.yaml"
 // Label key that holds whether a nodes esx host in maintenance or not.
 const MaintenanceLabelKey string = "cloud.sap/esx-in-maintenance"
 
+// Label key that holds whether a node can rebootet if the hosting ESX is set into maintenance.
+const RebootOkLabelKey string = "cloud.sap/esx-reboot-ok"
+
+// Annotation key that holds whether this controller started rebooting the node.
+const RebootInitiatedAnnotationKey string = "cloud.sap/esx-reboot-initiated"
+
+const TrueString string = "true"
+
 // Label key that holds the physical ESX host.
 const HostLabelKey string = "kubernetes.cloud.sap/host"
 
@@ -75,8 +83,8 @@ func (r *Runnable) Start(ctx context.Context) error {
 		func(ctx context.Context) {
 			r.Reconcile(ctx, configuration)
 		},
-		configuration.Intervals.Period,
-		configuration.Intervals.Jitter,
+		configuration.Intervals.Check.Period,
+		configuration.Intervals.Check.Jitter,
 		false,
 	)
 	return nil
@@ -95,24 +103,95 @@ func (r *Runnable) Reconcile(ctx context.Context, conf Config) {
 	}
 	for i := range esxList {
 		esx := &esxList[i]
-		status, err := CheckForMaintenance(ctx, CheckParameters{
-			VCenters: &conf.VCenters,
-			Host:     esx.HostInfo,
-			Log:      r.Log,
-		})
+		err = r.CheckMaintenance(ctx, &conf.VCenters, esx)
 		if err != nil {
-			r.Log.Error(err, "Failed to check for ESX maintenance.", "host", esx.Name, "availabilityZone", esx.AvailabilityZone)
+			r.Log.Error(err, "Failed to update ESX maintenance labels.",
+				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+			continue
 		}
-		err = r.updateNodes(ctx, esx, status)
+		err = r.ShutDown(ctx, &conf.VCenters, esx, &conf)
 		if err != nil {
-			r.Log.Error(err, "Failed to patch nodes on ESX with its maintenance status",
-				"host", esx.Name, "availabilityZone", esx.AvailabilityZone)
+			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+			continue
 		}
 	}
 }
 
-func (r *Runnable) Check() {
+func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx *Host) error {
+	status, err := CheckForMaintenance(ctx, CheckParameters{
+		VCenters: vCenters,
+		Host:     esx.HostInfo,
+		Log:      r.Log,
+	})
+	if err != nil {
+		return err
+	}
+	err = r.updateLabels(ctx, esx, MaintenanceLabelKey, string(status))
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+func (r *Runnable) ShutDown(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
+	// Manage labels and annotations
+	if ShouldReboot(esx) {
+		err := r.updateAnnotations(ctx, esx, RebootInitiatedAnnotationKey, TrueString)
+		if err != nil {
+			return err
+		}
+	}
+	// Should reboot checks that all nodes on a certain host can be shut down.
+	// So, operate on node level now.
+	for j := range esx.Nodes {
+		node := &esx.Nodes[j]
+		// Cordon
+		if !ShouldCordon(node) {
+			continue
+		}
+		err := r.updateSchedulable(ctx, node, false)
+		if err != nil {
+			r.Log.Error(err, "Failed to cordon node", "node", node.Name)
+			continue
+		}
+		// Drain
+		if !ShouldDrain(node) {
+			continue
+		}
+		deletable, err := GetPodsForDeletion(ctx, r.Client, node.Name)
+		if err != nil {
+			r.Log.Error(err, "Failed to fetch deletable pods.", "node", node.Name)
+		}
+		r.Log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
+		deleteFailed := false
+		for i := range deletable {
+			pod := deletable[i]
+			err = r.Client.Delete(ctx, &pod, &client.DeleteOptions{})
+			if err != nil {
+				r.Log.Error(err, "Failed to delete pod from node.", "node", node.Name, "pod", pod.Name)
+				deleteFailed = true
+			}
+		}
+		if deleteFailed {
+			continue
+		}
+		r.Log.Info("Awaiting pod deletion.")
+		err = WaitForPodDeletions(ctx, deletable, WaitParameters{
+			Client:  r.Client,
+			Period:  conf.Intervals.PodDeletion.Period,
+			Timeout: conf.Intervals.PodDeletion.Timeout,
+		})
+		if err != nil {
+			r.Log.Error(err, "Failed to await pod deletions.", "node", node.Name)
+			continue
+		}
+		// Shutdown VM
+		err = ShutdownVM(ctx, vCenters, esx.HostInfo, node.Name)
+		if err != nil {
+			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
+		}
+	}
+	return nil
 }
 
 type HostInfo struct {
@@ -164,23 +243,59 @@ func parseHostInfo(node *v1.Node) (HostInfo, error) {
 	}, nil
 }
 
-// Updates the ESX maintenance on all nodes belonging to the given ESX host.
-func (r *Runnable) updateNodes(ctx context.Context, esx *Host, maintenance Maintenance) error {
+// Updates the given label on all nodes belonging to the given ESX host.
+func (r *Runnable) updateLabels(ctx context.Context, esx *Host, key string, value string) error {
 	for i := range esx.Nodes {
 		oneNode := &esx.Nodes[i]
 		if oneNode.Labels == nil {
 			oneNode.Labels = make(map[string]string)
 		}
-		value, ok := oneNode.Labels[MaintenanceLabelKey]
-		// If a nodes somehow already has the correct maintenance status skip patching
-		if !ok || value != string(maintenance) {
+		current, ok := oneNode.Labels[key]
+		// If a nodes somehow already has the correct label skip patching
+		if !ok || value != current {
 			patchedNode := oneNode.DeepCopy()
-			patchedNode.Labels[MaintenanceLabelKey] = string(maintenance)
+			patchedNode.Labels[key] = value
 			err := r.Patch(ctx, patchedNode, client.MergeFrom(oneNode))
 			if err != nil {
-				return fmt.Errorf("Failed to patch ESX maintenance status for host %v: %w", esx.Name, err)
+				return fmt.Errorf("Failed to patch Label for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
 			}
 		}
+	}
+	return nil
+}
+
+// Updates the given annotation on all nodes belonging to the given ESX host.
+func (r *Runnable) updateAnnotations(ctx context.Context, esx *Host, key string, value string) error {
+	for i := range esx.Nodes {
+		oneNode := &esx.Nodes[i]
+		if oneNode.Annotations == nil {
+			oneNode.Annotations = make(map[string]string)
+		}
+		current, ok := oneNode.Annotations[key]
+		// If a nodes somehow already has the correct annotation skip patching
+		if !ok || value != current {
+			patchedNode := oneNode.DeepCopy()
+			patchedNode.Annotations[key] = value
+			err := r.Patch(ctx, patchedNode, client.MergeFrom(oneNode))
+			if err != nil {
+				return fmt.Errorf("Failed to patch Annotation for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
+// Updates the Node.Spec.Unscheduable of the given Node.
+func (r *Runnable) updateSchedulable(ctx context.Context, node *v1.Node, schedulable bool) error {
+	// If node already has the correct value
+	if node.Spec.Unschedulable != schedulable {
+		return nil
+	}
+	cloned := node.DeepCopy()
+	node.Spec.Unschedulable = !schedulable
+	err := r.Patch(ctx, node, client.MergeFrom(cloned))
+	if err != nil {
+		return fmt.Errorf("Failed to set node %v as (un-)schedulable: %w", node.Name, err)
 	}
 	return nil
 }
