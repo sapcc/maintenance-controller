@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
@@ -30,7 +31,9 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -215,6 +218,74 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: StateLabelKey, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeTrue())
+	})
+
+})
+
+var _ = Describe("The stagger plugin", func() {
+
+	var firstNode *corev1.Node
+	var secondNode *corev1.Node
+	var leaseName types.NamespacedName
+
+	BeforeEach(func() {
+		leaseName = types.NamespacedName{
+			Namespace: "default",
+			Name:      "mc-lease",
+		}
+
+		firstNode = &corev1.Node{}
+		firstNode.Name = "firstnode"
+		err := k8sClient.Create(context.Background(), firstNode)
+		Expect(err).To(Succeed())
+
+		secondNode = &corev1.Node{}
+		secondNode.Name = "secondnode"
+		err = k8sClient.Create(context.Background(), secondNode)
+		Expect(err).To(Succeed())
+	})
+
+	AfterEach(func() {
+		var lease coordinationv1.Lease
+		lease.Name = leaseName.Name
+		lease.Namespace = leaseName.Namespace
+		err := k8sClient.Delete(context.Background(), &lease)
+		Expect(err).To(Succeed())
+
+		err = k8sClient.Delete(context.Background(), firstNode)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), secondNode)
+		Expect(err).To(Succeed())
+	})
+
+	It("creates the lease object", func() {
+		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
+		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("blocks within the lease duration", func() {
+		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
+		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("grabs the lease after it timed out", func() {
+		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
+		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		time.Sleep(4 * time.Second)
+		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+		lease := &coordinationv1.Lease{}
+		err = k8sClient.Get(context.Background(), leaseName, lease)
+		Expect(err).To(Succeed())
+		Expect(*lease.Spec.HolderIdentity).To(Equal("secondnode"))
 	})
 
 })
