@@ -1,0 +1,94 @@
+/*******************************************************************************
+*
+* Copyright 2020 SAP SE
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You should have received a copy of the License along with this
+* program. If not, you may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*******************************************************************************/
+
+package esx
+
+import (
+	"context"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25/mo"
+	vctypes "github.com/vmware/govmomi/vim25/types"
+	v1 "k8s.io/api/core/v1"
+)
+
+var _ = Describe("ShouldStart", func() {
+
+	makeNode := func(initiated string, maintenance Maintenance) *v1.Node {
+		node := &v1.Node{}
+		node.Name = "somenode"
+		node.Labels = map[string]string{MaintenanceLabelKey: string(maintenance)}
+		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: initiated}
+		return node
+	}
+
+	It("passes if the controller initiated the maintenance and ESX is not in maintenance", func() {
+		Expect(ShouldStart(makeNode(TrueString, NoMaintenance))).To(BeTrue())
+	})
+
+	It("does not pass if the controller did not initiate the maintenance", func() {
+		Expect(ShouldStart(makeNode("garbage", NoMaintenance))).To(BeFalse())
+	})
+
+	It("does not pass if the ESX is not out of maintenance", func() {
+		Expect(ShouldStart(makeNode(TrueString, InMaintenance))).To(BeFalse())
+	})
+
+})
+
+var _ = Describe("StartVM", func() {
+
+	It("starts a VM", func() {
+		vCenters := &VCenters{
+			Template: "http://" + AvailabilityZoneReplacer,
+			Credentials: map[string]Credential{
+				vcServer.URL.Host: {
+					Username: "user",
+					Password: "pass",
+				},
+			},
+		}
+		hostInfo := HostInfo{
+			AvailabilityZone: vcServer.URL.Host,
+			Name:             HostSystemName,
+		}
+		err := ShutdownVM(context.Background(), vCenters, hostInfo, "DC0_H0_VM0")
+		Expect(err).To(Succeed())
+		err = StartVM(context.Background(), vCenters, hostInfo, "DC0_H0_VM0")
+		Expect(err).To(Succeed())
+
+		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
+		Expect(err).To(Succeed())
+		mgr := view.NewManager(client.Client)
+		Expect(err).To(Succeed())
+		view, err := mgr.CreateContainerView(context.Background(),
+			client.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+		Expect(err).To(Succeed())
+		var vms []mo.VirtualMachine
+		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "DC0_H0_VM0"})
+		Expect(err).To(Succeed())
+		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
+		Expect(result).To(BeTrue())
+	})
+
+})

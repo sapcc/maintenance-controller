@@ -183,6 +183,12 @@ var _ = Describe("The ESX controller", func() {
 		Expect(allowMaintenance(firstNode)).To(Succeed())
 		Expect(allowMaintenance(secondNode)).To(Succeed())
 
+		Eventually(func() map[string]string {
+			node := &corev1.Node{}
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			Expect(err).To(Succeed())
+			return node.Annotations
+		}).Should(HaveKey(RebootInitiatedAnnotationKey))
 		Eventually(func() bool {
 			node := &corev1.Node{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
@@ -195,6 +201,33 @@ var _ = Describe("The ESX controller", func() {
 			Expect(err).To(Succeed())
 			return podList.Items
 		}).Should(HaveLen(0))
+	})
+
+	// We cant check for actual startup of the VMs
+	// as their name given by the simulator (DC0_H0_VM0, ...)
+	// are not valid Kubernetes node names
+	It("starts nodes on an ESX host if it is out of maintenance and the controller initiated the shutdown", func() {
+		markInitiated := func(node *corev1.Node) error {
+			cloned := node.DeepCopy()
+			node.Spec.Unschedulable = true
+			node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
+			return k8sClient.Patch(context.Background(), node, client.MergeFrom(cloned))
+		}
+		Expect(markInitiated(firstNode)).To(Succeed())
+		Expect(markInitiated(secondNode)).To(Succeed())
+
+		Eventually(func() bool {
+			node := &corev1.Node{}
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			Expect(err).To(Succeed())
+			return node.Spec.Unschedulable
+		}).Should(BeFalse())
+		Eventually(func() map[string]string {
+			node := &corev1.Node{}
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			Expect(err).To(Succeed())
+			return node.Annotations
+		}).ShouldNot(HaveKey(RebootInitiatedAnnotationKey))
 	})
 
 })

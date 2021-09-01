@@ -109,11 +109,12 @@ func (r *Runnable) Reconcile(ctx context.Context, conf Config) {
 				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
 		}
-		err = r.ShutDown(ctx, &conf.VCenters, esx, &conf)
+		err = r.ShutDownNodes(ctx, &conf.VCenters, esx, &conf)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
 		}
+		r.StartNodes(ctx, &conf.VCenters, esx, &conf)
 	}
 }
 
@@ -133,7 +134,7 @@ func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx
 	return nil
 }
 
-func (r *Runnable) ShutDown(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
+func (r *Runnable) ShutDownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
 	// Manage labels and annotations
 	if ShouldReboot(esx) {
 		err := r.updateAnnotations(ctx, esx, RebootInitiatedAnnotationKey, TrueString)
@@ -151,7 +152,7 @@ func (r *Runnable) ShutDown(ctx context.Context, vCenters *VCenters, esx *Host, 
 		}
 		err := r.updateSchedulable(ctx, node, false)
 		if err != nil {
-			r.Log.Error(err, "Failed to cordon node", "node", node.Name)
+			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
 		// Drain
@@ -185,13 +186,36 @@ func (r *Runnable) ShutDown(ctx context.Context, vCenters *VCenters, esx *Host, 
 			r.Log.Error(err, "Failed to await pod deletions.", "node", node.Name)
 			continue
 		}
-		// Shutdown VM
 		err = ShutdownVM(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
 		}
 	}
 	return nil
+}
+
+func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) {
+	for i := range esx.Nodes {
+		node := &esx.Nodes[i]
+		if !ShouldStart(node) {
+			continue
+		}
+		err := StartVM(ctx, vCenters, esx.HostInfo, node.Name)
+		if err != nil {
+			r.Log.Error(err, "Failed to start VM.", "node", node.Name)
+		}
+		err = r.updateSchedulable(ctx, node, true)
+		if err != nil {
+			r.Log.Error(err, "Failed to uncordon node.", "node", node.Name)
+			continue
+		}
+		// ESX Maintenance is finished => delete annotation
+		err = r.deleteAnnotation(ctx, node, RebootInitiatedAnnotationKey)
+		if err != nil {
+			r.Log.Error(err, "Failed to delete annotation.", "node", node.Name, "annotation", RebootInitiatedAnnotationKey)
+			continue
+		}
+	}
 }
 
 type HostInfo struct {
@@ -253,9 +277,9 @@ func (r *Runnable) updateLabels(ctx context.Context, esx *Host, key string, valu
 		current, ok := oneNode.Labels[key]
 		// If a nodes somehow already has the correct label skip patching
 		if !ok || value != current {
-			patchedNode := oneNode.DeepCopy()
-			patchedNode.Labels[key] = value
-			err := r.Patch(ctx, patchedNode, client.MergeFrom(oneNode))
+			cloned := oneNode.DeepCopy()
+			oneNode.Labels[key] = value
+			err := r.Patch(ctx, oneNode, client.MergeFrom(cloned))
 			if err != nil {
 				return fmt.Errorf("Failed to patch Label for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
 			}
@@ -274,9 +298,9 @@ func (r *Runnable) updateAnnotations(ctx context.Context, esx *Host, key string,
 		current, ok := oneNode.Annotations[key]
 		// If a nodes somehow already has the correct annotation skip patching
 		if !ok || value != current {
-			patchedNode := oneNode.DeepCopy()
-			patchedNode.Annotations[key] = value
-			err := r.Patch(ctx, patchedNode, client.MergeFrom(oneNode))
+			cloned := oneNode.DeepCopy()
+			oneNode.Annotations[key] = value
+			err := r.Patch(ctx, oneNode, client.MergeFrom(cloned))
 			if err != nil {
 				return fmt.Errorf("Failed to patch Annotation for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
 			}
@@ -285,7 +309,20 @@ func (r *Runnable) updateAnnotations(ctx context.Context, esx *Host, key string,
 	return nil
 }
 
-// Updates the Node.Spec.Unscheduable of the given Node.
+func (r *Runnable) deleteAnnotation(ctx context.Context, node *v1.Node, key string) error {
+	if node.Annotations == nil {
+		return nil
+	}
+	_, ok := node.Annotations[key]
+	if !ok {
+		return nil
+	}
+	cloned := node.DeepCopy()
+	delete(node.Annotations, key)
+	return r.Patch(ctx, node, client.MergeFrom(cloned))
+}
+
+// Updates the Node.Spec.Unschedulable of the given Node.
 func (r *Runnable) updateSchedulable(ctx context.Context, node *v1.Node, schedulable bool) error {
 	// If node already has the correct value
 	if node.Spec.Unschedulable != schedulable {
