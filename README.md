@@ -141,6 +141,13 @@ __maxMaintenance:__ Checks that less than the specified amount of nodes are in t
 config:
   max: the limit of nodes that are in-maintenance
 ```
+__stagger__: Checks that a certain duration has passed since the previous node passed. This is implemented with a `coordination.k8s.io/Lease`, which needs to be manually removed when the maintenance controller is removed from a cluster.
+```yaml
+config:
+  duration: the duration to await, required
+  leaseName: name of the lease, required
+  leaseNamespace: namespace of the lease, required
+```
 __timeWindow:__ Checks if the current systemtime is within the specified weekly UTC time window.
 ```yaml
 config:
