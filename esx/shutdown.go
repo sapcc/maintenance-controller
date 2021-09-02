@@ -36,9 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Checks, if all Nodes on an ESX need maintenance and are allowed to be shitdown.
+// Checks, if all Nodes on an ESX need maintenance and are allowed to be shutdown.
 // If so the RebootInitated Annotation is set on the affected Nodes.
-func ShouldReboot(esx *Host) bool {
+func ShouldShutdown(esx *Host) bool {
 	var initCount int
 	for _, node := range esx.Nodes {
 		if node.Labels[MaintenanceLabelKey] == string(InMaintenance) && node.Labels[RebootOkLabelKey] == TrueString {
@@ -46,14 +46,6 @@ func ShouldReboot(esx *Host) bool {
 		}
 	}
 	return initCount == len(esx.Nodes)
-}
-
-func ShouldCordon(node *v1.Node) bool {
-	return node.Annotations[RebootInitiatedAnnotationKey] == TrueString && !node.Spec.Unschedulable
-}
-
-func ShouldDrain(node *v1.Node) bool {
-	return node.Annotations[RebootInitiatedAnnotationKey] == TrueString && node.Spec.Unschedulable
 }
 
 // Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/k8sutil/drain.go
@@ -92,6 +84,9 @@ type WaitParameters struct {
 }
 
 func WaitForPodDeletions(ctx context.Context, pods []v1.Pod, params WaitParameters) error {
+	if len(pods) == 0 {
+		return nil
+	}
 	errChan := make(chan error)
 	for _, pod := range pods {
 		go func(pod v1.Pod) {
@@ -130,7 +125,7 @@ func waitForPodDeletion(ctx context.Context, pod v1.Pod, params WaitParameters) 
 	})
 }
 
-func ShutdownVM(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
+func ensureVmOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
 	client, err := vCenters.Client(ctx, info.AvailabilityZone)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to vCenter: %w", err)

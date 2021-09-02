@@ -109,15 +109,16 @@ func (r *Runnable) Reconcile(ctx context.Context, conf Config) {
 				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
 		}
-		err = r.ShutDownNodes(ctx, &conf.VCenters, esx, &conf)
+		r.StartNodes(ctx, &conf.VCenters, esx, &conf)
+		err = r.ShutdownNodes(ctx, &conf.VCenters, esx, &conf)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
 		}
-		r.StartNodes(ctx, &conf.VCenters, esx, &conf)
 	}
 }
 
+// Checks the maintenance mode of the given ESX and attaches the according Maintenance label.
 func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx *Host) error {
 	status, err := CheckForMaintenance(ctx, CheckParameters{
 		VCenters: vCenters,
@@ -127,66 +128,39 @@ func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx
 	if err != nil {
 		return err
 	}
-	err = r.updateLabels(ctx, esx, MaintenanceLabelKey, string(status))
+	err = r.ensureLabel(ctx, esx, MaintenanceLabelKey, string(status))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Runnable) ShutDownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
-	// Manage labels and annotations
-	if ShouldReboot(esx) {
-		err := r.updateAnnotations(ctx, esx, RebootInitiatedAnnotationKey, TrueString)
+// Shuts down the nodes on the given ESX, if all nodes are with the RebootAllowed="true" label.
+func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
+	if ShouldShutdown(esx) {
+		err := r.ensureAnnotation(ctx, esx, RebootInitiatedAnnotationKey, TrueString)
 		if err != nil {
 			return err
 		}
 	}
-	// Should reboot checks that all nodes on a certain host can be shut down.
-	// So, operate on node level now.
-	for j := range esx.Nodes {
-		node := &esx.Nodes[j]
-		// Cordon
-		if !ShouldCordon(node) {
+	for i := range esx.Nodes {
+		node := &esx.Nodes[i]
+		init, ok := node.Annotations[RebootInitiatedAnnotationKey]
+		if !ok || init != TrueString {
 			continue
 		}
-		err := r.updateSchedulable(ctx, node, false)
+		err := r.ensureSchedulable(ctx, node, false)
 		if err != nil {
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
-		// Drain
-		if !ShouldDrain(node) {
-			continue
-		}
-		deletable, err := GetPodsForDeletion(ctx, r.Client, node.Name)
+		err = r.ensureDrain(ctx, node, conf)
 		if err != nil {
-			r.Log.Error(err, "Failed to fetch deletable pods.", "node", node.Name)
-		}
-		r.Log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
-		deleteFailed := false
-		for i := range deletable {
-			pod := deletable[i]
-			err = r.Client.Delete(ctx, &pod, &client.DeleteOptions{})
-			if err != nil {
-				r.Log.Error(err, "Failed to delete pod from node.", "node", node.Name, "pod", pod.Name)
-				deleteFailed = true
-			}
-		}
-		if deleteFailed {
+			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue
 		}
-		r.Log.Info("Awaiting pod deletion.")
-		err = WaitForPodDeletions(ctx, deletable, WaitParameters{
-			Client:  r.Client,
-			Period:  conf.Intervals.PodDeletion.Period,
-			Timeout: conf.Intervals.PodDeletion.Timeout,
-		})
-		if err != nil {
-			r.Log.Error(err, "Failed to await pod deletions.", "node", node.Name)
-			continue
-		}
-		err = ShutdownVM(ctx, vCenters, esx.HostInfo, node.Name)
+		r.Log.Info("Going to shutdown VM.", "node", node.Name)
+		err = ensureVmOff(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
 		}
@@ -194,17 +168,56 @@ func (r *Runnable) ShutDownNodes(ctx context.Context, vCenters *VCenters, esx *H
 	return nil
 }
 
+// Drains Pods from the given node, if required.
+func (r *Runnable) ensureDrain(ctx context.Context, node *v1.Node, conf *Config) error {
+	deletable, err := GetPodsForDeletion(ctx, r.Client, node.Name)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch deletable pods: %w", err)
+	}
+	if len(deletable) == 0 {
+		return nil
+	}
+	r.Log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
+	deleteFailed := false
+	for i := range deletable {
+		pod := deletable[i]
+		err = r.Client.Delete(ctx, &pod, &client.DeleteOptions{})
+		if err != nil {
+			r.Log.Error(err, "Failed to delete pod from node.", "node", node.Name, "pod", pod.Name)
+			deleteFailed = true
+		}
+	}
+	if deleteFailed {
+		return fmt.Errorf("Failed to delete at least one pod.")
+	}
+	r.Log.Info("Awaiting pod deletion.", "period", conf.Intervals.PodDeletion.Period,
+		"timeout", conf.Intervals.PodDeletion.Timeout)
+	err = WaitForPodDeletions(ctx, deletable, WaitParameters{
+		Client:  r.Client,
+		Period:  conf.Intervals.PodDeletion.Period,
+		Timeout: conf.Intervals.PodDeletion.Timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to await pod deletions: %w", err)
+	}
+	return nil
+}
+
+// Starts the nodes on the given ESX, if this controller shut them down
+// and the underlying ESX is no longer in maintenance.
 func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) {
 	for i := range esx.Nodes {
 		node := &esx.Nodes[i]
 		if !ShouldStart(node) {
 			continue
 		}
-		err := StartVM(ctx, vCenters, esx.HostInfo, node.Name)
+		r.Log.Info("Going to start VM", "node", node.Name)
+		err := ensureVmOn(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to start VM.", "node", node.Name)
+			continue
 		}
-		err = r.updateSchedulable(ctx, node, true)
+		err = r.ensureSchedulable(ctx, node, true)
 		if err != nil {
 			r.Log.Error(err, "Failed to uncordon node.", "node", node.Name)
 			continue
@@ -213,7 +226,6 @@ func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host
 		err = r.deleteAnnotation(ctx, node, RebootInitiatedAnnotationKey)
 		if err != nil {
 			r.Log.Error(err, "Failed to delete annotation.", "node", node.Name, "annotation", RebootInitiatedAnnotationKey)
-			continue
 		}
 	}
 }
@@ -228,6 +240,7 @@ type Host struct {
 	Nodes []v1.Node
 }
 
+// Assigins nodes to their underlying ESX.
 func ParseHostList(nodes []v1.Node) ([]Host, error) {
 	nodesOnHost := make(map[HostInfo][]v1.Node)
 	for i := range nodes {
@@ -268,14 +281,14 @@ func parseHostInfo(node *v1.Node) (HostInfo, error) {
 }
 
 // Updates the given label on all nodes belonging to the given ESX host.
-func (r *Runnable) updateLabels(ctx context.Context, esx *Host, key string, value string) error {
+func (r *Runnable) ensureLabel(ctx context.Context, esx *Host, key string, value string) error {
 	for i := range esx.Nodes {
 		oneNode := &esx.Nodes[i]
 		if oneNode.Labels == nil {
 			oneNode.Labels = make(map[string]string)
 		}
 		current, ok := oneNode.Labels[key]
-		// If a nodes somehow already has the correct label skip patching
+		// If the node misses the label or has the wrong value it needs patching.
 		if !ok || value != current {
 			cloned := oneNode.DeepCopy()
 			oneNode.Labels[key] = value
@@ -289,7 +302,7 @@ func (r *Runnable) updateLabels(ctx context.Context, esx *Host, key string, valu
 }
 
 // Updates the given annotation on all nodes belonging to the given ESX host.
-func (r *Runnable) updateAnnotations(ctx context.Context, esx *Host, key string, value string) error {
+func (r *Runnable) ensureAnnotation(ctx context.Context, esx *Host, key string, value string) error {
 	for i := range esx.Nodes {
 		oneNode := &esx.Nodes[i]
 		if oneNode.Annotations == nil {
@@ -309,6 +322,7 @@ func (r *Runnable) updateAnnotations(ctx context.Context, esx *Host, key string,
 	return nil
 }
 
+// Deletes the given annotation from a node.
 func (r *Runnable) deleteAnnotation(ctx context.Context, node *v1.Node, key string) error {
 	if node.Annotations == nil {
 		return nil
@@ -323,7 +337,7 @@ func (r *Runnable) deleteAnnotation(ctx context.Context, node *v1.Node, key stri
 }
 
 // Updates the Node.Spec.Unschedulable of the given Node.
-func (r *Runnable) updateSchedulable(ctx context.Context, node *v1.Node, schedulable bool) error {
+func (r *Runnable) ensureSchedulable(ctx context.Context, node *v1.Node, schedulable bool) error {
 	// If node already has the correct value
 	if node.Spec.Unschedulable != schedulable {
 		return nil

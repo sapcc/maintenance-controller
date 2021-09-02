@@ -30,7 +30,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/simulator"
+	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25/mo"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -105,9 +110,32 @@ var _ = BeforeSuite(func() {
 
 	By("setup simulated vCenter")
 	vCenter = simulator.VPX()
+	vCenter.Host = 2
 	err = vCenter.Create()
 	Expect(err).To(Succeed())
 	vcServer = vCenter.Service.NewServer()
+
+	vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+	Expect(err).To(Succeed())
+
+	renameVM := func(view *view.ContainerView, old, new string) {
+		var vms []mo.VirtualMachine
+		err := view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"}, []string{"summary.runtime"},
+			&vms, property.Filter{"name": old})
+		Expect(err).To(Succeed())
+		vm := object.NewVirtualMachine(vcClient.Client, vms[0].Self)
+		task, err := vm.Rename(context.Background(), new)
+		Expect(err).To(Succeed())
+		Expect(task.Wait(context.Background())).To(Succeed())
+	}
+	mgr := view.NewManager(vcClient.Client)
+	view, err := mgr.CreateContainerView(context.Background(),
+		vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+	Expect(err).To(Succeed())
+	renameVM(view, "DC0_H0_VM0", "firstvm")
+	renameVM(view, "DC0_H0_VM1", "secondvm")
+	renameVM(view, "DC0_H1_VM0", "thirdvm")
+	renameVM(view, "DC0_H1_VM1", "fourthvm")
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -153,6 +181,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(Succeed())
 	file, err := os.Create(ConfigFilePath)
 	Expect(err).To(Succeed())
+	defer file.Close()
 
 	tpl := template.New("config")
 	_, err = tpl.Parse(configTemplate)

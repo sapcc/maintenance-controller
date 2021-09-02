@@ -18,11 +18,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	v1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +32,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -131,6 +134,17 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
 	}
 
 	if enableESXMaintenance {
+		err := mgr.GetFieldIndexer().IndexField(context.Background(),
+			&v1.Pod{},
+			"spec.nodeName",
+			func(o client.Object) []string {
+				pod := o.(*v1.Pod)
+				return []string{pod.Spec.NodeName}
+			})
+		if err != nil {
+			setupLog.Error(err, "unable to create index spec.nodeName on pod resource.")
+			os.Exit(1)
+		}
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),

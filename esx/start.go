@@ -45,7 +45,7 @@ func ShouldStart(node *v1.Node) bool {
 }
 
 // Starts the virtual machine specified by nodeName on the ESX specified by info.
-func StartVM(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
+func ensureVmOn(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
 	client, err := vCenters.Client(ctx, info.AvailabilityZone)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to vCenter: %w", err)

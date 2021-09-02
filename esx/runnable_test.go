@@ -26,6 +26,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25/mo"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,17 +41,24 @@ var _ = Describe("The ESX controller", func() {
 
 	var firstNode *corev1.Node
 	var secondNode *corev1.Node
+	var thirdNode *corev1.Node
+	var fourthNode *corev1.Node
 
-	makeNode := func(name string) (*corev1.Node, error) {
+	makeNode := func(name, esx string, schedulable, withPods bool) (*corev1.Node, error) {
 		node := &corev1.Node{}
 		node.Name = name
 		node.Namespace = DefaultNamespace
+		node.Spec.Unschedulable = !schedulable
 		node.Labels = make(map[string]string)
-		node.Labels[HostLabelKey] = ESXName
+		node.Labels[HostLabelKey] = esx
 		node.Labels[FailureDomainLabelKey] = "eu-nl-2a"
 		err := k8sClient.Create(context.Background(), node)
 		if err != nil {
 			return nil, err
+		}
+
+		if !withPods {
+			return node, nil
 		}
 
 		pod := &corev1.Pod{}
@@ -72,9 +82,13 @@ var _ = Describe("The ESX controller", func() {
 
 	BeforeEach(func() {
 		var err error
-		firstNode, err = makeNode("first")
+		firstNode, err = makeNode("firstvm", ESXName, true, true)
 		Expect(err).To(Succeed())
-		secondNode, err = makeNode("second")
+		secondNode, err = makeNode("secondvm", ESXName, true, true)
+		Expect(err).To(Succeed())
+		thirdNode, err = makeNode("thirdvm", "DC0_H1", true, false)
+		Expect(err).To(Succeed())
+		fourthNode, err = makeNode("fourthvm", "DC0_H1", false, false)
 		Expect(err).To(Succeed())
 	})
 
@@ -82,6 +96,10 @@ var _ = Describe("The ESX controller", func() {
 		err := k8sClient.Delete(context.Background(), firstNode)
 		Expect(err).To(Succeed())
 		err = k8sClient.Delete(context.Background(), secondNode)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), thirdNode)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), fourthNode)
 		Expect(err).To(Succeed())
 
 		var podList corev1.PodList
@@ -110,7 +128,7 @@ var _ = Describe("The ESX controller", func() {
 	It("labels previously unlabeled nodes", func() {
 		Eventually(func() string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "first"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
 			Expect(err).To(Succeed())
 
 			val := node.Labels[MaintenanceLabelKey]
@@ -118,7 +136,7 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(NoMaintenance)))
 		Eventually(func() string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "second"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
 			Expect(err).To(Succeed())
 
 			val := node.Labels[MaintenanceLabelKey]
@@ -142,7 +160,7 @@ var _ = Describe("The ESX controller", func() {
 
 		Eventually(func() string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "first"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
 			Expect(err).To(Succeed())
 
 			val := node.Labels[MaintenanceLabelKey]
@@ -150,7 +168,7 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(InMaintenance)))
 		Eventually(func() string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "second"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
 			Expect(err).To(Succeed())
 
 			val := node.Labels[MaintenanceLabelKey]
@@ -158,9 +176,6 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(InMaintenance)))
 	})
 
-	// We cant check for actual shutdown of the VMs
-	// as their name given by the simulator (DC0_H0_VM0, ...)
-	// are not valid Kubernetes node names
 	It("shuts down nodes on an ESX host if it is in-maintenance and reboots are allowed", func() {
 		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
 		Expect(err).To(Succeed())
@@ -185,13 +200,13 @@ var _ = Describe("The ESX controller", func() {
 
 		Eventually(func() map[string]string {
 			node := &corev1.Node{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Annotations
 		}).Should(HaveKey(RebootInitiatedAnnotationKey))
 		Eventually(func() bool {
 			node := &corev1.Node{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}).Should(BeTrue())
@@ -201,12 +216,42 @@ var _ = Describe("The ESX controller", func() {
 			Expect(err).To(Succeed())
 			return podList.Items
 		}).Should(HaveLen(0))
+		Eventually(func() bool {
+			mgr := view.NewManager(vcClient.Client)
+			Expect(err).To(Succeed())
+			view, err := mgr.CreateContainerView(context.Background(),
+				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+			Expect(err).To(Succeed())
+			var vms []mo.VirtualMachine
+			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+			Expect(err).To(Succeed())
+			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
+		}).Should(BeTrue())
+
+		// ensure VM's on different host are not affected
+		mgr := view.NewManager(vcClient.Client)
+		Expect(err).To(Succeed())
+		view, err := mgr.CreateContainerView(context.Background(),
+			vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+		Expect(err).To(Succeed())
+		var vms []mo.VirtualMachine
+		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "thirdvm"})
+		Expect(err).To(Succeed())
+		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
+		Expect(result).To(BeTrue())
+		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "fourthvm"})
+		Expect(err).To(Succeed())
+		result = vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
+		Expect(result).To(BeTrue())
 	})
 
-	// We cant check for actual startup of the VMs
-	// as their name given by the simulator (DC0_H0_VM0, ...)
-	// are not valid Kubernetes node names
 	It("starts nodes on an ESX host if it is out of maintenance and the controller initiated the shutdown", func() {
+		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+		Expect(err).To(Succeed())
+
 		markInitiated := func(node *corev1.Node) error {
 			cloned := node.DeepCopy()
 			node.Spec.Unschedulable = true
@@ -218,16 +263,28 @@ var _ = Describe("The ESX controller", func() {
 
 		Eventually(func() bool {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}).Should(BeFalse())
 		Eventually(func() map[string]string {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "first"}, node)
+			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Annotations
 		}).ShouldNot(HaveKey(RebootInitiatedAnnotationKey))
+		Eventually(func() bool {
+			mgr := view.NewManager(vcClient.Client)
+			Expect(err).To(Succeed())
+			view, err := mgr.CreateContainerView(context.Background(),
+				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+			Expect(err).To(Succeed())
+			var vms []mo.VirtualMachine
+			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+			Expect(err).To(Succeed())
+			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
+		}).Should(BeTrue())
 	})
 
 })

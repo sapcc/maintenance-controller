@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("ShouldReboot", func() {
+var _ = Describe("ShouldShutdown", func() {
 	It("should pass if all nodes require ESX maintenance and are allowed to reboot", func() {
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)
@@ -48,7 +48,7 @@ var _ = Describe("ShouldReboot", func() {
 		esx := Host{
 			Nodes: nodes,
 		}
-		result := ShouldReboot(&esx)
+		result := ShouldShutdown(&esx)
 		Expect(result).To(BeTrue())
 	})
 
@@ -63,7 +63,7 @@ var _ = Describe("ShouldReboot", func() {
 		esx := Host{
 			Nodes: nodes,
 		}
-		result := ShouldReboot(&esx)
+		result := ShouldShutdown(&esx)
 		Expect(result).To(BeFalse())
 	})
 
@@ -78,59 +78,7 @@ var _ = Describe("ShouldReboot", func() {
 		esx := Host{
 			Nodes: nodes,
 		}
-		result := ShouldReboot(&esx)
-		Expect(result).To(BeFalse())
-	})
-})
-
-var _ = Describe("ShouldCordon", func() {
-	It("should pass if the controller initiated a reboot and node is schedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
-		node.Spec.Unschedulable = false
-		result := ShouldCordon(&node)
-		Expect(result).To(BeTrue())
-	})
-
-	It("should not pass if the controller did not initiate a reboot and node is schedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: "garbage"}
-		node.Spec.Unschedulable = false
-		result := ShouldCordon(&node)
-		Expect(result).To(BeFalse())
-	})
-
-	It("should not pass if the controller initiated a reboot and node is unschedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
-		node.Spec.Unschedulable = true
-		result := ShouldCordon(&node)
-		Expect(result).To(BeFalse())
-	})
-})
-
-var _ = Describe("ShouldDrain", func() {
-	It("should pass if the controller initiated a reboot and node is unschedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
-		node.Spec.Unschedulable = true
-		result := ShouldDrain(&node)
-		Expect(result).To(BeTrue())
-	})
-
-	It("should not pass if the controller initiated a reboot and node is schedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
-		node.Spec.Unschedulable = false
-		result := ShouldDrain(&node)
-		Expect(result).To(BeFalse())
-	})
-
-	It("should not pass if the controller did not initiate a reboot and node is unschedulable", func() {
-		var node corev1.Node
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: "garbage"}
-		node.Spec.Unschedulable = true
-		result := ShouldDrain(&node)
+		result := ShouldShutdown(&esx)
 		Expect(result).To(BeFalse())
 	})
 })
@@ -201,7 +149,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 	})
 })
 
-var _ = Describe("ShutdownVM", func() {
+var _ = Describe("ensureVmOff", func() {
 	var vCenters *VCenters
 
 	BeforeEach(func() {
@@ -227,7 +175,7 @@ var _ = Describe("ShutdownVM", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "DC0_H0_VM0"})
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		vm := object.NewVirtualMachine(client.Client, vms[0].Self)
 		task, err := vm.PowerOn(context.Background())
@@ -237,10 +185,10 @@ var _ = Describe("ShutdownVM", func() {
 	})
 
 	It("should shutdown a VM", func() {
-		err := ShutdownVM(context.Background(), vCenters, HostInfo{
+		err := ensureVmOff(context.Background(), vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}, "DC0_H0_VM0")
+		}, "firstvm")
 		Expect(err).To(Succeed())
 
 		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
@@ -252,7 +200,7 @@ var _ = Describe("ShutdownVM", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "DC0_H0_VM0"})
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
 		Expect(result).To(BeTrue())

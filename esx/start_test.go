@@ -55,7 +55,7 @@ var _ = Describe("ShouldStart", func() {
 
 })
 
-var _ = Describe("StartVM", func() {
+var _ = Describe("ensureVmOn", func() {
 
 	It("starts a VM", func() {
 		vCenters := &VCenters{
@@ -71,9 +71,9 @@ var _ = Describe("StartVM", func() {
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}
-		err := ShutdownVM(context.Background(), vCenters, hostInfo, "DC0_H0_VM0")
+		err := ensureVmOff(context.Background(), vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())
-		err = StartVM(context.Background(), vCenters, hostInfo, "DC0_H0_VM0")
+		err = ensureVmOn(context.Background(), vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())
 
 		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
@@ -85,7 +85,7 @@ var _ = Describe("StartVM", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "DC0_H0_VM0"})
+			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())
