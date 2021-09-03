@@ -61,7 +61,7 @@ intervals:
   check:
     jitter: 0.1
     period: 200ms
-  podDeletions:
+  podDeletion:
     period: 1s
     timeout: 4s
 vCenters:
@@ -190,6 +190,8 @@ var _ = BeforeSuite(func() {
 		Port string
 	}{Port: vcServer.URL.Port()}
 	err = tpl.Execute(file, data)
+	Expect(err).To(Succeed())
+	err = file.Sync()
 	Expect(err).To(Succeed())
 
 	go func() {
