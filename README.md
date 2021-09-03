@@ -13,6 +13,7 @@ A Kubernetes controller to manage node maintenance.
   - Check Plugins
   - Notification Plugins
   - Trigger Plugins
+- Support for VMware ESX maintenance
 - Example configuration for flatcar update agents
 
 ## Motivation
@@ -37,7 +38,7 @@ Nodes transition to the state if a chain of configurable "check plugins" decides
 Such plugin chains can be configured for each state individually via maintenance profiles.
 Cluster administrators can assign a maintenance profile to a node using a label.
 Before the transition is finished a chain of "trigger plugins" can be invoked, which can perform any action related to termination or startup logic.
-While a node is in a certain state, a chain of "notifications plugins" informs the cluster users and adminstrators regulary about the node being in that state.
+While a node is in a certain state, a chain of "notifications plugins" informs the cluster users and administrators regularly about the node being in that state.
 Multiple plugins exist.
 It is possible to check or alter labels, to be notified via Slack, ...
 
@@ -62,7 +63,7 @@ instances:
   notify: null
   # check plugin instances
   check:
-  # the list enttries define the chosen plugin type
+  # the list entries define the chosen plugin type
   - hasLabel:
       # name of the instance, which is used in the plugin chain configurations
       # do not use spaces or other special characters, besides the underscore, which is allowed
@@ -106,7 +107,7 @@ profiles:
       trigger: t && u
 ```
 Chains be undefined or empty.
-Trigger and Notification chains are configured by specifing the desired instance names sperated by ```&&```, e.g. ```alter && othertriggerplugin```
+Trigger and Notification chains are configured by specifying the desired instance names separated by ```&&```, e.g. ```alter && othertriggerplugin```
 Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
@@ -130,7 +131,7 @@ config:
   key: the annotation key, required
   value: the expected annotation value, if empty only the key is checked, optional
 ```
-__condition__ Checks if a node condition has the definied status.
+__condition__ Checks if a node condition has the defined status.
 ```yaml
 config:
   type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable)
@@ -168,12 +169,12 @@ config:
   auth: boolean value, which defines if the plugin should use plain auth or no auth at all, required
   address: address of the smtp server with port, required
   from: e-mail address of the sender, required
-  identity: the identity used for authentification against the smtp server, optional
+  identity: the identity used for authentication against the smtp server, optional
   subject: the subject of the mail
   message: the content of the mail, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
-  password: the password used for authentification against the smtp server, optional
+  password: the password used for authentication against the smtp server, optional
   to: array of recipients, required
-  user: the user used for authentification against the smtp server, optional
+  user: the user used for authentication against the smtp server, optional
 ```
 __slack__: Sends a slack message
 ```yaml
@@ -202,6 +203,9 @@ config:
   remove: boolean value, if true the label is removed, if false the label is added or changed, optional
 ```
 
+## Support for VMware ESX maintenance
+See [here](esx/README.md).
+
 ## Example configuration for flatcar update agents
 ```yaml
 intervals:
@@ -215,7 +219,7 @@ instances:
           hook: Your hook
           channel: Your channel
           message: |
-            The node {{ .Node.Name }} requires maintenace. Manual approval is required.
+            The node {{ .Node.Name }} requires maintenance. Manual approval is required.
             Approve to drain and reboot this node by running:
             `kubectl annotate node {{ .Node.Name }} cloud.sap/maintenance-approved=true`
     - slack:
@@ -224,7 +228,7 @@ instances:
           hook: Your hook
           channel: Your channel
           message: |
-            Maintenace for node {{ .Node.Name }} has started.
+            Maintenance for node {{ .Node.Name }} has started.
     check:
     - hasAnnotation:
         name: reboot_needed

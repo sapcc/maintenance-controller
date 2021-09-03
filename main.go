@@ -18,11 +18,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	v1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,12 +32,14 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/sapcc/maintenance-controller/controllers"
+	"github.com/sapcc/maintenance-controller/esx"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -53,12 +57,15 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var enableESXMaintenance bool
 	var kubecontext string
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableESXMaintenance, "enable-esx-maintenance", false,
+		"Enables an other controller loop, which will indicate ESX host maintenance using labels.")
 	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
 	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	opts := zap.Options{
@@ -93,16 +100,8 @@ func main() {
 	}
 
 	setupChecks(mgr)
+	setupReconcilers(mgr, enableESXMaintenance)
 
-	if err = (&controllers.NodeReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Node"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
@@ -120,5 +119,39 @@ func setupChecks(mgr manager.Manager) {
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
+	}
+}
+
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
+	if err := (&controllers.NodeReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
+		os.Exit(1)
+	}
+
+	if enableESXMaintenance {
+		err := mgr.GetFieldIndexer().IndexField(context.Background(),
+			&v1.Pod{},
+			"spec.nodeName",
+			func(o client.Object) []string {
+				pod := o.(*v1.Pod)
+				return []string{pod.Spec.NodeName}
+			})
+		if err != nil {
+			setupLog.Error(err, "unable to create index spec.nodeName on pod resource.")
+			os.Exit(1)
+		}
+		controller := esx.Runnable{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
+		}
+		if err := mgr.Add(&controller); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ESX")
+			os.Exit(1)
+		}
 	}
 }
