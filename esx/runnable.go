@@ -116,6 +116,7 @@ func (r *Runnable) Reconcile(ctx context.Context, conf Config) {
 			continue
 		}
 	}
+	conf.VCenters.ClearCache(ctx)
 }
 
 // Checks the maintenance mode of the given ESX and attaches the according Maintenance label.

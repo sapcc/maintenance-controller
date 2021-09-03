@@ -94,6 +94,9 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 		if task.Info.Name == "EnterMaintenanceMode_Task" {
 			// do not care about status queued and error
 			// success should already be handled by checking for Runtime.InMaintenanceMode
+			// also recent tasks retains completed tasks for a while
+			// so checking for success could result in returning in-maintenance while the ESX
+			// is actually running again.
 			if task.Info.State == types.TaskInfoStateRunning {
 				return InMaintenance, nil
 			}
