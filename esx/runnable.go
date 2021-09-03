@@ -22,6 +22,7 @@ package esx
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
@@ -160,6 +161,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue
 		}
+		time.Sleep(conf.Intervals.Stagger)
 		r.Log.Info("Going to shutdown VM.", "node", node.Name)
 		err = ensureVmOff(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {

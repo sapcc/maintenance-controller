@@ -42,6 +42,7 @@ type Config struct {
 			Period  time.Duration
 			Timeout time.Duration
 		} `config:"podDeletion" validate:"required"`
+		Stagger time.Duration `config:"stagger"`
 	} `config:"intervals" validate:"required"`
 	VCenters VCenters `config:"vCenters" validate:"required"`
 }
