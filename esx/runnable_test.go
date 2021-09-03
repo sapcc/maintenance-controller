@@ -21,6 +21,7 @@ package esx
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -215,7 +216,7 @@ var _ = Describe("The ESX controller", func() {
 			err = k8sClient.List(context.Background(), &podList)
 			Expect(err).To(Succeed())
 			return podList.Items
-		}).Should(HaveLen(0))
+		}, 10*time.Second).Should(HaveLen(0))
 		Eventually(func() bool {
 			mgr := view.NewManager(vcClient.Client)
 			Expect(err).To(Succeed())
@@ -266,7 +267,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
-		}).Should(BeFalse())
+		}, 10*time.Second).Should(BeFalse())
 		Eventually(func() map[string]string {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
