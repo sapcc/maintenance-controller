@@ -98,27 +98,32 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	err := state.Notify(params, data)
 	if err != nil {
 		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one notification plugin failed: Will stay in %v state", params.State)
-		return state.Label(), fmt.Errorf("failed to notify: %w", err)
+			"At least one notification plugin failed for profile %v: Will stay in %v state",
+			params.Profile.Current, params.State)
+		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile.Current, err)
 	}
 	next, err := state.Transition(params, data)
 	if err != nil {
 		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one check plugin failed: Will stay in %v state", params.State)
-		params.Log.Error(err, "Failed to check for state transition", "state", params.State)
+			"At least one check plugin failed for profile: Will stay in %v state",
+			params.Profile.Current, params.State)
+		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
+			"profile", params.Profile.Current)
+		return state.Label(), err
 	}
 
 	// check if a transition should happen
 	if next != state.Label() {
 		err = state.Trigger(params, data)
 		if err != nil {
-			params.Log.Error(err, "Failed to execute triggers", "state", params.State)
+			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile.Current)
 			params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-				"At least one trigger plugin failed: Will stay in %v state", params.State)
+				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile.Current, params.State)
 			return state.Label(), err
 		} else {
-			params.Log.Info("Moved node to next state", "state", string(next))
-			params.Recorder.Eventf(node, "Normal", "ChangedMaintenanceState", "The node is now in the %v state", string(next))
+			params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile.Current)
+			params.Recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
+				"The node is now in the %v state caused by profile %v", string(next), params.Profile.Current)
 			return next, nil
 		}
 	}

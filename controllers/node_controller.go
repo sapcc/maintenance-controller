@@ -191,7 +191,8 @@ func reconcileInternal(params reconcileParameters) error {
 		}
 
 		// build plugin arguments
-		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log, Node: node,
+		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log,
+			Profile: plugin.ProfileInfo{Current: profile.Name, Last: data.LastProfile}, Node: node,
 			State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition, Recorder: params.recorder}
 
 		next, err := state.Apply(stateObj, node, &data, pluginParams)
