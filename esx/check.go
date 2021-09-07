@@ -90,7 +90,8 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 			params.Host.Name, err)
 	}
 	for _, task := range tasks {
-		params.Log.Info("Got a task for ESX", "esx", params.Host.Name, "name", task.Info.Name, "state", task.Info.State)
+		params.Log.Info("Got a recent task for ESX", "esx", params.Host.Name,
+			"name", task.Info.Name, "state", task.Info.State)
 		if task.Info.Name == "EnterMaintenanceMode_Task" {
 			// do not care about status queued and error
 			// success should already be handled by checking for Runtime.InMaintenanceMode

@@ -162,7 +162,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 			continue
 		}
 		time.Sleep(conf.Intervals.Stagger)
-		r.Log.Info("Going to shutdown VM.", "node", node.Name)
+		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
 		err = ensureVmOff(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
