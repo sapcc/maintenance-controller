@@ -1,8 +1,5 @@
-ARG build_img=golang:1.16
-ARG distroless_img=gcr.io/distroless/static:nonroot
-
 # Build the manager binary
-FROM $build_img as builder
+FROM golang:1.16 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -25,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager 
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM $distroless_img
+FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 LABEL source_repository="https://github.com/sapcc/maintenance-controller"
 COPY --from=builder /workspace/manager .
