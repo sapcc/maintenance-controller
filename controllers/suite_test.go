@@ -97,6 +97,7 @@ var cfg *rest.Config
 var k8sClient client.Client
 var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
+var eventRecorder *record.FakeRecorder
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -130,11 +131,12 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	eventRecorder = record.NewFakeRecorder(1024)
 	err = (&NodeReconciler{
 		Client:   k8sManager.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   k8sManager.GetScheme(),
-		Recorder: record.NewFakeRecorder(1024),
+		Recorder: eventRecorder,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

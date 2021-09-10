@@ -78,6 +78,22 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should use the profile described in the annotation", func() {
+		drainEvents := func() int {
+			count := 0
+		loop:
+			for {
+				select {
+				case <-eventRecorder.Events:
+					count++
+					break
+				default:
+					break loop
+				}
+			}
+			return count
+		}
+		drainEvents()
+
 		var node corev1.Node
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
@@ -102,6 +118,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(trueStr))
+		Expect(drainEvents()).To(BeNumerically(">", 2))
 	})
 
 	It("should annotate the last used profile", func() {
