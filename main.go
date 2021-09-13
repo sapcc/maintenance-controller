@@ -20,12 +20,15 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -40,6 +43,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
+	"github.com/sapcc/maintenance-controller/event"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -100,7 +104,11 @@ func main() {
 	}
 
 	setupChecks(mgr)
-	setupReconcilers(mgr, enableESXMaintenance)
+	err = setupReconcilers(mgr, enableESXMaintenance, restConfig)
+	if err != nil {
+		setupLog.Error(err, "problem setting up reconcilers")
+		os.Exit(1)
+	}
 
 	//+kubebuilder:scaffold:builder
 
@@ -122,15 +130,22 @@ func setupChecks(mgr manager.Manager) {
 	}
 }
 
-func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, restConfig *rest.Config) error {
+	clientSet, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return fmt.Errorf("Failed to init clientSet: %w", err)
+	}
+
+	eventLog := ctrl.Log.WithName("controllers").WithName("events")
+	eventRecorder := event.MakeRecorder(eventLog, mgr.GetScheme(), clientSet)
+
 	if err := (&controllers.NodeReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
+		Recorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
-		os.Exit(1)
+		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}
 
 	if enableESXMaintenance {
@@ -142,16 +157,15 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
 				return []string{pod.Spec.NodeName}
 			})
 		if err != nil {
-			setupLog.Error(err, "unable to create index spec.nodeName on pod resource.")
-			os.Exit(1)
+			return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
 		}
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
 		}
 		if err := mgr.Add(&controller); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "ESX")
-			os.Exit(1)
+			return fmt.Errorf("Failed to create ESX reconciler: %w", err)
 		}
 	}
+	return nil
 }

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -94,18 +95,23 @@ func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration
 // Returns the next node state.
 // In case of an error state.Label() is retuned alongside with the error.
 func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (NodeStateLabel, error) {
+	recorder := params.Recorder.(*event.SourcingRecorder)
+	source := v1.EventSource{
+		Component: "maintenance-controller",
+		Host:      node.Name,
+	}
 	// invoke notifications and check for transition
 	err := state.Notify(params, data)
 	if err != nil {
-		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+		recorder.SourcedEventf(node, source, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one notification plugin failed for profile %v: Will stay in %v state",
 			params.Profile.Current, params.State)
 		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile.Current, err)
 	}
 	next, err := state.Transition(params, data)
 	if err != nil {
-		params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one check plugin failed for profile: Will stay in %v state",
+		recorder.SourcedEventf(node, source, "Normal", "ChangeMaintenanceStateFailed",
+			"At least one check plugin failed for profile %v: Will stay in %v state",
 			params.Profile.Current, params.State)
 		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
 			"profile", params.Profile.Current)
@@ -117,12 +123,12 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 		err = state.Trigger(params, data)
 		if err != nil {
 			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile.Current)
-			params.Recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+			recorder.SourcedEventf(node, source, "Normal", "ChangeMaintenanceStateFailed",
 				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile.Current, params.State)
 			return state.Label(), err
 		} else {
 			params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile.Current)
-			params.Recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
+			recorder.SourcedEventf(node, source, "Normal", "ChangedMaintenanceState",
 				"The node is now in the %v state caused by profile %v", string(next), params.Profile.Current)
 			return next, nil
 		}

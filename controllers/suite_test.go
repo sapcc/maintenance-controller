@@ -25,12 +25,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/event"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -97,7 +99,6 @@ var cfg *rest.Config
 var k8sClient client.Client
 var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
-var eventRecorder *record.FakeRecorder
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -131,7 +132,10 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	eventRecorder = record.NewFakeRecorder(1024)
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	Expect(err).To(Succeed())
+
+	eventRecorder := event.MakeRecorder(logr.Discard(), scheme.Scheme, clientSet)
 	err = (&NodeReconciler{
 		Client:   k8sManager.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
