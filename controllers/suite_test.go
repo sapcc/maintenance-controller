@@ -25,12 +25,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/event"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -129,18 +127,15 @@ var _ = BeforeSuite(func() {
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme.Scheme,
 		MetricsBindAddress: "0",
+		EventBroadcaster:   event.NewNodeBroadcaster(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	Expect(err).To(Succeed())
-
-	eventRecorder := event.MakeRecorder(logr.Discard(), scheme.Scheme, clientSet)
 	err = (&NodeReconciler{
 		Client:   k8sManager.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   k8sManager.GetScheme(),
-		Recorder: eventRecorder,
+		Recorder: k8sManager.GetEventRecorderFor("controller"),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

@@ -22,15 +22,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/tools/record/util"
@@ -53,7 +51,7 @@ type eventBroadcasterImpl struct {
 }
 
 // Creates a new event broadcaster.
-func NewSourcingBroadcaster() record.EventBroadcaster {
+func NewNodeBroadcaster() record.EventBroadcaster {
 	return &eventBroadcasterImpl{
 		Broadcaster:   watch.NewBroadcaster(maxQueuedEvents, watch.DropIfChannelFull),
 		sleepDuration: defaultSleepDuration,
@@ -195,17 +193,17 @@ func (e *eventBroadcasterImpl) StartEventWatcher(eventHandler func(*v1.Event)) w
 
 // NewRecorder returns an EventRecorder that records events with the given event source.
 func (e *eventBroadcasterImpl) NewRecorder(scheme *runtime.Scheme, source v1.EventSource) record.EventRecorder {
-	return &SourcingRecorder{scheme, source, e.Broadcaster, clock.RealClock{}}
+	return &NodeRecorder{scheme, source, e.Broadcaster, clock.RealClock{}}
 }
 
-type SourcingRecorder struct {
+type NodeRecorder struct {
 	scheme *runtime.Scheme
 	source v1.EventSource
 	*watch.Broadcaster
 	clock clock.Clock
 }
 
-func (recorder *SourcingRecorder) generateEvent(object runtime.Object, annotations map[string]string,
+func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations map[string]string,
 	source *v1.EventSource, eventtype, reason, message string) {
 	ref, err := ref.GetReference(recorder.scheme, object)
 	if err != nil {
@@ -233,33 +231,25 @@ func (recorder *SourcingRecorder) generateEvent(object runtime.Object, annotatio
 	}()
 }
 
-func (recorder *SourcingRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+func (recorder *NodeRecorder) Event(object runtime.Object, eventtype, reason, message string) {
 	recorder.generateEvent(object, nil, nil, eventtype, reason, message)
 }
 
-func (recorder *SourcingRecorder) Eventf(object runtime.Object,
+func (recorder *NodeRecorder) Eventf(object runtime.Object,
 	eventtype, reason, messageFmt string, args ...interface{}) {
 	recorder.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
-func (recorder *SourcingRecorder) AnnotatedEventf(object runtime.Object,
+func (recorder *NodeRecorder) AnnotatedEventf(object runtime.Object,
 	annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
 	recorder.generateEvent(object, annotations, nil, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
-func (recorder *SourcingRecorder) SourcedEvent(object runtime.Object, source v1.EventSource,
-	eventtype, reason, message string) {
-	recorder.generateEvent(object, nil, &source, eventtype, reason, message)
-}
-
-func (recorder *SourcingRecorder) SourcedEventf(object runtime.Object, source v1.EventSource, eventtype, reason,
-	messageFmt string, args ...interface{}) {
-	recorder.SourcedEvent(object, source, eventtype, reason, fmt.Sprintf(messageFmt, args...))
-}
-
-func (recorder *SourcingRecorder) makeEvent(ref *v1.ObjectReference, annotations map[string]string,
+func (recorder *NodeRecorder) makeEvent(ref *v1.ObjectReference, annotations map[string]string,
 	eventtype, reason, message string) *v1.Event {
 	t := metav1.Time{Time: recorder.clock.Now()}
+	// this makes the event appear in kubectl describe node.
+	ref.UID = types.UID(ref.Name)
 	namespace := ref.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceDefault
@@ -278,15 +268,4 @@ func (recorder *SourcingRecorder) makeEvent(ref *v1.ObjectReference, annotations
 		Count:          1,
 		Type:           eventtype,
 	}
-}
-
-func MakeRecorder(log logr.Logger, scheme *runtime.Scheme, clientSet *kubernetes.Clientset) record.EventRecorder {
-	eventBroadcaster := NewSourcingBroadcaster()
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: clientSet.CoreV1().Events("")})
-	eventBroadcaster.StartEventWatcher(
-		func(e *v1.Event) {
-			log.Info("Send event", "type", e.Type, "object", e.InvolvedObject, "reason", e.Reason, "message", e.Message)
-		})
-	eventRecorder := eventBroadcaster.NewRecorder(scheme, v1.EventSource{Component: "maintenance-controller"})
-	return eventRecorder
 }

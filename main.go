@@ -26,9 +26,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -97,6 +95,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "6a2f7a03.cloud.sap",
+		EventBroadcaster:       event.NewNodeBroadcaster(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -104,7 +103,7 @@ func main() {
 	}
 
 	setupChecks(mgr)
-	err = setupReconcilers(mgr, enableESXMaintenance, restConfig)
+	err = setupReconcilers(mgr, enableESXMaintenance)
 	if err != nil {
 		setupLog.Error(err, "problem setting up reconcilers")
 		os.Exit(1)
@@ -130,20 +129,12 @@ func setupChecks(mgr manager.Manager) {
 	}
 }
 
-func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, restConfig *rest.Config) error {
-	clientSet, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return fmt.Errorf("Failed to init clientSet: %w", err)
-	}
-
-	eventLog := ctrl.Log.WithName("controllers").WithName("events")
-	eventRecorder := event.MakeRecorder(eventLog, mgr.GetScheme(), clientSet)
-
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
 	if err := (&controllers.NodeReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   mgr.GetScheme(),
-		Recorder: eventRecorder,
+		Recorder: mgr.GetEventRecorderFor("maintenance"),
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}

@@ -106,7 +106,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
 		Expect(events.Items).ToNot(HaveLen(0))
-		Expect(events.Items[0].Source.Host).To(Equal("targetnode"))
+		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo("targetnode"))
 	})
 
 	It("should annotate the last used profile", func() {
