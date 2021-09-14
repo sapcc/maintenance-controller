@@ -94,7 +94,7 @@ func main() {
 		Port:                   9443, //nolint:gomnd
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "6a2f7a03.cloud.sap",
+		LeaderElectionID:       "maintenance-controller-leader-election.cloud.sap",
 		EventBroadcaster:       event.NewNodeBroadcaster(),
 	})
 	if err != nil {
