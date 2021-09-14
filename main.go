@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -40,6 +41,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
+	"github.com/sapcc/maintenance-controller/event"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -93,6 +95,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "6a2f7a03.cloud.sap",
+		EventBroadcaster:       event.NewNodeBroadcaster(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -100,7 +103,11 @@ func main() {
 	}
 
 	setupChecks(mgr)
-	setupReconcilers(mgr, enableESXMaintenance)
+	err = setupReconcilers(mgr, enableESXMaintenance)
+	if err != nil {
+		setupLog.Error(err, "problem setting up reconcilers")
+		os.Exit(1)
+	}
 
 	//+kubebuilder:scaffold:builder
 
@@ -122,15 +129,14 @@ func setupChecks(mgr manager.Manager) {
 	}
 }
 
-func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
 	if err := (&controllers.NodeReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("maintenance-controller"),
+		Recorder: mgr.GetEventRecorderFor("maintenance"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Maintenance")
-		os.Exit(1)
+		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}
 
 	if enableESXMaintenance {
@@ -142,16 +148,15 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) {
 				return []string{pod.Spec.NodeName}
 			})
 		if err != nil {
-			setupLog.Error(err, "unable to create index spec.nodeName on pod resource.")
-			os.Exit(1)
+			return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
 		}
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
 		}
 		if err := mgr.Add(&controller); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "ESX")
-			os.Exit(1)
+			return fmt.Errorf("Failed to create ESX reconciler: %w", err)
 		}
 	}
+	return nil
 }
