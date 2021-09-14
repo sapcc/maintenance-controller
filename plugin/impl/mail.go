@@ -72,7 +72,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 
 // Notify performs connects to the provided SMTP server and transmits the configured message.
 func (m *Mail) Notify(params plugin.Parameters) error {
-	theMessage, err := plugin.RenderNotificationTemplate(m.Message, params)
+	theMessage, err := plugin.RenderNotificationTemplate(m.Message, &params)
 	theMessage = m.buildMailHeader() + theMessage
 	if err != nil {
 		return err

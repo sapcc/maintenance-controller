@@ -111,7 +111,7 @@ var _ = Describe("NotificationChain", func() {
 var _ = Describe("The notification", func() {
 
 	It("should render its template", func() {
-		result, err := RenderNotificationTemplate("{{.State}}", Parameters{State: "def"})
+		result, err := RenderNotificationTemplate("{{.State}}", &Parameters{State: "def"})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal("def"))
 	})

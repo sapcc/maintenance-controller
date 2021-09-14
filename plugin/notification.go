@@ -64,7 +64,7 @@ func (chain *NotificationChain) Execute(params Parameters) error {
 	return nil
 }
 
-func RenderNotificationTemplate(templateStr string, params Parameters) (string, error) {
+func RenderNotificationTemplate(templateStr string, params *Parameters) (string, error) {
 	templateObj, err := template.New("template").Parse(templateStr)
 	if err != nil {
 		return "", err

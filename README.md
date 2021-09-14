@@ -183,6 +183,16 @@ config:
   channel: the channel which the message should be send to, required
   message: the content of the slack message, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
 ```
+__slackThread__: Sends slack messages and groups them in a thread if the given lease did not expire
+```yaml
+config:
+  token: slack api token, required
+  channel: the channel which the message should be send to, required
+  message: the content of the slack message, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
+  leaseName: name of the lease, required
+  leaseNamespace: namespace of the lease, required
+  period: after which period a new thread should be started, required
+```
 One can get the current profile in a template using `{{ .Profile.Current }}`.
 Be careful about using it in an instance that is invoked during the `operational` state, as all profiles attached to a node are considered for notification.
 `{{ .Profile.Last }}` can be used instead, which refers to profile that caused the last state transition.

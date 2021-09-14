@@ -35,18 +35,18 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("The slack plugin", func() {
+var _ = Describe("The slack webhook plugin", func() {
 
 	It("should parse its config", func() {
 		configStr := "hook: http://example.com\nchannel: thechannel\nmessage: msg"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
-		var base Slack
+		var base SlackWebhook
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Slack).Hook).To(Equal("http://example.com"))
-		Expect(plugin.(*Slack).Channel).To(Equal("thechannel"))
-		Expect(plugin.(*Slack).Message).To(Equal("msg"))
+		Expect(plugin.(*SlackWebhook).Hook).To(Equal("http://example.com"))
+		Expect(plugin.(*SlackWebhook).Channel).To(Equal("thechannel"))
+		Expect(plugin.(*SlackWebhook).Message).To(Equal("msg"))
 	})
 
 	It("should send a message", func() {
@@ -81,7 +81,7 @@ var _ = Describe("The slack plugin", func() {
 			},
 			State: string(state.Operational),
 		}
-		plugin := Slack{Hook: "http://localhost:25566/", Channel: "thechannel", Message: "abc"}
+		plugin := SlackWebhook{Hook: "http://localhost:25566/", Channel: "thechannel", Message: "abc"}
 		err := plugin.Notify(params)
 		Expect(err).To(Succeed())
 
@@ -97,4 +97,21 @@ var _ = Describe("The slack plugin", func() {
 		Expect(len(result.Text) > 0).To(BeTrue())
 	})
 
+})
+
+var _ = Describe("The slack thread plugin", func() {
+	It("should parse its config", func() {
+		configStr := "token: token\nchannel: thechannel\nmessage: msg\nleaseName: lease\nleaseNamespace: default\nperiod: 1m"
+		config, err := yaml.NewConfig([]byte(configStr))
+		Expect(err).To(Succeed())
+		var base SlackThread
+		plugin, err := base.New(config)
+		Expect(err).To(Succeed())
+		Expect(plugin.(*SlackThread).Token).To(Equal("token"))
+		Expect(plugin.(*SlackThread).Channel).To(Equal("thechannel"))
+		Expect(plugin.(*SlackThread).Message).To(Equal("msg"))
+		Expect(plugin.(*SlackThread).LeaseName.Name).To(Equal("lease"))
+		Expect(plugin.(*SlackThread).LeaseName.Namespace).To(Equal("default"))
+		Expect(plugin.(*SlackThread).Period).To(Equal(time.Minute))
+	})
 })

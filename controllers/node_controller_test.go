@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/slack-go/slack/slacktest"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -118,7 +119,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(trueStr))
-		Expect(drainEvents()).To(BeNumerically(">", 2))
+		Expect(drainEvents()).To(BeNumerically(">", 1))
 	})
 
 	It("should annotate the last used profile", func() {
@@ -305,4 +306,43 @@ var _ = Describe("The stagger plugin", func() {
 		Expect(*lease.Spec.HolderIdentity).To(Equal("secondnode"))
 	})
 
+})
+
+var _ = Describe("The slack thread plugin", func() {
+	var server *slacktest.Server
+	var url string
+
+	BeforeEach(func() {
+		server = slacktest.NewTestServer()
+		server.Start()
+		url = server.GetAPIURL()
+	})
+
+	AfterEach(func() {
+		server.Stop()
+	})
+
+	It("should send a message and create its lease", func() {
+		slack := impl.SlackThread{
+			Token:   "",
+			Channel: "#thechannel",
+			Message: "msg",
+			LeaseName: types.NamespacedName{
+				Name:      "slack-lease",
+				Namespace: "default",
+			},
+			Period: 1 * time.Second,
+		}
+		slack.SetTestURL(url)
+		err := slack.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Eventually(func() []string {
+			return server.GetSeenOutboundMessages()
+		}).Should(HaveLen(1))
+		Eventually(func() error {
+			var lease coordinationv1.Lease
+			err := k8sClient.Get(context.Background(), slack.LeaseName, &lease)
+			return err
+		}).Should(Succeed())
+	})
 })

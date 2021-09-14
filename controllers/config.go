@@ -163,7 +163,8 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["condition"] = &impl.Condition{}
 	registry.CheckPlugins["stagger"] = &impl.Stagger{}
 
-	registry.NotificationPlugins["slack"] = &impl.Slack{}
+	registry.NotificationPlugins["slack"] = &impl.SlackWebhook{}
+	registry.NotificationPlugins["slackThread"] = &impl.SlackThread{}
 	registry.NotificationPlugins["mail"] = &impl.Mail{}
 
 	registry.TriggerPlugins["alterAnnotation"] = &impl.AlterAnnotation{}
