@@ -157,7 +157,7 @@ var _ = Describe("The controller", func() {
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
-		node.Labels[ProfileLabelKey] = "block-multi"
+		node.Labels[ProfileLabelKey] = "block--multi"
 		node.Labels["transition"] = trueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())

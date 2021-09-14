@@ -41,7 +41,7 @@ const Required NodeStateLabel = "maintenance-required"
 const InMaintenance NodeStateLabel = "in-maintenance"
 
 // profileSeparator is used to split the maintenance profile label string into multple profile names.
-const profileSeparator string = "-"
+const profileSeparator string = "--"
 
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
