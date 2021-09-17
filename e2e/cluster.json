@@ -13,7 +13,8 @@
       {
         "name": "pool",
         "flavor": "m1.medium",
-        "size": 2
+        "size": 2,
+        "availabilityZone": "qa-de-1a"
       }
     ]
   }

@@ -8,6 +8,14 @@ image:
 rbac:
   create: true
   serviceAccountName: maintenance-controller
+flatcar-linux-update-agent:
+  image:
+    registry: keppel.eu-de-1.cloud.sap
+    repository: ccloud/flatcar-linux-update-operator
+    tag: latest
+  rbac:
+    create: true
+    serviceAccountName: flatcar-linux-update-agent
 config: |
   intervals:
     requeue: 10s
