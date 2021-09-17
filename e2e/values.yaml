@@ -1,0 +1,53 @@
+global:
+  registry: keppel.eu-de-1.cloud.sap
+replicaCount: 2
+image:
+  repository: ccloud/maintenance-controller
+  tag: $TAG
+  pullPolicy: Always
+rbac:
+  create: true
+  serviceAccountName: maintenance-controller
+config: |
+  intervals:
+    requeue: 10s
+    notify: 5h
+  instances:
+      notify: null
+      check:
+      - hasAnnotation:
+          name: reboot_needed
+          config:
+              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
+              value: "true"
+      - hasAnnotation:
+          name: check_approval
+          config:
+              key: cloud.sap/maintenance-approved
+              value: "true"
+      trigger:
+      - alterAnnotation:
+          name: reboot-ok
+          config:
+              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+              value: "true"
+      - alterAnnotation:
+          name: remove_approval
+          config:
+              key: cloud.sap/maintenance-approved
+              remove: true
+      - alterAnnotation:
+          name: remove_reboot_ok
+          config:
+              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+              remove: true
+  profiles:
+    flatcar:
+      operational:
+        check: reboot_needed
+      maintenance-required:
+        check: check_approval
+        trigger: remove_approval && reboot-ok
+      in-maintenance:
+        check: "!reboot_needed"
+        trigger: remove_reboot_ok
