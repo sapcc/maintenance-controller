@@ -44,6 +44,7 @@ func TestBooks(t *testing.T) {
 }
 
 var k8sClient client.Client
+var maintainedKey client.ObjectKey
 
 func leadingPodName() string {
 	var leaderLease coordiantionv1.Lease
@@ -112,49 +113,51 @@ var _ = Describe("The maintenance controller", func() {
 			err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodified))
 			Expect(err).To(Succeed())
 		}
-		theNode := leadingNode()
-		unmodified := theNode.DeepCopy()
-		theNode.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] = "true"
-		err = k8sClient.Patch(context.Background(), theNode, client.MergeFrom(unmodified))
+		maintainedNode := leadingNode()
+		maintainedKey = client.ObjectKeyFromObject(maintainedNode)
+		unmodified := maintainedNode.DeepCopy()
+		maintainedNode.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] = "true"
+		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
 		Eventually(func() string {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Labels["cloud.sap/maintenance-state"]
 		}).Should(Equal("maintenance-required"))
 
 		By("approve maintenance")
-		unmodified = theNode.DeepCopy()
-		theNode.Annotations["cloud.sap/maintenance-approved"] = "true"
-		err = k8sClient.Patch(context.Background(), theNode, client.MergeFrom(unmodified))
+		unmodified = maintainedNode.DeepCopy()
+		maintainedNode.Annotations["cloud.sap/maintenance-approved"] = "true"
+		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
 		Eventually(func() string {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Labels["cloud.sap/maintenance-state"]
 		}).Should(Equal("in-maintenance"))
 		Eventually(func() bool {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-ok"] == "true" && node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] == "true"
 		}).Should(BeTrue())
 
+		// node may reboot to fast to become NotReady
 		By("check node schedulable")
 		Eventually(func() bool {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 2*time.Minute).Should(BeTrue())
 
 		Eventually(func() bool {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 2*time.Minute).Should(BeFalse())
@@ -162,10 +165,17 @@ var _ = Describe("The maintenance controller", func() {
 		By("check operational")
 		Eventually(func() string {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(theNode), node)
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
 			return node.Labels["cloud.sap/maintenance-state"]
 		}).Should(Equal("operational"))
+	})
+
+	It("should generate events for the maintained node", func() {
+		eventList := &corev1.EventList{}
+		err := k8sClient.List(context.Background(), eventList, client.MatchingFields{".involvedObject.name": maintainedKey.Name, "reason": "ChangedMaintenanceState"})
+		Expect(err).To(Succeed())
+		Expect(eventList.Items).To(HaveLen(3))
 	})
 
 })
