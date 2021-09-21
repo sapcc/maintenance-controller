@@ -43,12 +43,17 @@ func TestBooks(t *testing.T) {
 	RunSpecs(t, "E2E Suite")
 }
 
+const TrueString = "true"
+
 var k8sClient client.Client
 var maintainedKey client.ObjectKey
 
 func leadingPodName() string {
 	var leaderLease coordiantionv1.Lease
-	err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "kube-system", Name: "maintenance-controller-leader-election.cloud.sap"}, &leaderLease)
+	err := k8sClient.Get(context.Background(), types.NamespacedName{
+		Namespace: "kube-system",
+		Name:      "maintenance-controller-leader-election.cloud.sap",
+	}, &leaderLease)
 	Expect(err).To(Succeed())
 	Expect(leaderLease.Spec.HolderIdentity).ToNot(BeNil())
 	return strings.Split(*leaderLease.Spec.HolderIdentity, "_")[0]
@@ -56,7 +61,10 @@ func leadingPodName() string {
 
 func leadingNode() *corev1.Node {
 	leadingPod := &corev1.Pod{}
-	err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: "kube-system", Name: leadingPodName()}, leadingPod)
+	err := k8sClient.Get(context.Background(), types.NamespacedName{
+		Namespace: "kube-system",
+		Name:      leadingPodName(),
+	}, leadingPod)
 	Expect(err).To(Succeed())
 	leadingNodeName := types.NamespacedName{Namespace: "default", Name: leadingPod.Spec.NodeName}
 	leadingNode := &corev1.Node{}
@@ -107,16 +115,17 @@ var _ = Describe("The maintenance controller", func() {
 		}
 
 		By("setup nodes")
-		for _, node := range nodeList.Items {
+		for i := range nodeList.Items {
+			node := &nodeList.Items[i]
 			unmodified := node.DeepCopy()
 			node.Labels["cloud.sap/maintenance-profile"] = "flatcar"
-			err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodified))
+			err = k8sClient.Patch(context.Background(), node, client.MergeFrom(unmodified))
 			Expect(err).To(Succeed())
 		}
 		maintainedNode := leadingNode()
 		maintainedKey = client.ObjectKeyFromObject(maintainedNode)
 		unmodified := maintainedNode.DeepCopy()
-		maintainedNode.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] = "true"
+		maintainedNode.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] = TrueString
 		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
@@ -129,7 +138,7 @@ var _ = Describe("The maintenance controller", func() {
 
 		By("approve maintenance")
 		unmodified = maintainedNode.DeepCopy()
-		maintainedNode.Annotations["cloud.sap/maintenance-approved"] = "true"
+		maintainedNode.Annotations["cloud.sap/maintenance-approved"] = TrueString
 		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
@@ -143,7 +152,8 @@ var _ = Describe("The maintenance controller", func() {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
-			return node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-ok"] == "true" && node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] == "true"
+			return node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-ok"] == TrueString &&
+				node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] == TrueString
 		}).Should(BeTrue())
 
 		// node may reboot to fast to become NotReady
@@ -173,7 +183,10 @@ var _ = Describe("The maintenance controller", func() {
 
 	It("should generate events for the maintained node", func() {
 		eventList := &corev1.EventList{}
-		err := k8sClient.List(context.Background(), eventList, client.MatchingFields{".involvedObject.name": maintainedKey.Name, "reason": "ChangedMaintenanceState"})
+		err := k8sClient.List(context.Background(), eventList, client.MatchingFields{
+			"involvedObject.name": maintainedKey.Name,
+			"reason":              "ChangedMaintenanceState",
+		})
 		Expect(err).To(Succeed())
 		Expect(eventList.Items).To(HaveLen(3))
 	})
