@@ -65,36 +65,49 @@ func (r *Runnable) NeedLeaderElection() bool {
 	return true
 }
 
-func (r *Runnable) Start(ctx context.Context) error {
-	// load the configuration
-	conf, err := yaml.NewConfigWithFile(ConfigFilePath)
+func (r *Runnable) loadConfig() (Config, error) {
+	yamlConf, err := yaml.NewConfigWithFile(ConfigFilePath)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed
-		return err
+		return Config{}, err
 	}
-	var configuration Config
-	err = conf.Unpack(&configuration)
+	var conf Config
+	err = yamlConf.Unpack(&conf)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (semantic error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed
+		return Config{}, err
+	}
+	return conf, nil
+}
+
+func (r *Runnable) Start(ctx context.Context) error {
+	conf, err := r.loadConfig()
+	if err != nil {
+		r.Log.Error(err, "Failed to load configuration")
 		return err
 	}
 	wait.JitterUntilWithContext(
 		ctx,
 		func(ctx context.Context) {
-			r.Reconcile(ctx, configuration)
+			r.Reconcile(ctx)
 		},
-		configuration.Intervals.Check.Period,
-		configuration.Intervals.Check.Jitter,
+		conf.Intervals.Check.Period,
+		conf.Intervals.Check.Jitter,
 		false,
 	)
 	return nil
 }
 
-func (r *Runnable) Reconcile(ctx context.Context, conf Config) {
+func (r *Runnable) Reconcile(ctx context.Context) {
+	conf, err := r.loadConfig()
+	if err != nil {
+		r.Log.Error(err, "Failed to load configuration")
+		return
+	}
 	var nodes v1.NodeList
-	err := r.Client.List(ctx, &nodes, client.HasLabels{HostLabelKey, FailureDomainLabelKey})
+	err = r.Client.List(ctx, &nodes, client.HasLabels{HostLabelKey, FailureDomainLabelKey})
 	if err != nil {
 		r.Log.Error(err, "Failed to retrieve list of cluster nodes.")
 		return
@@ -244,7 +257,7 @@ type Host struct {
 	Nodes []v1.Node
 }
 
-// Assigins nodes to their underlying ESX.
+// Assigns nodes to their underlying ESX.
 func ParseHostList(nodes []v1.Node) ([]Host, error) {
 	nodesOnHost := make(map[HostInfo][]v1.Node)
 	for i := range nodes {

@@ -22,24 +22,24 @@ The ESX controller is bundled within the maintenance controller binary. It needs
 To be placed in `./config/esx.yaml`.
 ```yaml
 intervals:
-  # Defines how frequent the controller will check for ESX hosts entering maintenance mode.
-  check:
+  # Defines how frequent the controller will check for ESX hosts entering maintenance mode
+  check: # changing the check interval requires a pod restart to come into effect
     jitter: 0.1 # required
     period: 5m # required
-  # Defines how long and frequent to check for pod deletions while draining.
+  # Defines how long and frequent to check for pod deletions while draining
   podDeletion:
     period: 5s # required
     timeout: 2m # required
-  # Defines how long to wait after a node has been drained.
+  # Defines how long to wait after a node has been drained
   # As node shutdowns are performed in a loop it helps staggering them.
   stagger: 20s # optional
 vCenters:
   # Defines the urls to vCenters in different availability zones.
   # $AZ is replaced with the single character availability zone.
   templateUrl: https://some-vcenter-url-$AZ # required
-  # Defines if a vCenters certificates should be checked.
+  # Defines if a vCenters certificates should be checked
   insecure: # optional, defaults to false
-  # Credentials for the vCenter per availability zone.
+  # Credentials for the vCenter per availability zone
   credentials: # required
     a:
       username: user # required
