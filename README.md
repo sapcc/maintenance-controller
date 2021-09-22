@@ -188,7 +188,8 @@ __slackThread__: Sends slack messages and groups them in a thread if the given l
 config:
   token: slack api token, required
   channel: the channel which the message should be send to, required
-  message: the content of the slack message, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
+  title: the content of the main slack message, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
+  message: the content of the slack replies, this supports golang templating e.g. {{ .State }} to get the current state as string or {{ .Node }} to access the node object, required
   leaseName: name of the lease, required
   leaseNamespace: namespace of the lease, required
   period: after which period a new thread should be started, required

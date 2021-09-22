@@ -101,7 +101,7 @@ var _ = Describe("The slack webhook plugin", func() {
 
 var _ = Describe("The slack thread plugin", func() {
 	It("should parse its config", func() {
-		configStr := "token: token\nchannel: thechannel\nmessage: msg\nleaseName: lease\nleaseNamespace: default\nperiod: 1m"
+		configStr := "token: token\nchannel: thechannel\ntitle: title\nmessage: msg\nleaseName: lease\nleaseNamespace: default\nperiod: 1m"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackThread
@@ -110,6 +110,7 @@ var _ = Describe("The slack thread plugin", func() {
 		Expect(plugin.(*SlackThread).Token).To(Equal("token"))
 		Expect(plugin.(*SlackThread).Channel).To(Equal("thechannel"))
 		Expect(plugin.(*SlackThread).Message).To(Equal("msg"))
+		Expect(plugin.(*SlackThread).Title).To(Equal("title"))
 		Expect(plugin.(*SlackThread).LeaseName.Name).To(Equal("lease"))
 		Expect(plugin.(*SlackThread).LeaseName.Namespace).To(Equal("default"))
 		Expect(plugin.(*SlackThread).Period).To(Equal(time.Minute))

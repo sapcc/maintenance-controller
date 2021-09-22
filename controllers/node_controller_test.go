@@ -313,6 +313,7 @@ var _ = Describe("The slack thread plugin", func() {
 	It("should send a message and create its lease", func() {
 		slack := impl.SlackThread{
 			Token:   "",
+			Title:   "title",
 			Channel: "#thechannel",
 			Message: "msg",
 			LeaseName: types.NamespacedName{
@@ -326,7 +327,7 @@ var _ = Describe("The slack thread plugin", func() {
 		Expect(err).To(Succeed())
 		Eventually(func() []string {
 			return server.GetSeenOutboundMessages()
-		}).Should(HaveLen(1))
+		}).Should(HaveLen(2))
 		Eventually(func() error {
 			var lease coordinationv1.Lease
 			err := k8sClient.Get(context.Background(), slack.LeaseName, &lease)

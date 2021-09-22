@@ -95,6 +95,7 @@ func (sw *SlackWebhook) Notify(params plugin.Parameters) error {
 type SlackThread struct {
 	Token     string
 	Channel   string
+	Title     string
 	Message   string
 	LeaseName types.NamespacedName
 	Period    time.Duration
@@ -106,6 +107,7 @@ func (st *SlackThread) New(config *ucfg.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Token          string        `config:"token" validate:"required"`
 		Channel        string        `config:"channel" validate:"required"`
+		Title          string        `config:"title" validate:"required"`
 		Message        string        `config:"message" validate:"required"`
 		LeaseName      string        `config:"leaseName" validate:"required"`
 		LeaseNamespace string        `config:"leaseNamespace" validate:"required"`
@@ -120,6 +122,7 @@ func (st *SlackThread) New(config *ucfg.Config) (plugin.Notifier, error) {
 		Token:   conf.Token,
 		Channel: conf.Channel,
 		Message: conf.Message,
+		Title:   conf.Title,
 		Period:  conf.Period,
 		LeaseName: types.NamespacedName{
 			Namespace: conf.LeaseNamespace,
@@ -145,9 +148,13 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	err := params.Client.Get(params.Ctx, st.LeaseName, &lease)
 	if k8serrors.IsNotFound(err) {
 		// create message
-		parent_ts, err := st.postMessage(&params, api)
+		parent_ts, err := st.postTitle(&params, api)
 		if err != nil {
 			return fmt.Errorf("Failed to post message to slack: %w", err)
+		}
+		err = st.replyMessage(&params, api, parent_ts)
+		if err != nil {
+			return fmt.Errorf("Failed to reply to slack thread: %w", err)
 		}
 		// create lease
 		err = st.createLease(&params, parent_ts)
@@ -164,16 +171,20 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		if lease.Spec.HolderIdentity == nil {
 			return fmt.Errorf("Slack Thread leases has no holder")
 		}
-		_, err := st.replyMessage(&params, api, *lease.Spec.HolderIdentity)
+		err := st.replyMessage(&params, api, *lease.Spec.HolderIdentity)
 		if err != nil {
 			return fmt.Errorf("Failed to reply to slack thread: %w", err)
 		}
 		return nil
 	}
 	// create message
-	parent_ts, err := st.postMessage(&params, api)
+	parent_ts, err := st.postTitle(&params, api)
 	if err != nil {
 		return fmt.Errorf("Failed to post message to slack: %w", err)
+	}
+	err = st.replyMessage(&params, api, parent_ts)
+	if err != nil {
+		return fmt.Errorf("Failed to reply to slack thread: %w", err)
 	}
 	// update Lease
 	err = st.updateLease(&params, parent_ts, &lease)
@@ -183,8 +194,8 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	return nil
 }
 
-func (st *SlackThread) postMessage(params *plugin.Parameters, api *slack.Client) (string, error) {
-	theMessage, err := plugin.RenderNotificationTemplate(st.Message, params)
+func (st *SlackThread) postTitle(params *plugin.Parameters, api *slack.Client) (string, error) {
+	theMessage, err := plugin.RenderNotificationTemplate(st.Title, params)
 	if err != nil {
 		return "", err
 	}
@@ -195,17 +206,17 @@ func (st *SlackThread) postMessage(params *plugin.Parameters, api *slack.Client)
 	return ts, nil
 }
 
-func (st *SlackThread) replyMessage(params *plugin.Parameters, api *slack.Client, parent_ts string) (string, error) {
+func (st *SlackThread) replyMessage(params *plugin.Parameters, api *slack.Client, parent_ts string) error {
 	theMessage, err := plugin.RenderNotificationTemplate(st.Message, params)
 	if err != nil {
-		return "", err
+		return err
 	}
-	_, ts, err := api.PostMessageContext(params.Ctx, st.Channel,
+	_, _, err = api.PostMessageContext(params.Ctx, st.Channel,
 		slack.MsgOptionText(theMessage, true), slack.MsgOptionTS(parent_ts))
 	if err != nil {
-		return "", err
+		return err
 	}
-	return ts, nil
+	return nil
 }
 
 func (st *SlackThread) createLease(params *plugin.Parameters, parent_ts string) error {
