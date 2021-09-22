@@ -101,7 +101,13 @@ var _ = Describe("The slack webhook plugin", func() {
 
 var _ = Describe("The slack thread plugin", func() {
 	It("should parse its config", func() {
-		configStr := "token: token\nchannel: thechannel\ntitle: title\nmessage: msg\nleaseName: lease\nleaseNamespace: default\nperiod: 1m"
+		configStr := "token: token\n" +
+			"channel: thechannel\n" +
+			"title: title\n" +
+			"message: msg\n" +
+			"leaseName: lease\n" +
+			"leaseNamespace: default\n" +
+			"period: 1m\n"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackThread
