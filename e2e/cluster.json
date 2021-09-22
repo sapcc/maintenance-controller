@@ -1,0 +1,21 @@
+{
+  "name": "maintenance-con-e2e",
+  "spec": {
+    "openstack": {
+      "routerID": "07c17911-0624-4933-b693-282c5447adfe",
+      "networkID": "a7ec6c35-4e17-4e97-aa2b-0d93e56bb6c7",
+      "lbSubnetID": "98697330-3e9e-4308-b351-eec5fcffe5b7"
+    },
+    "version": "1.20.8",
+    "serviceCIDR": "198.18.192.0/18",
+    "clusterCIDR": "100.100.0.0/17",
+    "nodePools": [
+      {
+        "name": "pool",
+        "flavor": "m1.medium",
+        "size": 2,
+        "availabilityZone": "qa-de-1a"
+      }
+    ]
+  }
+}
