@@ -40,7 +40,8 @@ var _ = Describe("The mail plugin", func() {
 		var base Mail
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
-		mail := plugin.(*Mail)
+		mail, ok := plugin.(*Mail)
+		Expect(ok).To(BeTrue())
 		Expect(mail.Address).To(Equal("addr"))
 		Expect(mail.Auth).To(BeTrue())
 		Expect(mail.From).To(Equal("from"))

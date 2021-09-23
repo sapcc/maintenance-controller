@@ -182,7 +182,7 @@ func (r *Registry) loadCheckInstances(config *ucfg.Config) error {
 	checkCount, err := config.CountField(checkID)
 	// no checks configured, return without error is valid
 	if err != nil {
-		return nil
+		return nil // nolint:nilerr
 	}
 	for i := 0; i < checkCount; i++ {
 		oneCheck, err := config.Child(checkID, i)
@@ -200,7 +200,7 @@ func (r *Registry) loadCheckInstances(config *ucfg.Config) error {
 		}
 		err = r.loadCheckInstance(pluginConfig, pluginType)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 	return nil
@@ -235,7 +235,7 @@ func (r *Registry) loadNotificationInstances(config *ucfg.Config) error {
 	notificationCount, err := config.CountField(notificationID)
 	// no notifications configured, return without error is valid
 	if err != nil {
-		return nil
+		return nil // nolint:nilerr
 	}
 	for i := 0; i < notificationCount; i++ {
 		oneCheck, err := config.Child(notificationID, i)
@@ -253,7 +253,7 @@ func (r *Registry) loadNotificationInstances(config *ucfg.Config) error {
 		}
 		err = r.loadNotificationInstance(pluginConfig, pluginType)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 	return nil
@@ -288,7 +288,7 @@ func (r *Registry) loadTriggerInstances(config *ucfg.Config) error {
 	triggerCount, err := config.CountField(triggerID)
 	// no triggers configured, return without error is valid
 	if err != nil {
-		return nil
+		return nil // nolint:nilerr
 	}
 	for i := 0; i < triggerCount; i++ {
 		oneCheck, err := config.Child(triggerID, i)
@@ -306,7 +306,7 @@ func (r *Registry) loadTriggerInstances(config *ucfg.Config) error {
 		}
 		err = r.loadTriggerInstance(pluginConfig, pluginType)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 	return nil

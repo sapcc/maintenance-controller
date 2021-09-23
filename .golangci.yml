@@ -19,5 +19,28 @@ linters:
   - godot
   - nestif
   - nolintlint
+  - bodyclose
+  - cyclop
+  - dogsled
+  - durationcheck
+  - errorlint
+  - exhaustive
+  - exportloopref
+  - forcetypeassert
+  - importas
+  - makezero
+  - nilerr
+  - noctx
+  - predeclared
+  - tagliatelle
+  - wastedassign
+  # - revive
+  # - ifshort
   disable-all: false
   fast: false
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - forcetypeassert

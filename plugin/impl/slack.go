@@ -74,7 +74,12 @@ func (sw *SlackWebhook) Notify(params plugin.Parameters) error {
 	if err != nil {
 		return err
 	}
-	rsp, err := http.Post(sw.Hook, "application/json", bytes.NewReader(marshaled))
+	req, err := http.NewRequestWithContext(params.Ctx, http.MethodPost, sw.Hook, bytes.NewReader(marshaled))
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return err
+	}
+	rsp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -147,16 +152,10 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	var lease coordinationv1.Lease
 	err := params.Client.Get(params.Ctx, st.LeaseName, &lease)
 	if k8serrors.IsNotFound(err) {
-		// create message
-		parent_ts, err := st.postTitle(&params, api)
-		if err != nil {
-			return fmt.Errorf("Failed to post message to slack: %w", err)
-		}
-		err = st.replyMessage(&params, api, parent_ts)
+		parent_ts, err := st.startThread(&params, api)
 		if err != nil {
 			return fmt.Errorf("Failed to reply to slack thread: %w", err)
 		}
-		// create lease
 		err = st.createLease(&params, parent_ts)
 		if err != nil {
 			return fmt.Errorf("Failed to create slack thread lease %s: %w", st.LeaseName, err)
@@ -177,12 +176,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		}
 		return nil
 	}
-	// create message
-	parent_ts, err := st.postTitle(&params, api)
-	if err != nil {
-		return fmt.Errorf("Failed to post message to slack: %w", err)
-	}
-	err = st.replyMessage(&params, api, parent_ts)
+	parent_ts, err := st.startThread(&params, api)
 	if err != nil {
 		return fmt.Errorf("Failed to reply to slack thread: %w", err)
 	}
@@ -192,6 +186,18 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		return fmt.Errorf("Failed to update slack thread lease %s: %w", st.LeaseName, err)
 	}
 	return nil
+}
+
+func (st *SlackThread) startThread(params *plugin.Parameters, api *slack.Client) (string, error) {
+	parent_ts, err := st.postTitle(params, api)
+	if err != nil {
+		return "", fmt.Errorf("Failed to post message to slack: %w", err)
+	}
+	err = st.replyMessage(params, api, parent_ts)
+	if err != nil {
+		return "", fmt.Errorf("Failed to reply to slack thread: %w", err)
+	}
+	return parent_ts, nil
 }
 
 func (st *SlackThread) postTitle(params *plugin.Parameters, api *slack.Client) (string, error) {
