@@ -53,8 +53,7 @@ func (sw *SlackWebhook) New(config *ucfg.Config) (plugin.Notifier, error) {
 		Channel string `config:"channel" validate:"required"`
 		Message string `config:"message" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &SlackWebhook{Hook: conf.Hook, Channel: conf.Channel, Message: conf.Message}, nil
@@ -118,8 +117,7 @@ func (st *SlackThread) New(config *ucfg.Config) (plugin.Notifier, error) {
 		LeaseNamespace string        `config:"leaseNamespace" validate:"required"`
 		Period         time.Duration `config:"period" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &SlackThread{

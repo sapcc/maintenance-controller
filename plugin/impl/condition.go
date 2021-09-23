@@ -38,8 +38,7 @@ func (c *Condition) New(config *ucfg.Config) (plugin.Checker, error) {
 		Type   string `config:"type" validate:"required"`
 		Status string `config:"status" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &Condition{Type: conf.Type, Status: conf.Status}, nil

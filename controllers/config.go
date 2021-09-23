@@ -131,8 +131,7 @@ func loadPluginChains(config *ucfg.Config, registry *plugin.Registry) (state.Plu
 		Notify  string
 		Trigger string
 	}{}
-	err := config.Unpack(&texts)
-	if err != nil {
+	if err := config.Unpack(&texts); err != nil {
 		return chains, err
 	}
 	checkChain, err := registry.NewCheckChain(texts.Check)

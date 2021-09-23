@@ -45,8 +45,7 @@ func (s *Stagger) New(config *ucfg.Config) (plugin.Checker, error) {
 		LeaseName      string        `config:"leaseName" validate:"required"`
 		LeaseNamespace string        `config:"leaseNamespace" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &Stagger{LeaseName: types.NamespacedName{

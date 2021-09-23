@@ -140,8 +140,7 @@ func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration,
 	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
 		return nil
 	}
-	err := chain.Execute(params)
-	if err != nil {
+	if err := chain.Execute(params); err != nil {
 		return err
 	}
 	data.LastNotification = time.Now()

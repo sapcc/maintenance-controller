@@ -34,8 +34,7 @@ func (w *Wait) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration string `config:"duration" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	duration, err := time.ParseDuration(conf.Duration)
