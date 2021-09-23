@@ -152,11 +152,11 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	var lease coordinationv1.Lease
 	err := params.Client.Get(params.Ctx, st.LeaseName, &lease)
 	if k8serrors.IsNotFound(err) {
-		parent_ts, err := st.startThread(&params, api)
+		parentTS, err := st.startThread(&params, api)
 		if err != nil {
 			return fmt.Errorf("Failed to reply to slack thread: %w", err)
 		}
-		err = st.createLease(&params, parent_ts)
+		err = st.createLease(&params, parentTS)
 		if err != nil {
 			return fmt.Errorf("Failed to create slack thread lease %s: %w", st.LeaseName, err)
 		}
@@ -176,12 +176,12 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		}
 		return nil
 	}
-	parent_ts, err := st.startThread(&params, api)
+	parentTS, err := st.startThread(&params, api)
 	if err != nil {
 		return fmt.Errorf("Failed to reply to slack thread: %w", err)
 	}
 	// update Lease
-	err = st.updateLease(&params, parent_ts, &lease)
+	err = st.updateLease(&params, parentTS, &lease)
 	if err != nil {
 		return fmt.Errorf("Failed to update slack thread lease %s: %w", st.LeaseName, err)
 	}
@@ -189,15 +189,15 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 }
 
 func (st *SlackThread) startThread(params *plugin.Parameters, api *slack.Client) (string, error) {
-	parent_ts, err := st.postTitle(params, api)
+	parentTS, err := st.postTitle(params, api)
 	if err != nil {
 		return "", fmt.Errorf("Failed to post message to slack: %w", err)
 	}
-	err = st.replyMessage(params, api, parent_ts)
+	err = st.replyMessage(params, api, parentTS)
 	if err != nil {
 		return "", fmt.Errorf("Failed to reply to slack thread: %w", err)
 	}
-	return parent_ts, nil
+	return parentTS, nil
 }
 
 func (st *SlackThread) postTitle(params *plugin.Parameters, api *slack.Client) (string, error) {
@@ -212,24 +212,24 @@ func (st *SlackThread) postTitle(params *plugin.Parameters, api *slack.Client) (
 	return ts, nil
 }
 
-func (st *SlackThread) replyMessage(params *plugin.Parameters, api *slack.Client, parent_ts string) error {
+func (st *SlackThread) replyMessage(params *plugin.Parameters, api *slack.Client, parentTS string) error {
 	theMessage, err := plugin.RenderNotificationTemplate(st.Message, params)
 	if err != nil {
 		return err
 	}
 	_, _, err = api.PostMessageContext(params.Ctx, st.Channel,
-		slack.MsgOptionText(theMessage, true), slack.MsgOptionTS(parent_ts))
+		slack.MsgOptionText(theMessage, true), slack.MsgOptionTS(parentTS))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (st *SlackThread) createLease(params *plugin.Parameters, parent_ts string) error {
+func (st *SlackThread) createLease(params *plugin.Parameters, parentTS string) error {
 	var lease coordinationv1.Lease
 	lease.Name = st.LeaseName.Name
 	lease.Namespace = st.LeaseName.Namespace
-	lease.Spec.HolderIdentity = &parent_ts
+	lease.Spec.HolderIdentity = &parentTS
 	now := v1.MicroTime{
 		Time: time.Now(),
 	}
@@ -241,9 +241,9 @@ func (st *SlackThread) createLease(params *plugin.Parameters, parent_ts string) 
 	return err
 }
 
-func (st *SlackThread) updateLease(params *plugin.Parameters, parent_ts string, lease *coordinationv1.Lease) error {
+func (st *SlackThread) updateLease(params *plugin.Parameters, parentTS string, lease *coordinationv1.Lease) error {
 	unmodified := lease.DeepCopy()
-	lease.Spec.HolderIdentity = &parent_ts
+	lease.Spec.HolderIdentity = &parentTS
 	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now()}
 	err := params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
 	return err

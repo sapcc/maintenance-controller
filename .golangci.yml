@@ -34,7 +34,7 @@ linters:
   - predeclared
   - tagliatelle
   - wastedassign
-  # - revive
+  - revive
   # - ifshort
   disable-all: false
   fast: false

@@ -185,7 +185,7 @@ var _ = Describe("ensureVmOff", func() {
 	})
 
 	It("should shutdown a VM", func() {
-		err := ensureVmOff(context.Background(), vCenters, HostInfo{
+		err := ensureVMOff(context.Background(), vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}, "firstvm")
