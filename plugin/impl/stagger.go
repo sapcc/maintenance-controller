@@ -56,20 +56,15 @@ func (s *Stagger) New(config *ucfg.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that since the last successful check is a certain time has passed.
-// Because the underlying lease is updated when it timed out, it is strongly recommended
-// to use this check as the last one in a given plugin chain.
 func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
 	lease, err := s.getOrCreateLease(&params)
 	if err != nil {
 		return false, err
 	}
-	if params.Node.Name == *lease.Spec.HolderIdentity {
-		return true, s.renewLease(&params, &lease)
-	}
 	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 		return false, nil
 	}
-	return true, s.grabLease(&params, &lease)
+	return true, nil
 }
 
 func (s *Stagger) getOrCreateLease(params *plugin.Parameters) (coordinationv1.Lease, error) {
@@ -84,11 +79,13 @@ func (s *Stagger) getOrCreateLease(params *plugin.Parameters) (coordinationv1.Le
 	lease.Name = s.LeaseName.Name
 	lease.Namespace = s.LeaseName.Namespace
 	lease.Spec.HolderIdentity = &params.Node.Name
-	now := v1.MicroTime{
-		Time: time.Now(),
+	// Create the lease in the past, so it can immediately pass the timeout check.
+	// In AfterEval() the lease will then also receive sensible values.
+	past := v1.MicroTime{
+		Time: time.Now().Add(-2 * s.Duration),
 	}
-	lease.Spec.AcquireTime = &now
-	lease.Spec.RenewTime = &now
+	lease.Spec.AcquireTime = &past
+	lease.Spec.RenewTime = &past
 	secs := int32(s.Duration.Seconds())
 	lease.Spec.LeaseDurationSeconds = &secs
 	err = params.Client.Create(params.Ctx, &lease)
@@ -98,10 +95,17 @@ func (s *Stagger) getOrCreateLease(params *plugin.Parameters) (coordinationv1.Le
 	return lease, nil
 }
 
-func (s *Stagger) renewLease(params *plugin.Parameters, lease *coordinationv1.Lease) error {
-	unmodified := lease.DeepCopy()
-	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now()}
-	return params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
+// If the whole check chain passed, the lease needs to be grabed, so other nodes are blocked from progressing.
+func (s *Stagger) AfterEval(chainResult bool, params plugin.Parameters) error {
+	if !chainResult {
+		return nil
+	}
+	lease := &coordinationv1.Lease{}
+	err := params.Client.Get(params.Ctx, s.LeaseName, lease)
+	if err != nil {
+		return err
+	}
+	return s.grabLease(&params, lease)
 }
 
 func (s *Stagger) grabLease(params *plugin.Parameters, lease *coordinationv1.Lease) error {

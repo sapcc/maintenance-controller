@@ -51,3 +51,7 @@ func (w *Wait) Check(params plugin.Parameters) (bool, error) {
 	}
 	return false, nil
 }
+
+func (w *Wait) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}

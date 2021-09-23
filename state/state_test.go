@@ -116,6 +116,10 @@ func (c *mockCheck) New(config *ucfg.Config) (plugin.Checker, error) {
 	return &mockCheck{}, nil
 }
 
+func (c *mockCheck) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
 func mockCheckChain() (plugin.CheckChain, *mockCheck) {
 	p := &mockCheck{}
 	instance := plugin.CheckInstance{

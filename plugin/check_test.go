@@ -41,6 +41,10 @@ func (c *trueCheck) New(config *ucfg.Config) (Checker, error) {
 	return &trueCheck{}, nil
 }
 
+func (c *trueCheck) AfterEval(chainResult bool, params Parameters) error {
+	return nil
+}
+
 type falseCheck struct {
 	Invoked int
 }
@@ -54,6 +58,10 @@ func (c *falseCheck) New(config *ucfg.Config) (Checker, error) {
 	return &falseCheck{}, nil
 }
 
+func (c *falseCheck) AfterEval(chainResult bool, params Parameters) error {
+	return nil
+}
+
 type errorCheck struct {
 	Invoked int
 }
@@ -65,6 +73,10 @@ func (c *errorCheck) Check(params Parameters) (bool, error) {
 
 func (c *errorCheck) New(config *ucfg.Config) (Checker, error) {
 	return &errorCheck{}, nil
+}
+
+func (c *errorCheck) AfterEval(chainResult bool, params Parameters) error {
+	return nil
 }
 
 var _ = Describe("CheckChain", func() {

@@ -56,6 +56,10 @@ func (h *HasAnnotation) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
+func (h *HasAnnotation) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
 // AlterAnnotation is a trigger plugin, which can add, change or remove an annotation.
 type AlterAnnotation struct {
 	Key    string

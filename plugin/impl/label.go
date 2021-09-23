@@ -55,6 +55,10 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
+func (h *HasLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
 // AlterLabel is a trigger plugin, which can add, change or remove a label.
 type AlterLabel struct {
 	Key    string

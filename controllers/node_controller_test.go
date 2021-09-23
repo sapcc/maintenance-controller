@@ -265,32 +265,32 @@ var _ = Describe("The stagger plugin", func() {
 		Expect(err).To(Succeed())
 	})
 
-	It("creates the lease object", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
+	checkNode := func(stagger *impl.Stagger, node *corev1.Node) bool {
+		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
-	})
+		err = stagger.AfterEval(result, plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		return result
+	}
 
 	It("blocks within the lease duration", func() {
 		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		result := checkNode(&stagger, firstNode)
+		Expect(result).To(BeTrue())
+		result = checkNode(&stagger, firstNode)
+		Expect(result).To(BeFalse())
+		result = checkNode(&stagger, secondNode)
 		Expect(result).To(BeFalse())
 	})
 
 	It("grabs the lease after it timed out", func() {
 		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		checkNode(&stagger, firstNode)
 		time.Sleep(4 * time.Second)
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		result := checkNode(&stagger, secondNode)
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
-		err = k8sClient.Get(context.Background(), leaseName, lease)
+		err := k8sClient.Get(context.Background(), leaseName, lease)
 		Expect(err).To(Succeed())
 		Expect(*lease.Spec.HolderIdentity).To(Equal("secondnode"))
 	})
