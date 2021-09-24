@@ -253,16 +253,14 @@ var _ = Describe("The stagger plugin", func() {
 	})
 
 	AfterEach(func() {
-		var lease coordinationv1.Lease
-		lease.Name = leaseName.Name
-		lease.Namespace = leaseName.Namespace
-		err := k8sClient.Delete(context.Background(), &lease)
-		Expect(err).To(Succeed())
-
-		err = k8sClient.Delete(context.Background(), firstNode)
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), secondNode)
-		Expect(err).To(Succeed())
+		var leaseList coordinationv1.LeaseList
+		Expect(k8sClient.List(context.Background(), &leaseList)).To(Succeed())
+		for i := range leaseList.Items {
+			err := k8sClient.Delete(context.Background(), &leaseList.Items[i])
+			Expect(err).To(Succeed())
+		}
+		Expect(k8sClient.Delete(context.Background(), firstNode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), secondNode)).To(Succeed())
 	})
 
 	checkNode := func(stagger *impl.Stagger, node *corev1.Node) bool {
@@ -274,7 +272,12 @@ var _ = Describe("The stagger plugin", func() {
 	}
 
 	It("blocks within the lease duration", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
 		result := checkNode(&stagger, firstNode)
 		Expect(result).To(BeTrue())
 		result = checkNode(&stagger, firstNode)
@@ -284,15 +287,34 @@ var _ = Describe("The stagger plugin", func() {
 	})
 
 	It("grabs the lease after it timed out", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
 		checkNode(&stagger, firstNode)
 		time.Sleep(4 * time.Second)
 		result := checkNode(&stagger, secondNode)
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
-		err := k8sClient.Get(context.Background(), leaseName, lease)
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: "default",
+			Name:      stagger.LeaseName + "-0",
+		}, lease)
 		Expect(err).To(Succeed())
 		Expect(*lease.Spec.HolderIdentity).To(Equal("secondnode"))
+	})
+
+	It("passes for two nodes if parallel is 2", func() {
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       2,
+		}
+		Expect(checkNode(&stagger, firstNode)).To(BeTrue())
+		Expect(checkNode(&stagger, secondNode)).To(BeTrue())
 	})
 
 })

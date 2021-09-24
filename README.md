@@ -134,20 +134,21 @@ config:
 __condition__ Checks if a node condition has the defined status.
 ```yaml
 config:
-  type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable)
-  status: the expected condition status (usually one of True, False or Unknown)
+  type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable), required
+  status: the expected condition status (usually one of True, False or Unknown), required
 ```
 __maxMaintenance:__ Checks that less than the specified amount of nodes are in the in-maintenance state. Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
 ```yaml
 config:
-  max: the limit of nodes that are in-maintenance
+  max: the limit of nodes that are in-maintenance, required
 ```
-__stagger__: Checks that a certain duration has passed since the previous node passed. This is implemented with a `coordination.k8s.io/Lease`, which needs to be manually removed when the maintenance controller is removed from a cluster.
+__stagger__: Checks that a certain duration has passed since a previous node passed. This is implemented with `coordination.k8s.io/Lease`s, which needs to be manually removed when the maintenance controller is removed from a cluster.
 ```yaml
 config:
   duration: the duration to await, required
-  leaseName: name of the lease, required
+  leaseName: name prefix of the lease, required
   leaseNamespace: namespace of the lease, required
+  parallel: the amount of leases to use, optional (defaults to 1)
 ```
 __timeWindow:__ Checks if the current systemtime is within the specified weekly UTC time window.
 ```yaml
