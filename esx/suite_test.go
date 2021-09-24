@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"testing"
 	"text/template"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -105,6 +106,7 @@ func SetupSignalHandler() context.Context {
 }
 
 var _ = BeforeSuite(func() {
+	SetDefaultEventuallyTimeout(3 * time.Second)
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 	var err error
 
