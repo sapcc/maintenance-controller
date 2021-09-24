@@ -58,7 +58,7 @@ type ProfileInfo struct {
 	Last    string
 }
 
-// Parameters desecribes the parameters plugins get to work with.
+// Parameters describes the parameters plugins get to work with.
 type Parameters struct {
 	Node           *corev1.Node
 	State          string

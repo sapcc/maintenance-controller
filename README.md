@@ -161,6 +161,25 @@ __wait:__ Checks if a certain duration has passed since the last state transitio
 config:
   duration: a duration according to the rules of golangs time.ParseDuration(), required
 ```
+__affinity:__ Pods are rescheduled, when a node is drained. While maintaining a whole cluster it is possible that are rescheduled onto nodes, which are subject to another drain soon.
+This effect can be reduced by specifying a preferred node affinity towards nodes in the operational state.
+The affinity check plugin prefers to send nodes into maintenance, which do not have pods matching exactly the node affinity below, so nodes with non-critical pods are maintained first to provide operational nodes for critical workloads.
+This is not perfect, because nodes enter the maintenance-required over a certain duration, but better than ignoring such scheduling issues at all.
+__An instance of this check plugin can only be used for the maintenance-required state.__
+```yaml
+config: null
+```
+```yaml
+nodeAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+  - weight: 1 # the weight is not relevant
+    preference: # the preference has to match
+      matchExpressions:
+      - key: cloud.sap/maintenance-state
+        operator: In
+        values:
+        - operational
+```
 
 ### Notification Plugins
 __mail__: Sends an e-mail

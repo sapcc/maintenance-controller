@@ -390,3 +390,110 @@ var _ = Describe("The slack thread plugin", func() {
 		})))
 	})
 })
+
+var _ = Describe("The affinity plugin", func() {
+	var firstNode *corev1.Node
+	var secondNode *corev1.Node
+
+	BeforeEach(func() {
+		firstNode = &corev1.Node{}
+		firstNode.Name = "firstnode"
+		firstNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		err := k8sClient.Create(context.Background(), firstNode)
+		Expect(err).To(Succeed())
+
+		secondNode = &corev1.Node{}
+		secondNode.Name = "secondnode"
+		secondNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		err = k8sClient.Create(context.Background(), secondNode)
+		Expect(err).To(Succeed())
+	})
+
+	AfterEach(func() {
+		var podList corev1.PodList
+		Expect(k8sClient.List(context.Background(), &podList)).To(Succeed())
+		var gracePeriod int64
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			Expect(k8sClient.Delete(context.Background(), pod,
+				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
+		}
+		Expect(k8sClient.Delete(context.Background(), firstNode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), secondNode)).To(Succeed())
+	})
+
+	buildParams := func(node *corev1.Node) plugin.Parameters {
+		return plugin.Parameters{
+			Node:     node,
+			State:    node.Labels[StateLabelKey],
+			StateKey: StateLabelKey,
+			Client:   k8sClient,
+			Ctx:      context.Background(),
+		}
+	}
+
+	attachAffinityPod := func(nodeName string) {
+		pod := &corev1.Pod{}
+		pod.Namespace = "default"
+		pod.Name = nodeName + "-container"
+		pod.Spec.NodeName = nodeName
+		pod.Spec.Containers = []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		pod.Spec.Affinity = &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+					{
+						Weight: 1,
+						Preference: corev1.NodeSelectorTerm{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      StateLabelKey,
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{string(state.Operational)},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+	}
+
+	It("passes if current node has no affinity pod", func() {
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("fails if current has an affinity pod and the others don't", func() {
+		attachAffinityPod(firstNode.Name)
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("passes if all nodes have affinity pods", func() {
+		attachAffinityPod(firstNode.Name)
+		attachAffinityPod(secondNode.Name)
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("fails if node is not in maintenance-required", func() {
+		unmodified := firstNode.DeepCopy()
+		firstNode.Labels[StateLabelKey] = string(state.InMaintenance)
+		Expect(k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))).To(Succeed())
+		affinity := impl.Affinity{}
+		_, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(HaveOccurred())
+	})
+})
