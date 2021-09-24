@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slacktest"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -299,39 +300,93 @@ var _ = Describe("The stagger plugin", func() {
 var _ = Describe("The slack thread plugin", func() {
 	var server *slacktest.Server
 	var url string
+	var leaseName types.NamespacedName
 
 	BeforeEach(func() {
+		leaseName = types.NamespacedName{
+			Name:      "slack-lease",
+			Namespace: "default",
+		}
 		server = slacktest.NewTestServer()
 		server.Start()
 		url = server.GetAPIURL()
 	})
 
 	AfterEach(func() {
+		lease := &coordinationv1.Lease{}
+		Expect(k8sClient.Get(context.Background(), leaseName, lease)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), lease)).To(Succeed())
 		server.Stop()
 	})
 
-	It("should send a message and create its lease", func() {
-		slack := impl.SlackThread{
-			Token:   "",
-			Title:   "title",
-			Channel: "#thechannel",
-			Message: "msg",
-			LeaseName: types.NamespacedName{
-				Name:      "slack-lease",
-				Namespace: "default",
-			},
-			Period: 1 * time.Second,
+	fetchMessages := func() []slack.Msg {
+		msgs := make([]slack.Msg, 0)
+		for _, outbound := range server.GetSeenOutboundMessages() {
+			msg := slack.Msg{}
+			Expect(json.Unmarshal([]byte(outbound), &msg)).To(Succeed())
+			msgs = append(msgs, msg)
 		}
-		slack.SetTestURL(url)
-		err := slack.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		return msgs
+	}
+
+	It("should send a message and create its lease", func() {
+		thread := impl.SlackThread{
+			Token:     "",
+			Title:     "title",
+			Channel:   "#thechannel",
+			Message:   "msg",
+			LeaseName: leaseName,
+			Period:    1 * time.Second,
+		}
+		thread.SetTestURL(url)
+		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Eventually(func() []string {
-			return server.GetSeenOutboundMessages()
-		}).Should(HaveLen(2))
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.Msg) bool {
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Text == "title" && msgs[1].Text == "msg"
+		})))
 		Eventually(func() error {
 			var lease coordinationv1.Lease
-			err := k8sClient.Get(context.Background(), slack.LeaseName, &lease)
+			err := k8sClient.Get(context.Background(), thread.LeaseName, &lease)
 			return err
 		}).Should(Succeed())
+	})
+
+	It("should use replies if the lease did not timeout", func() {
+		thread := impl.SlackThread{
+			Token:     "",
+			Title:     "title",
+			Channel:   "#thechannel",
+			Message:   "msg",
+			LeaseName: leaseName,
+			Period:    5 * time.Second,
+		}
+		thread.SetTestURL(url)
+		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.Msg) bool {
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp
+		})))
+	})
+
+	It("creates a new thread once the lease times out", func() {
+		thread := impl.SlackThread{
+			Token:     "",
+			Title:     "title",
+			Channel:   "#thechannel",
+			Message:   "msg",
+			LeaseName: leaseName,
+			Period:    1 * time.Second,
+		}
+		thread.SetTestURL(url)
+		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		time.Sleep(2 * time.Second)
+		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.Msg) bool {
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
+		})))
 	})
 })

@@ -101,6 +101,8 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one notification plugin failed for profile %v: Will stay in %v state",
 			params.Profile.Current, params.State)
+		params.Log.Error(err, "Failed to notify", "state", params.State,
+			"profile", params.Profile.Current)
 		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile.Current, err)
 	}
 	next, err := state.Transition(params, data)

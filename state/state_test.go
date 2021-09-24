@@ -21,14 +21,18 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 func TestPlugins(t *testing.T) {
@@ -36,21 +40,25 @@ func TestPlugins(t *testing.T) {
 	RunSpecs(t, "Plugin Suite")
 }
 
-type successfulTrigger struct {
+type mockTrigger struct {
 	Invoked int
+	Fail    bool
 }
 
-func (n *successfulTrigger) Trigger(params plugin.Parameters) error {
+func (n *mockTrigger) Trigger(params plugin.Parameters) error {
 	n.Invoked++
+	if n.Fail {
+		return fmt.Errorf("mocked fail")
+	}
 	return nil
 }
 
-func (n *successfulTrigger) New(config *ucfg.Config) (plugin.Trigger, error) {
-	return &successfulTrigger{}, nil
+func (n *mockTrigger) New(config *ucfg.Config) (plugin.Trigger, error) {
+	return &mockTrigger{}, nil
 }
 
-func mockTriggerChain() (plugin.TriggerChain, *successfulTrigger) {
-	p := &successfulTrigger{}
+func mockTriggerChain() (plugin.TriggerChain, *mockTrigger) {
+	p := &mockTrigger{}
 	instance := plugin.TriggerInstance{
 		Plugin: p,
 		Name:   "mock",
@@ -61,21 +69,25 @@ func mockTriggerChain() (plugin.TriggerChain, *successfulTrigger) {
 	return chain, p
 }
 
-type successfulNotification struct {
+type mockNotificaiton struct {
 	Invoked int
+	Fail    bool
 }
 
-func (n *successfulNotification) Notify(params plugin.Parameters) error {
+func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
 	n.Invoked++
+	if n.Fail {
+		return fmt.Errorf("mocked fail")
+	}
 	return nil
 }
 
-func (n *successfulNotification) New(config *ucfg.Config) (plugin.Notifier, error) {
-	return &successfulNotification{}, nil
+func (n *mockNotificaiton) New(config *ucfg.Config) (plugin.Notifier, error) {
+	return &mockNotificaiton{}, nil
 }
 
-func mockNotificationChain() (plugin.NotificationChain, *successfulNotification) {
-	p := &successfulNotification{}
+func mockNotificationChain() (plugin.NotificationChain, *mockNotificaiton) {
+	p := &mockNotificaiton{}
 	instance := plugin.NotificationInstance{
 		Plugin: p,
 		Name:   "mock",
@@ -143,6 +155,67 @@ var _ = Describe("NotifyDefault", func() {
 		err := notifyDefault(plugin.Parameters{}, &data, 30*time.Millisecond, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
+	})
+
+})
+
+var _ = Describe("Apply", func() {
+
+	buildParams := func() plugin.Parameters {
+		return plugin.Parameters{
+			Recorder: record.NewFakeRecorder(128),
+			Profile:  plugin.ProfileInfo{Current: "profile"},
+			State:    string(Operational),
+			Log:      logr.Discard(),
+		}
+	}
+
+	It("fails if the notification plugin fails", func() {
+		chain, notify := mockNotificationChain()
+		notify.Fail = true
+		nodeState := operational{
+			label:    Operational,
+			interval: 1 * time.Hour,
+			chains: PluginChains{
+				Notification: chain,
+			},
+		}
+		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		Expect(err).To(HaveOccurred())
+		Expect(result).To(Equal(Operational))
+	})
+
+	It("fails if the check plugin fails", func() {
+		chain, check := mockCheckChain()
+		check.Fail = true
+		nodeState := operational{
+			label:    Operational,
+			interval: 1 * time.Hour,
+			chains: PluginChains{
+				Check: chain,
+			},
+		}
+		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		Expect(err).To(HaveOccurred())
+		Expect(result).To(Equal(Operational))
+	})
+
+	It("fails if the trigger plugin fails", func() {
+		checkChain, check := mockCheckChain()
+		check.Result = true
+		triggerChain, trigger := mockTriggerChain()
+		trigger.Fail = true
+		nodeState := operational{
+			label:    Operational,
+			interval: 1 * time.Hour,
+			chains: PluginChains{
+				Check:   checkChain,
+				Trigger: triggerChain,
+			},
+		}
+		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		Expect(err).To(HaveOccurred())
+		Expect(result).To(Equal(Operational))
 	})
 
 })

@@ -48,8 +48,8 @@ var _ = Describe("InMaintenance State", func() {
 	Context("with initialized chains", func() {
 
 		var chains PluginChains
-		var trigger *successfulTrigger
-		var notification *successfulNotification
+		var trigger *mockTrigger
+		var notification *mockNotificaiton
 		var check *mockCheck
 
 		BeforeEach(func() {
