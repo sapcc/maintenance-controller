@@ -144,7 +144,7 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
 			&v1.Pod{},
 			"spec.nodeName",
 			func(o client.Object) []string {
-				pod := o.(*v1.Pod)
+				pod := o.(*v1.Pod) // nolint:forcetypeassert
 				return []string{pod.Spec.NodeName}
 			})
 		if err != nil {

@@ -253,46 +253,68 @@ var _ = Describe("The stagger plugin", func() {
 	})
 
 	AfterEach(func() {
-		var lease coordinationv1.Lease
-		lease.Name = leaseName.Name
-		lease.Namespace = leaseName.Namespace
-		err := k8sClient.Delete(context.Background(), &lease)
-		Expect(err).To(Succeed())
-
-		err = k8sClient.Delete(context.Background(), firstNode)
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), secondNode)
-		Expect(err).To(Succeed())
+		var leaseList coordinationv1.LeaseList
+		Expect(k8sClient.List(context.Background(), &leaseList)).To(Succeed())
+		for i := range leaseList.Items {
+			err := k8sClient.Delete(context.Background(), &leaseList.Items[i])
+			Expect(err).To(Succeed())
+		}
+		Expect(k8sClient.Delete(context.Background(), firstNode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), secondNode)).To(Succeed())
 	})
 
-	It("creates the lease object", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
+	checkNode := func(stagger *impl.Stagger, node *corev1.Node) bool {
+		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
-	})
+		err = stagger.AfterEval(result, plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		return result
+	}
 
 	It("blocks within the lease duration", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
+		result := checkNode(&stagger, firstNode)
+		Expect(result).To(BeTrue())
+		result = checkNode(&stagger, firstNode)
+		Expect(result).To(BeFalse())
+		result = checkNode(&stagger, secondNode)
 		Expect(result).To(BeFalse())
 	})
 
 	It("grabs the lease after it timed out", func() {
-		stagger := impl.Stagger{Duration: 3 * time.Second, LeaseName: leaseName}
-		_, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: firstNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
+		checkNode(&stagger, firstNode)
 		time.Sleep(4 * time.Second)
-		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: secondNode, Ctx: context.Background()})
-		Expect(err).To(Succeed())
+		result := checkNode(&stagger, secondNode)
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
-		err = k8sClient.Get(context.Background(), leaseName, lease)
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: "default",
+			Name:      stagger.LeaseName + "-0",
+		}, lease)
 		Expect(err).To(Succeed())
 		Expect(*lease.Spec.HolderIdentity).To(Equal("secondnode"))
+	})
+
+	It("passes for two nodes if parallel is 2", func() {
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       2,
+		}
+		Expect(checkNode(&stagger, firstNode)).To(BeTrue())
+		Expect(checkNode(&stagger, secondNode)).To(BeTrue())
 	})
 
 })
@@ -388,5 +410,112 @@ var _ = Describe("The slack thread plugin", func() {
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.Msg) bool {
 			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
 		})))
+	})
+})
+
+var _ = Describe("The affinity plugin", func() {
+	var firstNode *corev1.Node
+	var secondNode *corev1.Node
+
+	BeforeEach(func() {
+		firstNode = &corev1.Node{}
+		firstNode.Name = "firstnode"
+		firstNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		err := k8sClient.Create(context.Background(), firstNode)
+		Expect(err).To(Succeed())
+
+		secondNode = &corev1.Node{}
+		secondNode.Name = "secondnode"
+		secondNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		err = k8sClient.Create(context.Background(), secondNode)
+		Expect(err).To(Succeed())
+	})
+
+	AfterEach(func() {
+		var podList corev1.PodList
+		Expect(k8sClient.List(context.Background(), &podList)).To(Succeed())
+		var gracePeriod int64
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			Expect(k8sClient.Delete(context.Background(), pod,
+				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
+		}
+		Expect(k8sClient.Delete(context.Background(), firstNode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), secondNode)).To(Succeed())
+	})
+
+	buildParams := func(node *corev1.Node) plugin.Parameters {
+		return plugin.Parameters{
+			Node:     node,
+			State:    node.Labels[StateLabelKey],
+			StateKey: StateLabelKey,
+			Client:   k8sClient,
+			Ctx:      context.Background(),
+		}
+	}
+
+	attachAffinityPod := func(nodeName string) {
+		pod := &corev1.Pod{}
+		pod.Namespace = "default"
+		pod.Name = nodeName + "-container"
+		pod.Spec.NodeName = nodeName
+		pod.Spec.Containers = []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		pod.Spec.Affinity = &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+					{
+						Weight: 1,
+						Preference: corev1.NodeSelectorTerm{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      StateLabelKey,
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{string(state.Operational)},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+	}
+
+	It("passes if current node has no affinity pod", func() {
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("fails if current has an affinity pod and the others don't", func() {
+		attachAffinityPod(firstNode.Name)
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("passes if all nodes have affinity pods", func() {
+		attachAffinityPod(firstNode.Name)
+		attachAffinityPod(secondNode.Name)
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("fails if node is not in maintenance-required", func() {
+		unmodified := firstNode.DeepCopy()
+		firstNode.Labels[StateLabelKey] = string(state.InMaintenance)
+		Expect(k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))).To(Succeed())
+		affinity := impl.Affinity{}
+		_, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(HaveOccurred())
 	})
 })

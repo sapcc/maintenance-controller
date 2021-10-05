@@ -53,8 +53,7 @@ func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
 		User     string   `config:"user"`
 		Password string   `config:"password"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &Mail{

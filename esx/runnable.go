@@ -177,7 +177,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 		}
 		time.Sleep(conf.Intervals.Stagger)
 		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
-		err = ensureVmOff(ctx, vCenters, esx.HostInfo, node.Name)
+		err = ensureVMOff(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
 		}
@@ -189,7 +189,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 func (r *Runnable) ensureDrain(ctx context.Context, node *v1.Node, conf *Config) error {
 	deletable, err := GetPodsForDeletion(ctx, r.Client, node.Name)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch deletable pods: %w", err)
+		return fmt.Errorf("failed to fetch deletable pods: %w", err)
 	}
 	if len(deletable) == 0 {
 		return nil
@@ -205,7 +205,7 @@ func (r *Runnable) ensureDrain(ctx context.Context, node *v1.Node, conf *Config)
 		}
 	}
 	if deleteFailed {
-		return fmt.Errorf("Failed to delete at least one pod.")
+		return fmt.Errorf("failed to delete at least one pod")
 	}
 	r.Log.Info("Awaiting pod deletion.", "period", conf.Intervals.PodDeletion.Period,
 		"timeout", conf.Intervals.PodDeletion.Timeout)
@@ -215,7 +215,7 @@ func (r *Runnable) ensureDrain(ctx context.Context, node *v1.Node, conf *Config)
 		Timeout: conf.Intervals.PodDeletion.Timeout,
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to await pod deletions: %w", err)
+		return fmt.Errorf("failed to await pod deletions: %w", err)
 	}
 	return nil
 }
@@ -229,7 +229,7 @@ func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host
 			continue
 		}
 		r.Log.Info("Going to start VM", "node", node.Name)
-		err := ensureVmOn(ctx, vCenters, esx.HostInfo, node.Name)
+		err := ensureVMOn(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
 			r.Log.Error(err, "Failed to start VM.", "node", node.Name)
 			continue
@@ -284,11 +284,11 @@ func ParseHostList(nodes []v1.Node) ([]Host, error) {
 func parseHostInfo(node *v1.Node) (HostInfo, error) {
 	name, ok := node.Labels[HostLabelKey]
 	if !ok {
-		return HostInfo{}, fmt.Errorf("Node %v is missing label %v.", node.Name, HostLabelKey)
+		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, HostLabelKey)
 	}
 	failureDomain, ok := node.Labels[FailureDomainLabelKey]
 	if !ok {
-		return HostInfo{}, fmt.Errorf("Node %v is missing label %v.", node.Name, FailureDomainLabelKey)
+		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, FailureDomainLabelKey)
 	}
 	return HostInfo{
 		Name: name,

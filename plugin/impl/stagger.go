@@ -20,6 +20,7 @@
 package impl
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/elastic/go-ucfg"
@@ -34,8 +35,12 @@ import (
 // Stagger is a check plugin that checks that only one node
 // can pass every configurable period.
 type Stagger struct {
-	Duration  time.Duration
-	LeaseName types.NamespacedName
+	Duration       time.Duration
+	LeaseName      string
+	LeaseNamespace string
+	Parallel       int
+	// index of the available lease to grab in AfterEval()
+	grabIndex int
 }
 
 // New creates a new Stagger instance with the given config.
@@ -44,51 +49,54 @@ func (s *Stagger) New(config *ucfg.Config) (plugin.Checker, error) {
 		Duration       time.Duration `config:"duration" validate:"required"`
 		LeaseName      string        `config:"leaseName" validate:"required"`
 		LeaseNamespace string        `config:"leaseNamespace" validate:"required"`
-	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+		Parallel       int           `config:"parallel"`
+	}{Parallel: 1}
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &Stagger{LeaseName: types.NamespacedName{
-		Namespace: conf.LeaseNamespace,
-		Name:      conf.LeaseName},
-		Duration: conf.Duration}, nil
+	return &Stagger{
+		LeaseName:      conf.LeaseName,
+		LeaseNamespace: conf.LeaseNamespace,
+		Duration:       conf.Duration,
+		Parallel:       conf.Parallel,
+	}, nil
 }
 
 // Check asserts that since the last successful check is a certain time has passed.
-// Because the underlying lease is updated when it timed out, it is strongly recommended
-// to use this check as the last one in a given plugin chain.
 func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
-	lease, err := s.getOrCreateLease(&params)
-	if err != nil {
-		return false, err
+	for i := 0; i < s.Parallel; i++ {
+		lease, err := s.getOrCreateLease(i, &params)
+		if err != nil {
+			return false, err
+		}
+		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+			s.grabIndex = i
+			return true, nil
+		}
 	}
-	if params.Node.Name == *lease.Spec.HolderIdentity {
-		return true, s.renewLease(&params, &lease)
-	}
-	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
-		return false, nil
-	}
-	return true, s.grabLease(&params, &lease)
+	return false, nil
 }
 
-func (s *Stagger) getOrCreateLease(params *plugin.Parameters) (coordinationv1.Lease, error) {
+func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordinationv1.Lease, error) {
+	leaseKey := s.makeLeaseKey(idx)
 	var lease coordinationv1.Lease
-	err := params.Client.Get(params.Ctx, s.LeaseName, &lease)
+	err := params.Client.Get(params.Ctx, leaseKey, &lease)
 	if err == nil {
 		return lease, nil
 	}
 	if !errors.IsNotFound(err) {
 		return coordinationv1.Lease{}, err
 	}
-	lease.Name = s.LeaseName.Name
-	lease.Namespace = s.LeaseName.Namespace
+	lease.Name = leaseKey.Name
+	lease.Namespace = leaseKey.Namespace
 	lease.Spec.HolderIdentity = &params.Node.Name
-	now := v1.MicroTime{
-		Time: time.Now(),
+	// Create the lease in the past, so it can immediately pass the timeout check.
+	// In AfterEval() the lease will then also receive sensible values.
+	past := v1.MicroTime{
+		Time: time.Now().Add(-2 * s.Duration),
 	}
-	lease.Spec.AcquireTime = &now
-	lease.Spec.RenewTime = &now
+	lease.Spec.AcquireTime = &past
+	lease.Spec.RenewTime = &past
 	secs := int32(s.Duration.Seconds())
 	lease.Spec.LeaseDurationSeconds = &secs
 	err = params.Client.Create(params.Ctx, &lease)
@@ -98,10 +106,17 @@ func (s *Stagger) getOrCreateLease(params *plugin.Parameters) (coordinationv1.Le
 	return lease, nil
 }
 
-func (s *Stagger) renewLease(params *plugin.Parameters, lease *coordinationv1.Lease) error {
-	unmodified := lease.DeepCopy()
-	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now()}
-	return params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
+// If the whole check chain passed, the lease needs to be grabed, so other nodes are blocked from progressing.
+func (s *Stagger) AfterEval(chainResult bool, params plugin.Parameters) error {
+	if !chainResult {
+		return nil
+	}
+	lease := &coordinationv1.Lease{}
+	err := params.Client.Get(params.Ctx, s.makeLeaseKey(s.grabIndex), lease)
+	if err != nil {
+		return err
+	}
+	return s.grabLease(&params, lease)
 }
 
 func (s *Stagger) grabLease(params *plugin.Parameters, lease *coordinationv1.Lease) error {
@@ -118,4 +133,11 @@ func (s *Stagger) grabLease(params *plugin.Parameters, lease *coordinationv1.Lea
 	}
 	lease.Spec.LeaseTransitions = &transitions
 	return params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
+}
+
+func (s *Stagger) makeLeaseKey(idx int) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: s.LeaseNamespace,
+		Name:      fmt.Sprintf("%v-%v", s.LeaseName, idx),
+	}
 }

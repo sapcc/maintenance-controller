@@ -26,6 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 )
@@ -50,23 +51,11 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	if err != nil {
 		return UnknownMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
 	}
-	mgr := view.NewManager(client.Client)
-	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
-		[]string{"HostSystem"}, true)
+	host, err := fetchHost(ctx, client.Client, params.Host.Name)
 	if err != nil {
-		return UnknownMaintenance, fmt.Errorf("Failed to create container view: %w", err)
+		return UnknownMaintenance, err
 	}
-	var hss []mo.HostSystem
-	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, []string{"runtime", "recentTask"},
-		&hss, property.Filter{"name": params.Host.Name})
-	if err != nil {
-		return UnknownMaintenance, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w",
-			params.Host.Name, err)
-	}
-	if len(hss) != 1 {
-		return UnknownMaintenance, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
-	}
-	if hss[0].Runtime.InMaintenanceMode {
+	if host.Runtime.InMaintenanceMode {
 		return InMaintenance, nil
 	}
 	// The vSphere API models entering maintenance mode as a task.
@@ -78,7 +67,7 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	// This branch can't be tested currently as the govmomi simulator just sets a host into
 	// maintenance if requested.
 	// The simulator ignores the condition mentioned above.
-	taskRefs := hss[0].RecentTask
+	taskRefs := host.RecentTask
 	// no recent tasks, so no maintenance
 	if len(taskRefs) == 0 {
 		return NoMaintenance, nil
@@ -92,16 +81,34 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	for _, task := range tasks {
 		params.Log.Info("Got a recent task for ESX", "esx", params.Host.Name,
 			"name", task.Info.Name, "state", task.Info.State)
-		if task.Info.Name == "EnterMaintenanceMode_Task" {
-			// do not care about status queued and error
-			// success should already be handled by checking for Runtime.InMaintenanceMode
-			// also recent tasks retains completed tasks for a while
-			// so checking for success could result in returning in-maintenance while the ESX
-			// is actually running again.
-			if task.Info.State == types.TaskInfoStateRunning {
-				return InMaintenance, nil
-			}
+		// do not care about status queued and error
+		// success should already be handled by checking for Runtime.InMaintenanceMode
+		// also recent tasks retains completed tasks for a while
+		// so checking for success could result in returning in-maintenance while the ESX
+		// is actually running again.
+		if task.Info.Name == "EnterMaintenanceMode_Task" && task.Info.State == types.TaskInfoStateRunning {
+			return InMaintenance, nil
 		}
 	}
 	return NoMaintenance, nil
+}
+
+func fetchHost(ctx context.Context, client *vim25.Client, hostname string) (mo.HostSystem, error) {
+	mgr := view.NewManager(client)
+	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
+		[]string{"HostSystem"}, true)
+	if err != nil {
+		return mo.HostSystem{}, fmt.Errorf("Failed to create container view: %w", err)
+	}
+	var hss []mo.HostSystem
+	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, []string{"runtime", "recentTask"},
+		&hss, property.Filter{"name": hostname})
+	if err != nil {
+		return mo.HostSystem{}, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w",
+			hostname, err)
+	}
+	if len(hss) != 1 {
+		return mo.HostSystem{}, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
+	}
+	return hss[0], nil
 }

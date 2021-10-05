@@ -38,8 +38,7 @@ func (m *MaxMaintenance) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
 		Max int `config:"max" validate:"required"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &MaxMaintenance{MaxNodes: conf.Max}, nil
@@ -60,4 +59,8 @@ func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func (m *MaxMaintenance) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
 }

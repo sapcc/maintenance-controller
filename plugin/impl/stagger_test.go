@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("The Stagger plugin", func() {
@@ -38,10 +37,9 @@ var _ = Describe("The Stagger plugin", func() {
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Stagger).Duration).To(Equal(1 * time.Minute))
-		Expect(plugin.(*Stagger).LeaseName).To(Equal(types.NamespacedName{
-			Namespace: "default",
-			Name:      "mc-lease",
-		}))
+		Expect(plugin.(*Stagger).Parallel).To(Equal(1))
+		Expect(plugin.(*Stagger).LeaseName).To(Equal("mc-lease"))
+		Expect(plugin.(*Stagger).LeaseNamespace).To(Equal("default"))
 	})
 
 })

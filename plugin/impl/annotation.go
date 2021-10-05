@@ -36,8 +36,7 @@ func (h *HasAnnotation) New(config *ucfg.Config) (plugin.Checker, error) {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &HasAnnotation{Key: conf.Key, Value: conf.Value}, nil
@@ -56,6 +55,10 @@ func (h *HasAnnotation) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
+func (h *HasAnnotation) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
 // AlterAnnotation is a trigger plugin, which can add, change or remove an annotation.
 type AlterAnnotation struct {
 	Key    string
@@ -70,8 +73,7 @@ func (a *AlterAnnotation) New(config *ucfg.Config) (plugin.Trigger, error) {
 		Value  string `config:"value"`
 		Remove bool   `config:"remove"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &AlterAnnotation{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil

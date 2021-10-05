@@ -122,3 +122,7 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 		current.Minute(), current.Second(), current.Nanosecond(), time.UTC)
 	return compare.After(tw.Start) && compare.Before(tw.End)
 }
+
+func (tw *TimeWindow) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}

@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"testing"
 	"text/template"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -105,6 +106,7 @@ func SetupSignalHandler() context.Context {
 }
 
 var _ = BeforeSuite(func() {
+	SetDefaultEventuallyTimeout(3 * time.Second)
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 	var err error
 
@@ -118,13 +120,13 @@ var _ = BeforeSuite(func() {
 	vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
 	Expect(err).To(Succeed())
 
-	renameVM := func(view *view.ContainerView, old, new string) {
+	renameVM := func(view *view.ContainerView, oldName, newName string) {
 		var vms []mo.VirtualMachine
 		err := view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"}, []string{"summary.runtime"},
-			&vms, property.Filter{"name": old})
+			&vms, property.Filter{"name": oldName})
 		Expect(err).To(Succeed())
 		vm := object.NewVirtualMachine(vcClient.Client, vms[0].Self)
-		task, err := vm.Rename(context.Background(), new)
+		task, err := vm.Rename(context.Background(), newName)
 		Expect(err).To(Succeed())
 		Expect(task.Wait(context.Background())).To(Succeed())
 	}

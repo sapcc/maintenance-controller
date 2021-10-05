@@ -36,8 +36,7 @@ func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &HasLabel{Key: conf.Key, Value: conf.Value}, nil
@@ -55,6 +54,10 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
+func (h *HasLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
 // AlterLabel is a trigger plugin, which can add, change or remove a label.
 type AlterLabel struct {
 	Key    string
@@ -69,8 +72,7 @@ func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
 		Value  string `config:"value"`
 		Remove bool   `config:"remove"`
 	}{}
-	err := config.Unpack(&conf)
-	if err != nil {
+	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
 	return &AlterLabel{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil

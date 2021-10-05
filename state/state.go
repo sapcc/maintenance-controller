@@ -123,12 +123,11 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile.Current, params.State)
 			return state.Label(), err
-		} else {
-			params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile.Current)
-			recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
-				"The node is now in the %v state caused by profile %v", string(next), params.Profile.Current)
-			return next, nil
 		}
+		params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile.Current)
+		recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
+			"The node is now in the %v state caused by profile %v", string(next), params.Profile.Current)
+		return next, nil
 	}
 	return state.Label(), nil
 }
@@ -141,8 +140,7 @@ func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration,
 	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
 		return nil
 	}
-	err := chain.Execute(params)
-	if err != nil {
+	if err := chain.Execute(params); err != nil {
 		return err
 	}
 	data.LastNotification = time.Now()
@@ -177,7 +175,7 @@ func GetApplicableProfiles(selector ProfileSelector) ([]Profile, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("No applicable profiles found for the current state %v.", string(selector.NodeState))
+	return nil, fmt.Errorf("no applicable profiles found for the current state %v", string(selector.NodeState))
 }
 
 // parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).

@@ -33,6 +33,8 @@ import (
 type Checker interface {
 	Check(params Parameters) (bool, error)
 	New(config *ucfg.Config) (Checker, error)
+	// AfterEval is invoked once after evaluation the CheckChain this instance is part of.
+	AfterEval(chainResult bool, params Parameters) error
 }
 
 // CheckInstance represents a configured and named instance of a check plugin.
@@ -70,6 +72,12 @@ func (chain *CheckChain) Execute(params Parameters) (bool, error) {
 	result, err := chain.Evaluable.EvalBool(params.Ctx, evalParams)
 	if err != nil {
 		return false, err
+	}
+	for _, check := range chain.Plugins {
+		err = check.Plugin.AfterEval(result, params)
+		if err != nil {
+			return false, err
+		}
 	}
 	return result, nil
 }

@@ -125,7 +125,7 @@ func waitForPodDeletion(ctx context.Context, pod v1.Pod, params WaitParameters) 
 	})
 }
 
-func ensureVmOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
+func ensureVMOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
 	client, err := vCenters.Client(ctx, info.AvailabilityZone)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to vCenter: %w", err)

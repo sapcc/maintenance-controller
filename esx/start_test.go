@@ -71,9 +71,9 @@ var _ = Describe("ensureVmOn", func() {
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}
-		err := ensureVmOff(context.Background(), vCenters, hostInfo, "firstvm")
+		err := ensureVMOff(context.Background(), vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())
-		err = ensureVmOn(context.Background(), vCenters, hostInfo, "firstvm")
+		err = ensureVMOn(context.Background(), vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())
 
 		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
