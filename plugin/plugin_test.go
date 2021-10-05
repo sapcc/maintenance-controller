@@ -127,6 +127,150 @@ var _ = Describe("Registry", func() {
 
 		})
 
+		Context("gets an invalid configuration", func() {
+
+			assertError := func(configStr string) {
+				registry := NewRegistry()
+				config, err := yaml.NewConfig([]byte(configStr))
+				Expect(err).To(Succeed())
+				err = registry.LoadInstances(config)
+				Expect(err).To(HaveOccurred())
+			}
+
+			It("should not parse check instances if plugin type contains more than 1 entry", func() {
+				var configStr = `check:
+                - someCheckPlugin:
+                  invalid:
+                    name: test
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse check instances if instance has no configuration", func() {
+				var configStr = `check:
+                - someCheckPlugin:
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse check instances if an instance has no name", func() {
+				var configStr = `check:
+                - someCheckPlugin:
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse check instances if an instance as a name, but no config", func() {
+				var configStr = `check:
+                - someCheckPlugin:
+                    name: an_instance
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse check instances if plugin type is not registered", func() {
+				var configStr = `check:
+                - someCheckPlugin:
+                    name: test
+                    config: null
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse notification instances if plugin type contains more than 1 entry", func() {
+				var configStr = `notify:
+                - someNotificationPlugin:
+                  invalid:
+                    name: test
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse notification instances if instance has no configuration", func() {
+				var configStr = `notify:
+                - someNotificationPlugin:
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse notification instances if an instance has no name", func() {
+				var configStr = `notify:
+                - someNotificationPlugin:
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse notification instances if an instance as a name, but no config", func() {
+				var configStr = `notify:
+                - someNotificationPlugin:
+                    name: an_instance
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse notification instances if plugin type is not registered", func() {
+				var configStr = `notify:
+                - someNotificationPlugin:
+                    name: test
+                    config: null
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse trigger instances if plugin type contains more than 1 entry", func() {
+				var configStr = `trigger:
+                - someTriggerPlugin:
+                  invalid:
+                    name: test
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse trigger instances if instance has no configuration", func() {
+				var configStr = `trigger:
+                - someTriggerPlugin:
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse trigger instances if an instance has no name", func() {
+				var configStr = `trigger:
+                - someTriggerPlugin:
+                    config:
+                        key: somekey
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse trigger instances if an instance as a name, but no config", func() {
+				var configStr = `trigger:
+                - someTriggerPlugin:
+                    name: an_instance
+                `
+				assertError(configStr)
+			})
+
+			It("should not parse trigger instances if plugin type is not registered", func() {
+				var configStr = `trigger:
+                - someTriggerPlugin:
+                    name: test
+                    config: null
+                `
+				assertError(configStr)
+			})
+
+		})
+
 	})
 
 	Context("is initialized", func() {
@@ -155,6 +299,12 @@ var _ = Describe("Registry", func() {
 				}
 			})
 
+			It("should create an empty CheckChain from an empty config", func() {
+				chain, err := registry.NewCheckChain("")
+				Expect(err).To(Succeed())
+				Expect(chain.Plugins).To(HaveLen(0))
+			})
+
 			It("should create CheckChains", func() {
 				chain, err := registry.NewCheckChain(config)
 				Expect(err).To(Succeed())
@@ -171,10 +321,22 @@ var _ = Describe("Registry", func() {
 				Expect(chain.Plugins[2].Name).To(Equal("instance"))
 			})
 
+			It("should create an empty NotificationChain from an empty config", func() {
+				chain, err := registry.NewNotificationChain("")
+				Expect(err).To(Succeed())
+				Expect(chain.Plugins).To(HaveLen(0))
+			})
+
 			It("should create NotificationChains", func() {
 				chain, err := registry.NewNotificationChain(config)
 				Expect(err).To(Succeed())
 				Expect(chain.Plugins).To(HaveLen(2))
+			})
+
+			It("should create an empty TriggerChain from an empty config", func() {
+				chain, err := registry.NewTriggerChain("")
+				Expect(err).To(Succeed())
+				Expect(chain.Plugins).To(HaveLen(0))
 			})
 
 			It("should create TriggerChains", func() {

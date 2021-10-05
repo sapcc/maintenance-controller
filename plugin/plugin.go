@@ -160,7 +160,7 @@ func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 }
 
 // LoadInstances parses the given config and constructs plugin instances accordingly.
-// These instacnes are put into the respective instances map within the registry.
+// These instances are put into the respective instances map within the registry.
 func (r *Registry) LoadInstances(config *ucfg.Config) error {
 	err := r.loadCheckInstances(config)
 	if err != nil {
