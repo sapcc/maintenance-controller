@@ -445,12 +445,19 @@ var _ = Describe("The affinity plugin", func() {
 	})
 
 	buildParams := func(node *corev1.Node) plugin.Parameters {
+		var data state.Data
+		// if the data can not parsed, no data is attached as likely required by the test
+		_ = json.Unmarshal([]byte(node.Annotations[DataAnnotationKey]), &data)
 		return plugin.Parameters{
 			Node:     node,
 			State:    node.Labels[StateLabelKey],
 			StateKey: StateLabelKey,
 			Client:   k8sClient,
 			Ctx:      context.Background(),
+			Profile: plugin.ProfileInfo{
+				Current: "",
+				Last:    data.LastProfile,
+			},
 		}
 	}
 
@@ -518,4 +525,32 @@ var _ = Describe("The affinity plugin", func() {
 		_, err := affinity.Check(buildParams(firstNode))
 		Expect(err).To(HaveOccurred())
 	})
+
+	Context("with transitions caused by different profiles", func() {
+
+		It("passes if one node has an affinity pod and the other has none", func() {
+			unmodified := firstNode.DeepCopy()
+			dataBytes, err := json.Marshal(&state.Data{LastProfile: "profile1"})
+			Expect(err).To(Succeed())
+			firstNode.Annotations = map[string]string{DataAnnotationKey: string(dataBytes)}
+			err = k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))
+			Expect(err).To(Succeed())
+
+			unmodified = secondNode.DeepCopy()
+			dataBytes, err = json.Marshal(&state.Data{LastProfile: "profile2"})
+			Expect(err).To(Succeed())
+			secondNode.Annotations = map[string]string{DataAnnotationKey: string(dataBytes)}
+			err = k8sClient.Patch(context.Background(), secondNode, client.MergeFrom(unmodified))
+			Expect(err).To(Succeed())
+
+			attachAffinityPod(firstNode.Name)
+
+			affinity := impl.Affinity{}
+			result, err := affinity.Check(buildParams(firstNode))
+			Expect(err).To(Succeed())
+			Expect(result).To(BeTrue())
+		})
+
+	})
+
 })

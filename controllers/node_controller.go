@@ -164,7 +164,7 @@ func reconcileInternal(params reconcileParameters) error {
 	// fetch the current node state
 	stateLabel := parseNodeState(node, StateLabelKey)
 	stateStr := string(stateLabel)
-	data, err := parseData(node)
+	data, err := state.ParseData(node)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func reconcileInternal(params reconcileParameters) error {
 		if err != nil {
 			return fmt.Errorf("Failed to apply current state: %w", err)
 		}
-		// check if a tranition happened
+		// check if a transition happened
 		if stateLabel != next {
 			node.Labels[StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
@@ -212,18 +212,6 @@ func reconcileInternal(params reconcileParameters) error {
 
 	// update data annotation
 	return writeData(node, data)
-}
-
-func parseData(node *corev1.Node) (state.Data, error) {
-	dataStr := node.Annotations[DataAnnotationKey]
-	var data state.Data
-	if dataStr != "" {
-		err := json.Unmarshal([]byte(dataStr), &data)
-		if err != nil {
-			return state.Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
-		}
-	}
-	return data, nil
 }
 
 func writeData(node *corev1.Node, data state.Data) error {

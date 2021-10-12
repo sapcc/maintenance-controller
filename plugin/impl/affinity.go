@@ -51,17 +51,37 @@ func (a *Affinity) Check(params plugin.Parameters) (bool, error) {
 	if !currentAffinity {
 		return true, nil
 	}
+	return checkOther(&params)
+}
+
+func checkOther(params *plugin.Parameters) (bool, error) {
 	var nodeList v1.NodeList
-	err = params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{params.StateKey: string(state.Required)})
+	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{params.StateKey: string(state.Required)})
 	if err != nil {
 		return false, fmt.Errorf("failed to list nodes in the cluster: %w", err)
 	}
-	for _, node := range nodeList.Items {
-		nodeAffinity, err := hasAffinityPod(node.Name, &params)
+	for i := range nodeList.Items {
+		node := &nodeList.Items[i]
+		// skip self
+		if node.Name == params.Node.Name {
+			continue
+		}
+		// only consider nodes, when the transition into maintenance-required has been caused
+		// by the same profile being checked right now.
+		// Doing otherwise could cause unnecessary block due to nodes being in maintenance-required
+		// caused by other profiles without affinity pods
+		nodeData, err := state.ParseData(node)
+		if err != nil {
+			return false, err
+		}
+		if params.Profile.Last != nodeData.LastProfile {
+			continue
+		}
+		// some other node in the cluster does not have any relevant pods, so block
+		nodeAffinity, err := hasAffinityPod(node.Name, params)
 		if err != nil {
 			return false, fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
 		}
-		// some other node in the cluster does not have any relevant pods, so block
 		if !nodeAffinity {
 			return false, nil
 		}

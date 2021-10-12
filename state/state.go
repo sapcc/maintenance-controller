@@ -20,6 +20,7 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -61,6 +62,18 @@ type Data struct {
 	LastNotification      time.Time
 	LastNotificationState NodeStateLabel
 	LastProfile           string
+}
+
+func ParseData(node *v1.Node) (Data, error) {
+	dataStr := node.Annotations["cloud.sap/maintenance-data"]
+	var data Data
+	if dataStr != "" {
+		err := json.Unmarshal([]byte(dataStr), &data)
+		if err != nil {
+			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
+		}
+	}
+	return data, nil
 }
 
 // NodeState represents the state a node can be in.
