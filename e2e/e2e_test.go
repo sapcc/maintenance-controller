@@ -29,6 +29,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	coordiantionv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -106,7 +107,7 @@ var _ = Describe("The maintenance controller", func() {
 		err := k8sClient.List(context.Background(), nodeList)
 		Expect(err).To(Succeed())
 		for _, node := range nodeList.Items {
-			Expect(node.Labels["cloud.sap/maintenance-state"]).To(Equal("operational"))
+			Expect(node.Labels[constants.StateLabelKey]).To(Equal("operational"))
 			for _, condition := range node.Status.Conditions {
 				if condition.Type == corev1.NodeReady {
 					Expect(condition.Status).To(Equal(corev1.ConditionTrue))
@@ -118,7 +119,7 @@ var _ = Describe("The maintenance controller", func() {
 		for i := range nodeList.Items {
 			node := &nodeList.Items[i]
 			unmodified := node.DeepCopy()
-			node.Labels["cloud.sap/maintenance-profile"] = "flatcar"
+			node.Labels[constants.ProfileLabelKey] = "flatcar"
 			err = k8sClient.Patch(context.Background(), node, client.MergeFrom(unmodified))
 			Expect(err).To(Succeed())
 		}
@@ -133,7 +134,7 @@ var _ = Describe("The maintenance controller", func() {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
-			return node.Labels["cloud.sap/maintenance-state"]
+			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("maintenance-required"))
 
 		By("approve maintenance")
@@ -146,7 +147,7 @@ var _ = Describe("The maintenance controller", func() {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
-			return node.Labels["cloud.sap/maintenance-state"]
+			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("in-maintenance"))
 		Eventually(func() bool {
 			node := &corev1.Node{}
@@ -177,7 +178,7 @@ var _ = Describe("The maintenance controller", func() {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
 			Expect(err).To(Succeed())
-			return node.Labels["cloud.sap/maintenance-state"]
+			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("operational"))
 	})
 

@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
@@ -33,11 +34,11 @@ import (
 
 // Checks if the controller initiated the maintenance and the underlying ESX is not in maintenance.
 func ShouldStart(node *v1.Node) bool {
-	initiated, ok := node.Annotations[RebootInitiatedAnnotationKey]
-	if !ok || initiated != TrueString {
+	initiated, ok := node.Annotations[constants.EsxRebootInitiatedAnnotationKey]
+	if !ok || initiated != constants.TrueStr {
 		return false
 	}
-	state, ok := node.Labels[MaintenanceLabelKey]
+	state, ok := node.Labels[constants.EsxMaintenanceLabelKey]
 	if !ok || state != string(NoMaintenance) {
 		return false
 	}

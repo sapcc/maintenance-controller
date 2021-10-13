@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	v1 "k8s.io/api/core/v1"
@@ -56,7 +57,9 @@ func (a *Affinity) Check(params plugin.Parameters) (bool, error) {
 
 func checkOther(params *plugin.Parameters) (bool, error) {
 	var nodeList v1.NodeList
-	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{params.StateKey: string(state.Required)})
+	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{
+		constants.StateLabelKey: string(state.Required),
+	})
 	if err != nil {
 		return false, fmt.Errorf("failed to list nodes in the cluster: %w", err)
 	}
@@ -99,7 +102,7 @@ func hasAffinityPod(nodeName string, params *plugin.Parameters) (bool, error) {
 	for _, pod := range podList.Items {
 		for _, preferred := range pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
 			for _, expr := range preferred.Preference.MatchExpressions {
-				affinityPod := expr.Key == "cloud.sap/maintenance-state" &&
+				affinityPod := expr.Key == constants.StateLabelKey &&
 					expr.Operator == v1.NodeSelectorOpIn &&
 					len(expr.Values) == 1 &&
 					expr.Values[0] == "operational"

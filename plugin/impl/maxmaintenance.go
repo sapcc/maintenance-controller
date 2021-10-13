@@ -21,6 +21,7 @@ package impl
 
 import (
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +48,9 @@ func (m *MaxMaintenance) New(config *ucfg.Config) (plugin.Checker, error) {
 // Check asserts that no more then the specified amount of nodes is in the in-maintenance state.
 func (m *MaxMaintenance) Check(params plugin.Parameters) (bool, error) {
 	var nodeList corev1.NodeList
-	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{params.StateKey: string(state.InMaintenance)})
+	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{
+		constants.StateLabelKey: string(state.InMaintenance),
+	})
 	if err != nil {
 		return false, err
 	}

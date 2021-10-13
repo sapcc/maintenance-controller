@@ -28,6 +28,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/event"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -152,7 +153,7 @@ var _ = BeforeSuite(func() {
 
 	err = os.MkdirAll("./config", 0700)
 	Expect(err).To(Succeed())
-	err = ioutil.WriteFile(ConfigFilePath, []byte(config), 0600)
+	err = ioutil.WriteFile(constants.MaintenanceConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 })
 
@@ -161,7 +162,7 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
-	err = os.Remove(ConfigFilePath)
+	err = os.Remove(constants.MaintenanceConfigFilePath)
 	Expect(err).To(Succeed())
 	err = os.Remove("./config")
 	Expect(err).To(Succeed())

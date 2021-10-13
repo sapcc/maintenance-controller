@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -36,13 +37,13 @@ var _ = Describe("ShouldStart", func() {
 	makeNode := func(initiated string, maintenance Maintenance) *v1.Node {
 		node := &v1.Node{}
 		node.Name = "somenode"
-		node.Labels = map[string]string{MaintenanceLabelKey: string(maintenance)}
-		node.Annotations = map[string]string{RebootInitiatedAnnotationKey: initiated}
+		node.Labels = map[string]string{constants.EsxMaintenanceLabelKey: string(maintenance)}
+		node.Annotations = map[string]string{constants.EsxRebootInitiatedAnnotationKey: initiated}
 		return node
 	}
 
 	It("passes if the controller initiated the maintenance and ESX is not in maintenance", func() {
-		Expect(ShouldStart(makeNode(TrueString, NoMaintenance))).To(BeTrue())
+		Expect(ShouldStart(makeNode(constants.TrueStr, NoMaintenance))).To(BeTrue())
 	})
 
 	It("does not pass if the controller did not initiate the maintenance", func() {
@@ -50,7 +51,7 @@ var _ = Describe("ShouldStart", func() {
 	})
 
 	It("does not pass if the ESX is not out of maintenance", func() {
-		Expect(ShouldStart(makeNode(TrueString, InMaintenance))).To(BeFalse())
+		Expect(ShouldStart(makeNode(constants.TrueStr, InMaintenance))).To(BeFalse())
 	})
 
 })

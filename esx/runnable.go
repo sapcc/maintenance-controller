@@ -26,6 +26,7 @@ import (
 
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,26 +36,6 @@ import (
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
-
-// ConfigFilePath is the path to the configuration file.
-const ConfigFilePath = "config/esx.yaml"
-
-// Label key that holds whether a nodes esx host in maintenance or not.
-const MaintenanceLabelKey string = "cloud.sap/esx-in-maintenance"
-
-// Label key that holds whether a node can rebootet if the hosting ESX is set into maintenance.
-const RebootOkLabelKey string = "cloud.sap/esx-reboot-ok"
-
-// Annotation key that holds whether this controller started rebooting the node.
-const RebootInitiatedAnnotationKey string = "cloud.sap/esx-reboot-initiated"
-
-const TrueString string = "true"
-
-// Label key that holds the physical ESX host.
-const HostLabelKey string = "kubernetes.cloud.sap/host"
-
-// Label key that holds the region and availability zone.
-const FailureDomainLabelKey string = "failure-domain.beta.kubernetes.io/zone"
 
 type Runnable struct {
 	client.Client
@@ -66,7 +47,7 @@ func (r *Runnable) NeedLeaderElection() bool {
 }
 
 func (r *Runnable) loadConfig() (Config, error) {
-	yamlConf, err := yaml.NewConfigWithFile(ConfigFilePath)
+	yamlConf, err := yaml.NewConfigWithFile(constants.EsxConfigFilePath)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed
@@ -107,7 +88,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 		return
 	}
 	var nodes v1.NodeList
-	err = r.Client.List(ctx, &nodes, client.HasLabels{HostLabelKey, FailureDomainLabelKey})
+	err = r.Client.List(ctx, &nodes, client.HasLabels{constants.HostLabelKey, constants.FailureDomainLabelKey})
 	if err != nil {
 		r.Log.Error(err, "Failed to retrieve list of cluster nodes.")
 		return
@@ -144,7 +125,7 @@ func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx
 	if err != nil {
 		return err
 	}
-	err = r.ensureLabel(ctx, esx, MaintenanceLabelKey, string(status))
+	err = r.ensureLabel(ctx, esx, constants.EsxMaintenanceLabelKey, string(status))
 	if err != nil {
 		return err
 	}
@@ -154,15 +135,15 @@ func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx
 // Shuts down the nodes on the given ESX, if all nodes are with the RebootAllowed="true" label.
 func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
 	if ShouldShutdown(esx) {
-		err := r.ensureAnnotation(ctx, esx, RebootInitiatedAnnotationKey, TrueString)
+		err := r.ensureAnnotation(ctx, esx, constants.EsxRebootInitiatedAnnotationKey, constants.TrueStr)
 		if err != nil {
 			return err
 		}
 	}
 	for i := range esx.Nodes {
 		node := &esx.Nodes[i]
-		init, ok := node.Annotations[RebootInitiatedAnnotationKey]
-		if !ok || init != TrueString {
+		init, ok := node.Annotations[constants.EsxRebootInitiatedAnnotationKey]
+		if !ok || init != constants.TrueStr {
 			continue
 		}
 		err := r.ensureSchedulable(ctx, node, false)
@@ -240,9 +221,10 @@ func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host
 			continue
 		}
 		// ESX Maintenance is finished => delete annotation
-		err = r.deleteAnnotation(ctx, node, RebootInitiatedAnnotationKey)
+		err = r.deleteAnnotation(ctx, node, constants.EsxRebootInitiatedAnnotationKey)
 		if err != nil {
-			r.Log.Error(err, "Failed to delete annotation.", "node", node.Name, "annotation", RebootInitiatedAnnotationKey)
+			r.Log.Error(err, "Failed to delete annotation.", "node", node.Name,
+				"annotation", constants.EsxRebootInitiatedAnnotationKey)
 		}
 	}
 }
@@ -282,13 +264,13 @@ func ParseHostList(nodes []v1.Node) ([]Host, error) {
 }
 
 func parseHostInfo(node *v1.Node) (HostInfo, error) {
-	name, ok := node.Labels[HostLabelKey]
+	name, ok := node.Labels[constants.HostLabelKey]
 	if !ok {
-		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, HostLabelKey)
+		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, constants.HostLabelKey)
 	}
-	failureDomain, ok := node.Labels[FailureDomainLabelKey]
+	failureDomain, ok := node.Labels[constants.FailureDomainLabelKey]
 	if !ok {
-		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, FailureDomainLabelKey)
+		return HostInfo{}, fmt.Errorf("node %v is missing label %v", node.Name, constants.FailureDomainLabelKey)
 	}
 	return HostInfo{
 		Name: name,

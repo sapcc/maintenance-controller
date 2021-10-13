@@ -25,6 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -51,8 +52,8 @@ var _ = Describe("The ESX controller", func() {
 		node.Namespace = DefaultNamespace
 		node.Spec.Unschedulable = !schedulable
 		node.Labels = make(map[string]string)
-		node.Labels[HostLabelKey] = esx
-		node.Labels[FailureDomainLabelKey] = "eu-nl-2a"
+		node.Labels[constants.HostLabelKey] = esx
+		node.Labels[constants.FailureDomainLabelKey] = "eu-nl-2a"
 		err := k8sClient.Create(context.Background(), node)
 		if err != nil {
 			return nil, err
@@ -132,7 +133,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[MaintenanceLabelKey]
+			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(NoMaintenance)))
 		Eventually(func() string {
@@ -140,7 +141,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[MaintenanceLabelKey]
+			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(NoMaintenance)))
 	})
@@ -164,7 +165,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[MaintenanceLabelKey]
+			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(InMaintenance)))
 		Eventually(func() string {
@@ -172,7 +173,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[MaintenanceLabelKey]
+			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(InMaintenance)))
 	})
@@ -193,7 +194,7 @@ var _ = Describe("The ESX controller", func() {
 
 		allowMaintenance := func(node *corev1.Node) error {
 			cloned := node.DeepCopy()
-			node.Labels[RebootOkLabelKey] = TrueString
+			node.Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 			return k8sClient.Patch(context.Background(), node, client.MergeFrom(cloned))
 		}
 		Expect(allowMaintenance(firstNode)).To(Succeed())
@@ -204,7 +205,7 @@ var _ = Describe("The ESX controller", func() {
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Annotations
-		}).Should(HaveKey(RebootInitiatedAnnotationKey))
+		}).Should(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
 		Eventually(func() bool {
 			node := &corev1.Node{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
@@ -256,7 +257,7 @@ var _ = Describe("The ESX controller", func() {
 		markInitiated := func(node *corev1.Node) error {
 			cloned := node.DeepCopy()
 			node.Spec.Unschedulable = true
-			node.Annotations = map[string]string{RebootInitiatedAnnotationKey: TrueString}
+			node.Annotations = map[string]string{constants.EsxRebootInitiatedAnnotationKey: constants.TrueStr}
 			return k8sClient.Patch(context.Background(), node, client.MergeFrom(cloned))
 		}
 		Expect(markInitiated(firstNode)).To(Succeed())
@@ -273,7 +274,7 @@ var _ = Describe("The ESX controller", func() {
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			Expect(err).To(Succeed())
 			return node.Annotations
-		}).ShouldNot(HaveKey(RebootInitiatedAnnotationKey))
+		}).ShouldNot(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
 		Eventually(func() bool {
 			mgr := view.NewManager(vcClient.Client)
 			Expect(err).To(Succeed())

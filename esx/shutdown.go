@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
@@ -41,7 +42,8 @@ import (
 func ShouldShutdown(esx *Host) bool {
 	var initCount int
 	for _, node := range esx.Nodes {
-		if node.Labels[MaintenanceLabelKey] == string(InMaintenance) && node.Labels[RebootOkLabelKey] == TrueString {
+		if node.Labels[constants.EsxMaintenanceLabelKey] == string(InMaintenance) &&
+			node.Labels[constants.EsxRebootOkLabelKey] == constants.TrueStr {
 			initCount++
 		}
 	}

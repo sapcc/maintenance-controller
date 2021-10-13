@@ -62,7 +62,6 @@ type ProfileInfo struct {
 type Parameters struct {
 	Node           *corev1.Node
 	State          string
-	StateKey       string
 	Profile        ProfileInfo
 	Client         client.Client
 	Ctx            context.Context

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
@@ -75,8 +76,8 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 
 func loadProfiles(config *ucfg.Config, c *Config) error {
 	// add an empty default profile
-	c.Profiles[DefaultProfileName] = state.Profile{
-		Name: DefaultProfileName,
+	c.Profiles[constants.DefaultProfileName] = state.Profile{
+		Name: constants.DefaultProfileName,
 		Chains: map[state.NodeStateLabel]state.PluginChains{
 			state.Operational:   {},
 			state.InMaintenance: {},

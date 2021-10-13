@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -65,7 +66,7 @@ type Data struct {
 }
 
 func ParseData(node *v1.Node) (Data, error) {
-	dataStr := node.Annotations["cloud.sap/maintenance-data"]
+	dataStr := node.Annotations[constants.DataAnnotationKey]
 	var data Data
 	if dataStr != "" {
 		err := json.Unmarshal([]byte(dataStr), &data)

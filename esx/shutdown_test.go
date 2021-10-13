@@ -25,6 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
@@ -40,11 +41,11 @@ var _ = Describe("ShouldShutdown", func() {
 	It("should pass if all nodes require ESX maintenance and are allowed to reboot", func() {
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[MaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[RebootOkLabelKey] = TrueString
+		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
+		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[MaintenanceLabelKey] = string(InMaintenance)
-		nodes[1].Labels[RebootOkLabelKey] = TrueString
+		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
+		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 		esx := Host{
 			Nodes: nodes,
 		}
@@ -55,11 +56,11 @@ var _ = Describe("ShouldShutdown", func() {
 	It("should not pass if at least one node does not require maintenance", func() {
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[MaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[RebootOkLabelKey] = TrueString
+		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
+		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[MaintenanceLabelKey] = string(NoMaintenance)
-		nodes[1].Labels[RebootOkLabelKey] = TrueString
+		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(NoMaintenance)
+		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 		esx := Host{
 			Nodes: nodes,
 		}
@@ -70,11 +71,11 @@ var _ = Describe("ShouldShutdown", func() {
 	It("should not pass if at least one node does not have approval", func() {
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[MaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[RebootOkLabelKey] = TrueString
+		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
+		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
 		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[MaintenanceLabelKey] = string(InMaintenance)
-		nodes[1].Labels[RebootOkLabelKey] = "thisisfine"
+		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
+		nodes[1].Labels[constants.EsxRebootOkLabelKey] = "thisisfine"
 		esx := Host{
 			Nodes: nodes,
 		}
@@ -141,7 +142,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 		Expect(makePod("firstpod", "node")).To(Succeed())
 		Expect(makePod("secondpod", "node")).To(Succeed())
 		Expect(makePod("mirror", "node", func(p *corev1.Pod) {
-			p.Annotations = map[string]string{corev1.MirrorPodAnnotationKey: TrueString}
+			p.Annotations = map[string]string{corev1.MirrorPodAnnotationKey: constants.TrueStr}
 		})).To(Succeed())
 		deletable, err := GetPodsForDeletion(context.Background(), k8sClient, "node")
 		Expect(err).To(Succeed())

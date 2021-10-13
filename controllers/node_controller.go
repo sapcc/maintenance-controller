@@ -28,6 +28,7 @@ import (
 
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
@@ -39,21 +40,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// DefaultProfileName is the name of the default maintenance profile.
-const DefaultProfileName = "default"
-
-// ConfigFilePath is the path to the configuration file.
-const ConfigFilePath = "./config/maintenance.yaml"
-
-// StateLabelKey is the full label key, which the controller attaches the node state information to.
-const StateLabelKey = "cloud.sap/maintenance-state"
-
-// ProfileLabelKey is the full label key, where the user can attach profile information to a node.
-const ProfileLabelKey = "cloud.sap/maintenance-profile"
-
-// DataAnnotationKey is the full annotation key, to which the controller serializes internal data.
-const DataAnnotationKey = "cloud.sap/maintenance-data"
 
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
@@ -80,7 +66,7 @@ type reconcileParameters struct {
 // Reconcile reconciles the given request.
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// load the configuration
-	conf, err := yaml.NewConfigWithFile(ConfigFilePath)
+	conf, err := yaml.NewConfigWithFile(constants.MaintenanceConfigFilePath)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed
@@ -162,15 +148,15 @@ func reconcileInternal(params reconcileParameters) error {
 	log := params.log
 
 	// fetch the current node state
-	stateLabel := parseNodeState(node, StateLabelKey)
+	stateLabel := parseNodeState(node, constants.StateLabelKey)
 	stateStr := string(stateLabel)
 	data, err := state.ParseData(node)
 	if err != nil {
 		return err
 	}
-	profilesStr, ok := node.Labels[ProfileLabelKey]
+	profilesStr, ok := node.Labels[constants.ProfileLabelKey]
 	if !ok {
-		profilesStr = DefaultProfileName
+		profilesStr = constants.DefaultProfileName
 	}
 
 	// get applicable profiles
@@ -181,7 +167,8 @@ func reconcileInternal(params reconcileParameters) error {
 		Data:              data,
 	})
 	if err != nil {
-		return fmt.Errorf("Has the %v label been changed while the node was non-operational? %w", ProfileLabelKey, err)
+		return fmt.Errorf("Has the %v label been changed while the node was non-operational? %w",
+			constants.ProfileLabelKey, err)
 	}
 
 	for _, profile := range profiles {
@@ -194,7 +181,7 @@ func reconcileInternal(params reconcileParameters) error {
 		// build plugin arguments
 		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log,
 			Profile: plugin.ProfileInfo{Current: profile.Name, Last: data.LastProfile}, Node: node,
-			State: stateStr, StateKey: StateLabelKey, LastTransition: data.LastTransition, Recorder: params.recorder}
+			State: stateStr, LastTransition: data.LastTransition, Recorder: params.recorder}
 
 		next, err := state.Apply(stateObj, node, &data, pluginParams)
 		if err != nil {
@@ -202,7 +189,7 @@ func reconcileInternal(params reconcileParameters) error {
 		}
 		// check if a transition happened
 		if stateLabel != next {
-			node.Labels[StateLabelKey] = string(next)
+			node.Labels[constants.StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
 			data.LastProfile = profile.Name
 			// break out of the loop to avoid multiple profiles to handle the same state transition
@@ -222,7 +209,7 @@ func writeData(node *corev1.Node, data state.Data) error {
 	if node.Annotations == nil {
 		node.Annotations = make(map[string]string)
 	}
-	node.Annotations[DataAnnotationKey] = string(dataBytes)
+	node.Annotations[constants.DataAnnotationKey] = string(dataBytes)
 	return nil
 }
 

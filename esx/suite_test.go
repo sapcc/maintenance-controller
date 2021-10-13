@@ -31,6 +31,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -181,7 +182,7 @@ var _ = BeforeSuite(func() {
 
 	err = os.MkdirAll("config", 0700)
 	Expect(err).To(Succeed())
-	file, err := os.Create(ConfigFilePath)
+	file, err := os.Create(constants.EsxConfigFilePath)
 	Expect(err).To(Succeed())
 	defer file.Close()
 
@@ -208,7 +209,7 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
-	err = os.Remove(ConfigFilePath)
+	err = os.Remove(constants.EsxConfigFilePath)
 	Expect(err).To(Succeed())
 	err = os.Remove("config")
 	Expect(err).To(Succeed())

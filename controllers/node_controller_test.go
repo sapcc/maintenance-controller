@@ -28,6 +28,7 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
@@ -63,7 +64,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[StateLabelKey]
+			val := node.Labels[constants.StateLabelKey]
 			return val
 		}).Should(Equal(string(state.Operational)))
 	})
@@ -74,7 +75,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Annotations[DataAnnotationKey]
+			val := node.Annotations[constants.DataAnnotationKey]
 			return json.Valid([]byte(val))
 		}).Should(BeTrue())
 	})
@@ -87,7 +88,7 @@ var _ = Describe("The controller", func() {
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
-		node.Labels[ProfileLabelKey] = "test"
+		node.Labels[constants.ProfileLabelKey] = "test"
 		node.Labels["transition"] = trueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
@@ -97,7 +98,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[StateLabelKey]
+			val := node.Labels[constants.StateLabelKey]
 			return val
 		}).Should(Equal(string(state.InMaintenance)))
 
@@ -119,7 +120,7 @@ var _ = Describe("The controller", func() {
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
-		node.Labels[ProfileLabelKey] = "test"
+		node.Labels[constants.ProfileLabelKey] = "test"
 		node.Labels["transition"] = trueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
@@ -129,7 +130,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			Expect(err).To(Succeed())
 
-			dataStr := node.Annotations[DataAnnotationKey]
+			dataStr := node.Annotations[constants.DataAnnotationKey]
 			fmt.Printf("Data Annotation: %v\n", dataStr)
 			var data state.Data
 			err = json.Unmarshal([]byte(dataStr), &data)
@@ -146,7 +147,7 @@ var _ = Describe("The controller", func() {
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
-		node.Labels[ProfileLabelKey] = "block--multi"
+		node.Labels[constants.ProfileLabelKey] = "block--multi"
 		node.Labels["transition"] = trueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
@@ -156,7 +157,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			Expect(err).To(Succeed())
 
-			val := node.Labels[StateLabelKey]
+			val := node.Labels[constants.StateLabelKey]
 			return val
 		}).Should(Equal(string(state.Required)))
 
@@ -197,7 +198,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		targetNode = &corev1.Node{}
 		targetNode.Name = "targetnode"
 		targetNode.Labels = make(map[string]string)
-		targetNode.Labels[StateLabelKey] = string(state.InMaintenance)
+		targetNode.Labels[constants.StateLabelKey] = string(state.InMaintenance)
 		err := k8sClient.Create(context.Background(), targetNode)
 		Expect(err).To(Succeed())
 	})
@@ -211,18 +212,18 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 	// which is not simulated within the plugin/impl package
 	It("should should fail if a node is in maintenance", func() {
 		max := impl.MaxMaintenance{MaxNodes: 1}
-		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: StateLabelKey, Ctx: context.Background()})
+		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeFalse())
 	})
 
 	It("should pass if no node is in maintenance", func() {
 		patched := targetNode.DeepCopy()
-		patched.Labels[StateLabelKey] = string(state.Operational)
+		patched.Labels[constants.StateLabelKey] = string(state.Operational)
 		err := k8sClient.Patch(context.Background(), patched, client.MergeFrom(targetNode))
 		Expect(err).To(Succeed())
 		max := impl.MaxMaintenance{MaxNodes: 1}
-		result, err := max.Check(plugin.Parameters{Client: k8sClient, StateKey: StateLabelKey, Ctx: context.Background()})
+		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeTrue())
 	})
@@ -420,13 +421,13 @@ var _ = Describe("The affinity plugin", func() {
 	BeforeEach(func() {
 		firstNode = &corev1.Node{}
 		firstNode.Name = "firstnode"
-		firstNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		firstNode.Labels = map[string]string{constants.StateLabelKey: string(state.Required)}
 		err := k8sClient.Create(context.Background(), firstNode)
 		Expect(err).To(Succeed())
 
 		secondNode = &corev1.Node{}
 		secondNode.Name = "secondnode"
-		secondNode.Labels = map[string]string{StateLabelKey: string(state.Required)}
+		secondNode.Labels = map[string]string{constants.StateLabelKey: string(state.Required)}
 		err = k8sClient.Create(context.Background(), secondNode)
 		Expect(err).To(Succeed())
 	})
@@ -447,13 +448,12 @@ var _ = Describe("The affinity plugin", func() {
 	buildParams := func(node *corev1.Node) plugin.Parameters {
 		var data state.Data
 		// if the data can not parsed, no data is attached as likely required by the test
-		_ = json.Unmarshal([]byte(node.Annotations[DataAnnotationKey]), &data)
+		_ = json.Unmarshal([]byte(node.Annotations[constants.DataAnnotationKey]), &data)
 		return plugin.Parameters{
-			Node:     node,
-			State:    node.Labels[StateLabelKey],
-			StateKey: StateLabelKey,
-			Client:   k8sClient,
-			Ctx:      context.Background(),
+			Node:   node,
+			State:  node.Labels[constants.StateLabelKey],
+			Client: k8sClient,
+			Ctx:    context.Background(),
 			Profile: plugin.ProfileInfo{
 				Current: "",
 				Last:    data.LastProfile,
@@ -480,7 +480,7 @@ var _ = Describe("The affinity plugin", func() {
 						Preference: corev1.NodeSelectorTerm{
 							MatchExpressions: []corev1.NodeSelectorRequirement{
 								{
-									Key:      StateLabelKey,
+									Key:      constants.StateLabelKey,
 									Operator: corev1.NodeSelectorOpIn,
 									Values:   []string{string(state.Operational)},
 								},
@@ -519,7 +519,7 @@ var _ = Describe("The affinity plugin", func() {
 
 	It("fails if node is not in maintenance-required", func() {
 		unmodified := firstNode.DeepCopy()
-		firstNode.Labels[StateLabelKey] = string(state.InMaintenance)
+		firstNode.Labels[constants.StateLabelKey] = string(state.InMaintenance)
 		Expect(k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))).To(Succeed())
 		affinity := impl.Affinity{}
 		_, err := affinity.Check(buildParams(firstNode))
@@ -532,14 +532,14 @@ var _ = Describe("The affinity plugin", func() {
 			unmodified := firstNode.DeepCopy()
 			dataBytes, err := json.Marshal(&state.Data{LastProfile: "profile1"})
 			Expect(err).To(Succeed())
-			firstNode.Annotations = map[string]string{DataAnnotationKey: string(dataBytes)}
+			firstNode.Annotations = map[string]string{constants.DataAnnotationKey: string(dataBytes)}
 			err = k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))
 			Expect(err).To(Succeed())
 
 			unmodified = secondNode.DeepCopy()
 			dataBytes, err = json.Marshal(&state.Data{LastProfile: "profile2"})
 			Expect(err).To(Succeed())
-			secondNode.Annotations = map[string]string{DataAnnotationKey: string(dataBytes)}
+			secondNode.Annotations = map[string]string{constants.DataAnnotationKey: string(dataBytes)}
 			err = k8sClient.Patch(context.Background(), secondNode, client.MergeFrom(unmodified))
 			Expect(err).To(Succeed())
 
