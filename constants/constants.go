@@ -55,4 +55,14 @@ const (
 
 	// Annotation key that holds whether this controller started rebooting the node.
 	EsxRebootInitiatedAnnotationKey string = "cloud.sap/esx-reboot-initiated"
+
+	// Kubernikus related constants.
+	// Label key that holds whether a kubelet needs to be updated.
+	KubeletUpdateLabelKey = "cloud.sap/kubelet-needs-update"
+
+	// Label key that holds if a node should be delete from nova.
+	DeleteNodeLabelKey = "cloud.sap/delete-node"
+
+	// Path to cloudprovider.conf.
+	CloudProviderConfigFilePath string = "./config/cloudprovider.conf"
 )
