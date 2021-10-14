@@ -20,6 +20,7 @@
 package kubernikus
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -41,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const config string = `
+const cloudprovider string = `
 [Global]
 auth-url="https://identity-3.qa-de-1.cloud.sap/v3/"
 domain-name="kubernikus"
@@ -49,6 +50,14 @@ tenant-id="id"
 username="user"
 password="pw"
 region="qa-de-1"
+`
+
+const config string = `
+intervals:
+  requeue: 250ms
+  podDeletion:
+    period: 2s
+    timeout: 30s
 `
 
 var cfg *rest.Config
@@ -90,6 +99,15 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	err = k8sManager.GetFieldIndexer().IndexField(context.Background(),
+		&corev1.Pod{},
+		"spec.nodeName",
+		func(o client.Object) []string {
+			pod := o.(*corev1.Pod)
+			return []string{pod.Spec.NodeName}
+		})
+	Expect(err).To(Succeed())
+
 	err = (&NodeReconciler{
 		Client: k8sManager.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("maintenance"),
@@ -109,7 +127,9 @@ var _ = BeforeSuite(func() {
 
 	err = os.MkdirAll("./config", 0700)
 	Expect(err).To(Succeed())
-	err = ioutil.WriteFile(constants.CloudProviderConfigFilePath, []byte(config), 0600)
+	err = ioutil.WriteFile(constants.CloudProviderConfigFilePath, []byte(cloudprovider), 0600)
+	Expect(err).To(Succeed())
+	err = ioutil.WriteFile(constants.KubernikusConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 })
 
@@ -118,6 +138,8 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
+	err = os.Remove(constants.KubernikusConfigFilePath)
+	Expect(err).To(Succeed())
 	err = os.Remove(constants.CloudProviderConfigFilePath)
 	Expect(err).To(Succeed())
 	err = os.Remove("./config")

@@ -22,7 +22,6 @@ package esx
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
@@ -30,11 +29,6 @@ import (
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	vctypes "github.com/vmware/govmomi/vim25/types"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Checks, if all Nodes on an ESX need maintenance and are allowed to be shutdown.
@@ -48,83 +42,6 @@ func ShouldShutdown(esx *Host) bool {
 		}
 	}
 	return initCount == len(esx.Nodes)
-}
-
-// Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/k8sutil/drain.go
-func GetPodsForDeletion(ctx context.Context, k8sClient client.Client, nodeName string) ([]v1.Pod, error) {
-	var podList v1.PodList
-	err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeName})
-	if err != nil {
-		return nil, err
-	}
-	// filter
-	filtered := make([]v1.Pod, 0)
-	for _, pod := range podList.Items {
-		// skip mirror pods
-		if _, ok := pod.Annotations[v1.MirrorPodAnnotationKey]; ok {
-			continue
-		}
-		// skip daemonsets
-		skip := false
-		for _, ref := range pod.OwnerReferences {
-			if ref.Kind == "DaemonSet" {
-				skip = true
-			}
-		}
-		if skip {
-			continue
-		}
-		filtered = append(filtered, pod)
-	}
-	return filtered, nil
-}
-
-type WaitParameters struct {
-	Client  client.Client
-	Period  time.Duration
-	Timeout time.Duration
-}
-
-func WaitForPodDeletions(ctx context.Context, pods []v1.Pod, params WaitParameters) error {
-	if len(pods) == 0 {
-		return nil
-	}
-	errChan := make(chan error)
-	for _, pod := range pods {
-		go func(pod v1.Pod) {
-			errChan <- waitForPodDeletion(ctx, pod, params)
-		}(pod)
-	}
-	combinedMessage := ""
-	count := 0
-	for err := range errChan {
-		if err != nil {
-			combinedMessage += fmt.Sprintf("%s + ", err)
-		}
-		count++
-		if count == len(pods) {
-			close(errChan)
-		}
-	}
-	if combinedMessage == "" {
-		return nil
-	}
-	combinedMessage = combinedMessage[:len(combinedMessage)-3]
-	return fmt.Errorf("%s", combinedMessage)
-}
-
-// Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/agent/agent.go#L470
-func waitForPodDeletion(ctx context.Context, pod v1.Pod, params WaitParameters) error {
-	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) {
-		var p v1.Pod
-		err := params.Client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
-		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) {
-			return true, nil
-		} else if err != nil {
-			return false, err
-		}
-		return false, nil
-	})
 }
 
 func ensureVMOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {

@@ -27,6 +27,7 @@ import (
 	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("The kubernikus controller", func() {
@@ -38,6 +39,25 @@ var _ = Describe("The kubernikus controller", func() {
 		node.Name = nodeName.Name
 		node.Status.NodeInfo.KubeletVersion = version
 		Expect(k8sClient.Create(context.Background(), node)).To(Succeed())
+	}
+
+	makePod := func(podName, nodeName string, custom ...func(*v1.Pod)) error {
+		var graceSeconds int64
+		var pod v1.Pod
+		pod.Namespace = "default"
+		pod.Name = podName
+		pod.Spec.NodeName = nodeName
+		pod.Spec.Containers = []v1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		pod.Spec.TerminationGracePeriodSeconds = &graceSeconds
+		for _, cust := range custom {
+			cust(&pod)
+		}
+		return k8sClient.Create(context.Background(), &pod)
 	}
 
 	BeforeEach(func() {
@@ -64,5 +84,24 @@ var _ = Describe("The kubernikus controller", func() {
 			Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal("false"))
+	})
+
+	It("deletes nodes marked for deletion", func() {
+		initNode("v1.19.2")
+		unmodified := node.DeepCopy()
+		node.Labels = map[string]string{constants.DeleteNodeLabelKey: constants.TrueStr}
+		Expect(k8sClient.Patch(context.Background(), node, client.MergeFrom(unmodified))).To(Succeed())
+		Expect(makePod("thepod", nodeName.Name)).To(Succeed())
+		Eventually(func() bool {
+			node := &v1.Node{}
+			Expect(k8sClient.Get(context.Background(), nodeName, node)).To(Succeed())
+			return node.Spec.Unschedulable
+		}).Should(BeTrue())
+		Eventually(func() []v1.Pod {
+			pods := &v1.PodList{}
+			Expect(k8sClient.List(context.Background(), pods)).To(Succeed())
+			return pods.Items
+		}).Should(HaveLen(0))
+		// don't check for VM deletion here, won't spin up an Openstack setup
 	})
 })

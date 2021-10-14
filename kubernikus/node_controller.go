@@ -22,13 +22,16 @@ package kubernikus
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/blang/semver"
+	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"gopkg.in/ini.v1"
 	v1 "k8s.io/api/core/v1"
@@ -38,6 +41,31 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type Config struct {
+	Intervals struct {
+		Requeue     time.Duration `config:"requeue" validate:"required"`
+		PodDeletion struct {
+			Period  time.Duration `config:"period" validate:"required"`
+			Timeout time.Duration `config:"timeout" validate:"required"`
+		} `config:"podDeletion" validate:"required"`
+	}
+}
+
+func (r *NodeReconciler) loadConfig() (Config, error) {
+	yamlConf, err := yaml.NewConfigWithFile(constants.KubernikusConfigFilePath)
+	if err != nil {
+		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
+		return Config{}, err
+	}
+	var conf Config
+	err = yamlConf.Unpack(&conf)
+	if err != nil {
+		r.Log.Error(err, "Failed to parse configuration file (semantic error)")
+		return Config{}, err
+	}
+	return conf, nil
+}
 
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
@@ -49,8 +77,13 @@ type NodeReconciler struct {
 
 // Reconcile reconciles the given request.
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	conf, err := r.loadConfig()
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	node := &v1.Node{}
-	err := r.Get(ctx, req.NamespacedName, node)
+	err = r.Get(ctx, req.NamespacedName, node)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -60,7 +93,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// mark kubelet update
-	update, err := r.needsKubeletUpdate(ctx, node)
+	update, err := r.needsKubeletUpdate(node)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -78,22 +111,26 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// delete if requested
 	shouldDelete, ok := node.Labels[constants.DeleteNodeLabelKey]
 	if ok && shouldDelete == constants.TrueStr {
-		err = deleteNode(ctx, node.Name)
+		err = r.deleteNode(ctx, node, common.WaitParameters{
+			Client:  r.Client,
+			Period:  conf.Intervals.PodDeletion.Period,
+			Timeout: conf.Intervals.PodDeletion.Timeout,
+		})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
 }
 
-func (r *NodeReconciler) needsKubeletUpdate(ctx context.Context, node *v1.Node) (bool, error) {
+func (r *NodeReconciler) needsKubeletUpdate(node *v1.Node) (bool, error) {
 	KubeletVersion, err := semver.Parse(node.Status.NodeInfo.KubeletVersion[1:])
 	if err != nil {
 		return false, err
 	}
 
-	APIVersion, err := getAPIServerVersion(ctx, r.Conf)
+	APIVersion, err := getAPIServerVersion(r.Conf)
 	if err != nil {
 		return false, err
 	}
@@ -101,7 +138,7 @@ func (r *NodeReconciler) needsKubeletUpdate(ctx context.Context, node *v1.Node) 
 	return APIVersion.GT(KubeletVersion), nil
 }
 
-func getAPIServerVersion(ctx context.Context, conf *rest.Config) (semver.Version, error) {
+func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
 	client, err := kubernetes.NewForConfig(conf)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to create API Server client: %w", err)
@@ -118,10 +155,26 @@ func getAPIServerVersion(ctx context.Context, conf *rest.Config) (semver.Version
 	return version, nil
 }
 
-func deleteNode(ctx context.Context, nodeName string) error {
-	// ##########################################
-	// # TODO: cordon and drain before deleting #
-	// ##########################################
+func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.WaitParameters) error {
+	r.Log.Info("Cordoning, draining and deleting node", "node", node.Name)
+	err := common.EnsureSchedulable(ctx, r.Client, node, false)
+	// In case of error just retry, cordoning is ensured again
+	if err != nil {
+		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
+	}
+	err = common.EnsureDrain(ctx, node, r.Log, params)
+	// In case of error just retry, draining is ensured again
+	if err != nil {
+		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
+	}
+	err = deleteVM(ctx, node.Name)
+	if err != nil {
+		return fmt.Errorf("failed to delete VM backing node %s: %w", node.Name, err)
+	}
+	return nil
+}
+
+func deleteVM(ctx context.Context, nodeName string) error {
 	osConf := struct {
 		Global struct {
 			AuthURL  string `ini:"auth-url"`

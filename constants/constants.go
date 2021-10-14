@@ -65,4 +65,7 @@ const (
 
 	// Path to cloudprovider.conf.
 	CloudProviderConfigFilePath string = "./config/cloudprovider.conf"
+
+	// Path to kubernikus.yaml.
+	KubernikusConfigFilePath string = "./config/kubernikus.yaml"
 )
