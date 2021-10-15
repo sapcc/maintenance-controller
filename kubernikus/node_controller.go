@@ -134,7 +134,6 @@ func (r *NodeReconciler) needsKubeletUpdate(node *v1.Node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("API: %s Kubelet: %s\n", APIVersion, KubeletVersion)
 	return APIVersion.GT(KubeletVersion), nil
 }
 
