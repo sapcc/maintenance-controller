@@ -52,6 +52,15 @@ type Config struct {
 	}
 }
 
+type OpenStackConfig struct {
+	Region     string
+	AuthURL    string
+	Username   string
+	Password   string
+	Domainname string
+	ProjectID  string
+}
+
 func (r *NodeReconciler) loadConfig() (Config, error) {
 	yamlConf, err := yaml.NewConfigWithFile(constants.KubernikusConfigFilePath)
 	if err != nil {
@@ -134,7 +143,7 @@ func (r *NodeReconciler) needsKubeletUpdate(node *v1.Node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return APIVersion.GT(KubeletVersion), nil
+	return APIVersion.NE(KubeletVersion), nil
 }
 
 func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
@@ -174,41 +183,78 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params c
 }
 
 func deleteVM(ctx context.Context, nodeName string) error {
-	osConf := struct {
-		Global struct {
-			AuthURL  string `ini:"auth-url"`
-			Username string `ini:"username"`
-			Password string `ini:"password"`
-			Region   string `ini:"region"`
-		} `ini:"global"`
-	}{}
-	err := ini.MapTo(&osConf, "config/cloudprovider.conf")
+	osConf, err := loadOpenStackConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parese cloudprovider.conf: %w", err)
 	}
 	opts := &clientconfig.ClientOpts{
 		AuthInfo: &clientconfig.AuthInfo{
-			AuthURL:  osConf.Global.AuthURL,
-			Username: osConf.Global.Username,
-			Password: osConf.Global.Password,
+			AuthURL:        osConf.AuthURL,
+			Username:       osConf.Username,
+			Password:       osConf.Password,
+			UserDomainName: osConf.Domainname,
+			ProjectID:      osConf.ProjectID,
 		},
 	}
 	provider, err := clientconfig.AuthenticatedClient(opts)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed OpenStack authentification: %w", err)
 	}
 	provider.Context = ctx
 	compute, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
-		Region: osConf.Global.Region,
+		Region: osConf.Region,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create OS compute endpoint: %w", err)
 	}
-	result := servers.Delete(compute, nodeName)
-	if result.Err != nil {
-		return err
+	list, err := servers.List(compute, servers.ListOpts{
+		TenantID: osConf.ProjectID,
+		Name:     nodeName,
+	}).AllPages()
+	if err != nil {
+		return fmt.Errorf("failed to list servers: %w", err)
+	}
+	serverList, err := servers.ExtractServers(list)
+	if err != nil {
+		return fmt.Errorf("failed to extract server list: %w", err)
+	}
+	if len(serverList) == 0 {
+		// if 0 servers are returned the backing VM is already hopefully deleted
+		return nil
+	}
+	if len(serverList) != 1 {
+		return fmt.Errorf("expected to list 1 or 0 servers, but got %v", len(serverList))
+	}
+	result := servers.Delete(compute, serverList[0].ID)
+	if result.ExtractErr() != nil {
+		return fmt.Errorf("failed to delete VM: %w body: %v", result.ExtractErr(), result.Body)
 	}
 	return nil
+}
+
+func loadOpenStackConfig() (OpenStackConfig, error) {
+	osConf := struct {
+		Global struct {
+			AuthURL    string `ini:"auth-url"`
+			Username   string `ini:"username"`
+			Password   string `ini:"password"`
+			Region     string `ini:"region"`
+			Domainname string `ini:"domain-name"`
+			TenantID   string `ini:"tenant-id"`
+		} `ini:"Global"`
+	}{}
+	err := ini.MapTo(&osConf, constants.CloudProviderConfigFilePath)
+	if err != nil {
+		return OpenStackConfig{}, fmt.Errorf("failed to parese cloudprovider.conf: %w", err)
+	}
+	return OpenStackConfig{
+		Region:     osConf.Global.Region,
+		AuthURL:    osConf.Global.AuthURL,
+		Username:   osConf.Global.Username,
+		Password:   osConf.Global.Password,
+		Domainname: osConf.Global.Domainname,
+		ProjectID:  osConf.Global.TenantID,
+	}, nil
 }
 
 // SetupWithManager attaches the controller to the given manager.

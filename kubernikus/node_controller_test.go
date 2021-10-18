@@ -86,6 +86,15 @@ var _ = Describe("The kubernikus controller", func() {
 		}).Should(Equal("false"))
 	})
 
+	It("marks a node needing a downgrade", func() {
+		initNode("v1.20.2")
+		Eventually(func() string {
+			result := &v1.Node{}
+			Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			return result.Labels[constants.KubeletUpdateLabelKey]
+		}).Should(Equal(constants.TrueStr))
+	})
+
 	It("deletes nodes marked for deletion", func() {
 		initNode("v1.19.2")
 		unmodified := node.DeepCopy()
@@ -103,5 +112,18 @@ var _ = Describe("The kubernikus controller", func() {
 			return pods.Items
 		}).Should(HaveLen(0))
 		// don't check for VM deletion here, won't spin up an Openstack setup
+	})
+
+	It("loads the openstack config", func() {
+		// still need to initialize a node, so the cleanup works
+		initNode("v1.19.2")
+		conf, err := loadOpenStackConfig()
+		Expect(err).To(Succeed())
+		Expect(conf.AuthURL).To(Equal("https://identity-3.qa-de-1.cloud.sap/v3/"))
+		Expect(conf.Password).To(Equal("pw"))
+		Expect(conf.Region).To(Equal("qa-de-1"))
+		Expect(conf.Username).To(Equal("user"))
+		Expect(conf.Domainname).To(Equal("kubernikus"))
+		Expect(conf.ProjectID).To(Equal("id"))
 	})
 })
