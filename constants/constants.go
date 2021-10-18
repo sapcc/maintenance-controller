@@ -64,7 +64,7 @@ const (
 	DeleteNodeLabelKey = "cloud.sap/delete-node"
 
 	// Path to cloudprovider.conf.
-	CloudProviderConfigFilePath string = "./config/cloudprovider.conf"
+	CloudProviderConfigFilePath string = "./provider/cloudprovider.conf"
 
 	// Path to kubernikus.yaml.
 	KubernikusConfigFilePath string = "./config/kubernikus.yaml"

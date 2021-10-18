@@ -127,6 +127,8 @@ var _ = BeforeSuite(func() {
 
 	err = os.MkdirAll("./config", 0700)
 	Expect(err).To(Succeed())
+	err = os.MkdirAll("./provider", 0700)
+	Expect(err).To(Succeed())
 	err = ioutil.WriteFile(constants.CloudProviderConfigFilePath, []byte(cloudprovider), 0600)
 	Expect(err).To(Succeed())
 	err = ioutil.WriteFile(constants.KubernikusConfigFilePath, []byte(config), 0600)
@@ -143,5 +145,7 @@ var _ = AfterSuite(func() {
 	err = os.Remove(constants.CloudProviderConfigFilePath)
 	Expect(err).To(Succeed())
 	err = os.Remove("./config")
+	Expect(err).To(Succeed())
+	err = os.Remove("./provider")
 	Expect(err).To(Succeed())
 })
