@@ -153,6 +153,7 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, enableKube
 	}
 
 	if enableKubernikusMaintenance {
+		setupLog.Info("Kubernikus integration is enabled")
 		if err := (&kubernikus.NodeReconciler{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("kubernikus"),
@@ -164,6 +165,7 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, enableKube
 	}
 
 	if enableESXMaintenance {
+		setupLog.Info("ESX integration is enabled")
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
