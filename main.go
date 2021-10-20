@@ -42,6 +42,7 @@ import (
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
 	"github.com/sapcc/maintenance-controller/event"
+	"github.com/sapcc/maintenance-controller/kubernikus"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -57,19 +58,18 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var enableESXMaintenance bool
-	var kubecontext string
-	var probeAddr string
+	var metricsAddr, kubecontext, probeAddr string
+	var enableLeaderElection, enableESXMaintenance, enableKubernikusMaintenance bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
+	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableESXMaintenance, "enable-esx-maintenance", false,
-		"Enables an other controller loop, which will indicate ESX host maintenance using labels.")
-	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
-	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
+		"Enables an additional controller, which will indicate ESX host maintenance using labels.")
+	flag.BoolVar(&enableKubernikusMaintenance, "enable-kubernikus-maintenance", false,
+		"Enables an additional controller, which will indicate outdated kubelets and enable VM deletions.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -103,7 +103,7 @@ func main() {
 	}
 
 	setupChecks(mgr)
-	err = setupReconcilers(mgr, enableESXMaintenance)
+	err = setupReconcilers(mgr, enableESXMaintenance, enableKubernikusMaintenance)
 	if err != nil {
 		setupLog.Error(err, "problem setting up reconcilers")
 		os.Exit(1)
@@ -129,7 +129,7 @@ func setupChecks(mgr manager.Manager) {
 	}
 }
 
-func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
+func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, enableKubernikusMaintenance bool) error {
 	if err := (&controllers.NodeReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
@@ -139,7 +139,7 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
 		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}
 
-	if enableESXMaintenance {
+	if enableKubernikusMaintenance || enableESXMaintenance {
 		err := mgr.GetFieldIndexer().IndexField(context.Background(),
 			&v1.Pod{},
 			"spec.nodeName",
@@ -150,6 +150,22 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool) error {
 		if err != nil {
 			return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
 		}
+	}
+
+	if enableKubernikusMaintenance {
+		setupLog.Info("Kubernikus integration is enabled")
+		if err := (&kubernikus.NodeReconciler{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("kubernikus"),
+			Scheme: mgr.GetScheme(),
+			Conf:   mgr.GetConfig(),
+		}).SetupWithManager(mgr); err != nil {
+			return fmt.Errorf("Failed to setup kubernikus node reconciler: %w", err)
+		}
+	}
+
+	if enableESXMaintenance {
+		setupLog.Info("ESX integration is enabled")
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),

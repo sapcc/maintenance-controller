@@ -13,7 +13,7 @@ A Kubernetes controller to manage node maintenance.
   - Check Plugins
   - Notification Plugins
   - Trigger Plugins
-- Support for VMware ESX maintenance
+- Additional integrations
 - Example configuration for flatcar update agents
 
 ## Motivation
@@ -234,8 +234,9 @@ config:
   remove: boolean value, if true the label is removed, if false the label is added or changed, optional
 ```
 
-## Support for VMware ESX maintenance
-See [here](esx/README.md).
+## Additional integrations
+- Support for [VMware ESX maintenances](esx/README.md)
+- Support for [Kubernikus](kubernikus/README.md)
 
 ## Example configuration for flatcar update agents
 ```yaml

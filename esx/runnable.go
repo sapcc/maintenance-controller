@@ -26,6 +26,7 @@ import (
 
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -146,12 +147,16 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 		if !ok || init != constants.TrueStr {
 			continue
 		}
-		err := r.ensureSchedulable(ctx, node, false)
+		err := common.EnsureSchedulable(ctx, r.Client, node, false)
 		if err != nil {
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
-		err = r.ensureDrain(ctx, node, conf)
+		err = common.EnsureDrain(ctx, node, r.Log, common.WaitParameters{
+			Client:  r.Client,
+			Period:  conf.Intervals.PodDeletion.Period,
+			Timeout: conf.Intervals.PodDeletion.Timeout,
+		})
 		if err != nil {
 			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue
@@ -162,41 +167,6 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
 		}
-	}
-	return nil
-}
-
-// Drains Pods from the given node, if required.
-func (r *Runnable) ensureDrain(ctx context.Context, node *v1.Node, conf *Config) error {
-	deletable, err := GetPodsForDeletion(ctx, r.Client, node.Name)
-	if err != nil {
-		return fmt.Errorf("failed to fetch deletable pods: %w", err)
-	}
-	if len(deletable) == 0 {
-		return nil
-	}
-	r.Log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
-	deleteFailed := false
-	for i := range deletable {
-		pod := deletable[i]
-		err = r.Client.Delete(ctx, &pod, &client.DeleteOptions{})
-		if err != nil {
-			r.Log.Error(err, "Failed to delete pod from node.", "node", node.Name, "pod", pod.Name)
-			deleteFailed = true
-		}
-	}
-	if deleteFailed {
-		return fmt.Errorf("failed to delete at least one pod")
-	}
-	r.Log.Info("Awaiting pod deletion.", "period", conf.Intervals.PodDeletion.Period,
-		"timeout", conf.Intervals.PodDeletion.Timeout)
-	err = WaitForPodDeletions(ctx, deletable, WaitParameters{
-		Client:  r.Client,
-		Period:  conf.Intervals.PodDeletion.Period,
-		Timeout: conf.Intervals.PodDeletion.Timeout,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to await pod deletions: %w", err)
 	}
 	return nil
 }
@@ -215,7 +185,7 @@ func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host
 			r.Log.Error(err, "Failed to start VM.", "node", node.Name)
 			continue
 		}
-		err = r.ensureSchedulable(ctx, node, true)
+		err = common.EnsureSchedulable(ctx, r.Client, node, true)
 		if err != nil {
 			r.Log.Error(err, "Failed to uncordon node.", "node", node.Name)
 			continue
@@ -333,19 +303,4 @@ func (r *Runnable) deleteAnnotation(ctx context.Context, node *v1.Node, key stri
 	cloned := node.DeepCopy()
 	delete(node.Annotations, key)
 	return r.Patch(ctx, node, client.MergeFrom(cloned))
-}
-
-// Updates the Node.Spec.Unschedulable of the given Node.
-func (r *Runnable) ensureSchedulable(ctx context.Context, node *v1.Node, schedulable bool) error {
-	// If node already has the correct value
-	if node.Spec.Unschedulable != schedulable {
-		return nil
-	}
-	cloned := node.DeepCopy()
-	node.Spec.Unschedulable = !schedulable
-	err := r.Patch(ctx, node, client.MergeFrom(cloned))
-	if err != nil {
-		return fmt.Errorf("Failed to set node %v as (un-)schedulable: %w", node.Name, err)
-	}
-	return nil
 }

@@ -25,6 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -111,7 +112,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 			Expect(k8sClient.Delete(context.Background(), &podList.Items[i],
 				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
 		}
-		err := WaitForPodDeletions(context.Background(), podList.Items, WaitParameters{
+		err := common.WaitForPodDeletions(context.Background(), podList.Items, common.WaitParameters{
 			Client:  k8sClient,
 			Period:  1 * time.Second,
 			Timeout: 4 * time.Second,
@@ -122,7 +123,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 	It("filters for the correct node", func() {
 		Expect(makePod("firstpod", "firstnode")).To(Succeed())
 		Expect(makePod("secondpod", "secondnode")).To(Succeed())
-		deletable, err := GetPodsForDeletion(context.Background(), k8sClient, "firstnode")
+		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "firstnode")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(1))
 	})
@@ -133,7 +134,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 		Expect(makePod("ds", "node", func(p *corev1.Pod) {
 			p.OwnerReferences = []v1.OwnerReference{{Kind: "DaemonSet", APIVersion: "apps/v1", Name: "ds", UID: types.UID("ds")}}
 		})).To(Succeed())
-		deletable, err := GetPodsForDeletion(context.Background(), k8sClient, "node")
+		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "node")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(2))
 	})
@@ -144,7 +145,7 @@ var _ = Describe("GetPodsForDeletion", func() {
 		Expect(makePod("mirror", "node", func(p *corev1.Pod) {
 			p.Annotations = map[string]string{corev1.MirrorPodAnnotationKey: constants.TrueStr}
 		})).To(Succeed())
-		deletable, err := GetPodsForDeletion(context.Background(), k8sClient, "node")
+		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "node")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(2))
 	})

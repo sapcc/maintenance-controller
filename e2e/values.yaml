@@ -16,6 +16,14 @@ flatcar-linux-update-agent:
   rbac:
     create: true
     serviceAccountName: flatcar-linux-update-agent
+kubernikus:
+  enabled: true
+  config: |
+    intervals:
+      requeue: 2s
+      podDeletion:
+        period: 20s
+        timeout: 5m
 config: |
   intervals:
     requeue: 10s

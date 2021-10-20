@@ -192,4 +192,39 @@ var _ = Describe("The maintenance controller", func() {
 		Expect(eventList.Items).To(HaveLen(3))
 	})
 
+	It("should recreate nodes with the kubernikus controller", func() {
+		By("fetch node names")
+		nodes := &v1.NodeList{}
+		Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+		nodeNames := make([]string, 0)
+		for _, node := range nodes.Items {
+			nodeNames = append(nodeNames, node.Name)
+		}
+		By("mark node for deletion")
+		toDelete := &nodes.Items[0]
+		unmodified := toDelete.DeepCopy()
+		toDelete.Labels[constants.DeleteNodeLabelKey] = constants.TrueStr
+		Expect(k8sClient.Patch(context.Background(), toDelete, client.MergeFrom(unmodified))).To(Succeed())
+		By("assert node gets deleted")
+		Eventually(func() []string {
+			nodes := &v1.NodeList{}
+			Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+			nodeNames := make([]string, 0)
+			for _, node := range nodes.Items {
+				nodeNames = append(nodeNames, node.Name)
+			}
+			return nodeNames
+		}, 5*time.Minute).Should(HaveLen(1))
+		By("assert an other node gets added")
+		Eventually(func() []string {
+			nodes := &v1.NodeList{}
+			Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+			nodeNames := make([]string, 0)
+			for _, node := range nodes.Items {
+				nodeNames = append(nodeNames, node.Name)
+			}
+			return nodeNames
+		}, 5*time.Minute).ShouldNot(Equal(nodeNames))
+	})
+
 })
