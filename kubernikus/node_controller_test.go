@@ -21,6 +21,7 @@ package kubernikus
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -97,10 +98,10 @@ var _ = Describe("The kubernikus controller", func() {
 
 	It("deletes nodes marked for deletion", func() {
 		initNode("v1.19.2")
+		Expect(makePod("thepod", nodeName.Name)).To(Succeed())
 		unmodified := node.DeepCopy()
 		node.Labels = map[string]string{constants.DeleteNodeLabelKey: constants.TrueStr}
 		Expect(k8sClient.Patch(context.Background(), node, client.MergeFrom(unmodified))).To(Succeed())
-		Expect(makePod("thepod", nodeName.Name)).To(Succeed())
 		Eventually(func() bool {
 			node := &v1.Node{}
 			Expect(k8sClient.Get(context.Background(), nodeName, node)).To(Succeed())
@@ -110,7 +111,7 @@ var _ = Describe("The kubernikus controller", func() {
 			pods := &v1.PodList{}
 			Expect(k8sClient.List(context.Background(), pods)).To(Succeed())
 			return pods.Items
-		}).Should(HaveLen(0))
+		}, 10*time.Second).Should(HaveLen(0))
 		// don't check for VM deletion here, won't spin up an Openstack setup
 	})
 
