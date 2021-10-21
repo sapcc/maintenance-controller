@@ -554,3 +554,31 @@ var _ = Describe("The affinity plugin", func() {
 	})
 
 })
+
+var _ = Describe("The nodecount plugin", func() {
+	var node *corev1.Node
+
+	BeforeEach(func() {
+		node = &corev1.Node{}
+		node.Name = "thenode"
+		Expect(k8sClient.Create(context.Background(), node)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		Expect(k8sClient.Delete(context.Background(), node)).To(Succeed())
+	})
+
+	It("returns true if a cluster has enough nodes", func() {
+		count := impl.NodeCount{Count: 1}
+		result, err := count.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("returns false if a cluster does not have enough nodes", func() {
+		count := impl.NodeCount{Count: 3}
+		result, err := count.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+})
