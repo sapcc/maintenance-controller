@@ -4,6 +4,7 @@ Firstly it regularly compares a node's kubelet version with the API server versi
 If these do not match a node is labeled with `cloud.sap/kubelet-needs-update=true`.
 Besides the name it also recognizes downgrades.
 Secondly a node can be marked with `cloud.sap/delete-node` to cordon, drain and delete it from a [Kubernikus](https://github.com/sapcc/kubernikus) environment.
+Be aware that a node being deleted is completely removed from the cluster and is in turn no longer influencing the maintenance-controllers logic although the node is unavailable.
 
 Using the `cloud.sap/kubelet-needs-update` and `cloud.sap/delete-node` labels allows for tight integration with the main maintenance-controller to drive Kubernikus upgrades flexibly.
 

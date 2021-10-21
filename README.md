@@ -33,29 +33,36 @@ Kubernetes nodes are modelled as finite state machines and can be in one of thre
 - Maintenance Required
 - In Maintenance
 
-A node's current state is saved within a configurable node label.
+A node's current state is saved within the `cloud.sap/maintenance-state` node label.
 Nodes transition to the state if a chain of configurable "check plugins" decides that the node's state should move on.
 Such plugin chains can be configured for each state individually via maintenance profiles.
-Cluster administrators can assign a maintenance profile to a node using a label.
+Cluster administrators can assign a maintenance profile to a node using the `cloud.sap/maintenance-profile` label.
 Before the transition is finished a chain of "trigger plugins" can be invoked, which can perform any action related to termination or startup logic.
 While a node is in a certain state, a chain of "notifications plugins" informs the cluster users and administrators regularly about the node being in that state.
 Multiple plugins exist.
 It is possible to check or alter labels, to be notified via Slack, ...
 
+Currently, most actual maintenance actions like Cordoning, Draining and Rebooting nodes are not carried out by the maintenance-controller and are instead delegated to inbuilt or external other controllers.
+The maintenance-controller only does the decision making, whether a node can be maintained or not.
+Check out the additional integrations further down.
+
 ## Installation
 
-Execute ```make deploy IMG=sapcc/maintenance-controller```.
+A helm chart can be found [here](https://github.com/sapcc/helm-charts/tree/master/system/maintenance-controller).
+Alternatively, execute ```make deploy IMG=sapcc/maintenance-controller```.
 
 ## Configuration
 
 There is a global configuration, which defines some general options, plugin instances and maintenance profiles.
 The global configuration should be named ```./config/maintenance.yaml``` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
-The basic structure looks like this:
+A secret is recommend as some plugins may need authentication data.
+The basic structure looks like the following:
 ```yaml
 intervals:
-  # defines after which duration a node should be checked again
+  # defines the minimum duration after which a node should be checked again
   requeue: 200ms
-  # defines after which duration a reminder notification should be send
+  # defines how frequent to send reminder notifications
+  # notifications about nodes being operational occur only once
   notify: 500ms
 # plugin instances are the combination of a plugin and its configuration
 instances:
@@ -68,7 +75,7 @@ instances:
       # name of the instance, which is used in the plugin chain configurations
       # do not use spaces or other special characters, besides the underscore, which is allowed
       name: transition
-      # the configuration for the plugin. That block depends obviously on the plugin type
+      # the configuration for the plugin. That block depends on the plugin type
       config:
         key: transition
         value: "true"
@@ -111,10 +118,10 @@ Trigger and Notification chains are configured by specifying the desired instanc
 Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
-The default profile can be reconfigured if it is defined within the config file.
-Multiple profiles can be assigned to a single node be setting ```cloud.sap/maintenance-profile=NAME1--NAME2--NAME3--...```.
+The default profile can be reconfigured, if it is defined within the config file.
+Multiple profiles can be assigned to a single node by setting ```cloud.sap/maintenance-profile=NAME1--NAME2--NAME3--...```.
 The operational state can then be left by the checks configured in all listed profiles.
-Any progress for the maintenance-required and in-maintenance states can only made using the profile, which initial triggered the whole maintenance workflow.
+Any progress for the maintenance-required and in-maintenance states can only made using the profile, which initially triggered the whole maintenance workflow.
 That way specific maintenance workflows for different causes can be implemented.
 The controllers state is tracked with the ```cloud.sap/maintenance-state``` label and the ```cloud.sap/maintenance-data``` annotation.
 
@@ -181,6 +188,11 @@ nodeAffinity:
         values:
         - operational
 ```
+__nodeCount:__ Checks if the cluster has at least the specified of nodes.
+```yaml
+config:
+  count: the amount of nodes to present at least
+```
 
 ### Notification Plugins
 __mail__: Sends an e-mail
@@ -239,6 +251,7 @@ config:
 - Support for [Kubernikus](kubernikus/README.md)
 
 ## Example configuration for flatcar update agents
+This example requires that the Flatcar-Linux-Update-Agent is present on the nodes.
 ```yaml
 intervals:
     requeue: 60s
