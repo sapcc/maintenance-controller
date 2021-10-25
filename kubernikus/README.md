@@ -36,3 +36,109 @@ password="pw"
 region="region"
 ```
 After a node is deleted it should be replaced within some minutes by a new VM with the correct kubelet version.
+A node is gone from maintenance-controllers perspective after deletion, although it might not be replaced yet.
+Ensure to add some checks, e.g. the stagger check plugin, to avoid multiple nodes leaving the cluster one after another without their replacements being ready.
+Also nodes need to be labeled again with `cloud.sap/maintenance-profile=...` after replacements.
+This can be automated by configuring [kubernikus node pools](https://github.com/sapcc/kubernikus/blob/master/swagger.yml#L584).
+
+Kubernikus nodes use Flatcar Linux under the hood, which need to be updated as well.
+A full exemplary configuration might look like the following.
+Don't forget to mark nodes with `cloud.sap/maintenance-profile=flatcar--kubelet`.
+```yaml
+intervals:
+  requeue: 60s
+  notify: 6h
+instances:
+  notify:
+  - slackThread:
+      name: maintenance_flatcar
+      config:
+        token: "token"
+        period: 12h
+        leaseName: maintenance-controller-flatcar
+        leaseNamespace: kube-system
+        # the quotes here are relevant as slack channel names starting with # would render to YAML comment otherwise
+        channel: "#channel"
+        title: "Updating the operating system of nodes."
+        message: '{{ .Node.Name }} will reboot now to update Flatcar Linux from version {{ index .Node.Labels "flatcar-linux-update.v1.flatcar-linux.net/version" }} to version {{ index .Node.Annotations "flatcar-linux-update.v1.flatcar-linux.net/new-version" }}'
+  - slackThread:
+      name: maintenance_kubelet
+      config:
+        token: "token"
+        period: 12h
+        leaseName: maintenance-controller-kubernikus
+        leaseNamespace: kube-system
+        # the quotes here are relevant as slack channel names starting with # would render to YAML comment otherwise
+        channel: "#channel"
+        title: "Updating kubelets."
+        message: '{{ .Node.Name }} will be replaced for kubelet update.'
+  check:
+  - hasAnnotation:
+      name: reboot_needed
+      config:
+        key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
+        value: "true"
+  - hasLabel:
+      name: replace_needed
+      config:
+        key: cloud.sap/kubelet-needs-update
+        value: "true"
+  - maxMaintenance:
+      name: count
+      config:
+        max: 1
+  - condition:
+      name: node_ready
+      config:
+        type: Ready
+        status: "True"
+  - stagger:
+      name: stagger
+      config:
+        duration: 8m
+        leaseName: maintenance-controller-stagger
+        leaseNamespace: kube-system
+  trigger:
+  - alterAnnotation:
+      name: reboot_ok
+      config:
+        key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+        value: "true"
+  - alterAnnotation:
+      name: remove_reboot_ok
+      config:
+        key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+        remove: true
+  - alterLabel:
+      name: delete_node
+      config:
+        key: cloud.sap/delete-node
+        value: "true"
+  - alterLabel:
+      name: remove_delete_node
+      config:
+        key: cloud.sap/delete-node
+        remove: true
+profiles:
+  kubelet:
+    operational:
+      check: replace_needed
+    maintenance-required:
+      check: "count && stagger"
+      trigger: delete_node
+    in-maintenance:
+      # state technically never left due to node deletion
+      check: "!replace_needed"
+      notify: maintenance_kubelet
+      trigger: remove_delete_node
+  flatcar:
+    operational:
+      check: reboot_needed
+    maintenance-required:
+      check: "count && stagger"
+      trigger: reboot_ok
+    in-maintenance:
+      check: "!reboot_needed && node_ready"
+      notify: maintenance_flatcar
+      trigger: remove_reboot_ok
+```
