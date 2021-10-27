@@ -553,6 +553,27 @@ var _ = Describe("The affinity plugin", func() {
 
 	})
 
+	It("does not crash if a pod has no affinity set at all", func() {
+		pod := &corev1.Pod{}
+		pod.Namespace = "default"
+		pod.Name = "container"
+		pod.Spec.NodeName = firstNode.Name
+		pod.Spec.Containers = []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+		affinity := impl.Affinity{}
+		result, err := affinity.Check(buildParams(firstNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+		result, err = affinity.Check(buildParams(secondNode))
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
 })
 
 var _ = Describe("The nodecount plugin", func() {

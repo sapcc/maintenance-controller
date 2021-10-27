@@ -99,20 +99,31 @@ func hasAffinityPod(nodeName string, params *plugin.Parameters) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, pod := range podList.Items {
-		for _, preferred := range pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-			for _, expr := range preferred.Preference.MatchExpressions {
-				affinityPod := expr.Key == constants.StateLabelKey &&
-					expr.Operator == v1.NodeSelectorOpIn &&
-					len(expr.Values) == 1 &&
-					expr.Values[0] == "operational"
-				if affinityPod {
-					return true, nil
-				}
-			}
+	for i := range podList.Items {
+		if hasOperationalAffinity(&podList.Items[i]) {
+			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func hasOperationalAffinity(pod *v1.Pod) bool {
+	if pod.Spec.Affinity == nil || pod.Spec.Affinity.NodeAffinity == nil {
+		return false
+	}
+	nodeAffinity := pod.Spec.Affinity.NodeAffinity
+	for _, preferred := range nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+		for _, expr := range preferred.Preference.MatchExpressions {
+			affinityPod := expr.Key == constants.StateLabelKey &&
+				expr.Operator == v1.NodeSelectorOpIn &&
+				len(expr.Values) == 1 &&
+				expr.Values[0] == "operational"
+			if affinityPod {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (a *Affinity) AfterEval(chainResult bool, params plugin.Parameters) error {
