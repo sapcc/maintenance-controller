@@ -33,6 +33,7 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -82,7 +83,10 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// fetch the current node from the api server
 	var theNode corev1.Node
 	err = r.Get(ctx, req.NamespacedName, &theNode)
-	if err != nil {
+	if errors.IsNotFound(err) {
+		r.Log.Info("Could not find node on the API server, maybe it has been deleted?", "node", req.NamespacedName)
+		return ctrl.Result{}, nil
+	} else if err != nil {
 		r.Log.Error(err, "Failed to retrieve node information from the API server", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 	}

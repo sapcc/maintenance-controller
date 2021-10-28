@@ -35,6 +35,7 @@ import (
 	"github.com/sapcc/maintenance-controller/constants"
 	"gopkg.in/ini.v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -93,26 +94,15 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	node := &v1.Node{}
 	err = r.Get(ctx, req.NamespacedName, node)
-	if err != nil {
+	if errors.IsNotFound(err) {
+		r.Log.Info("Could not find node on the API server, maybe it has been deleted?", "node", req.NamespacedName)
+		return ctrl.Result{}, nil
+	} else if err != nil {
 		return ctrl.Result{}, err
-	}
-	unmodified := node.DeepCopy()
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
 	}
 
 	// mark kubelet update
-	update, err := r.needsKubeletUpdate(node)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if update {
-		node.Labels[constants.KubeletUpdateLabelKey] = constants.TrueStr
-	} else {
-		node.Labels[constants.KubeletUpdateLabelKey] = "false"
-	}
-
-	err = r.Patch(ctx, node, client.MergeFrom(unmodified))
+	err = r.markUpdate(ctx, node)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -131,6 +121,27 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
+}
+
+func (r *NodeReconciler) markUpdate(ctx context.Context, node *v1.Node) error {
+	unmodified := node.DeepCopy()
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+	update, err := r.needsKubeletUpdate(node)
+	if err != nil {
+		return err
+	}
+	if update {
+		node.Labels[constants.KubeletUpdateLabelKey] = constants.TrueStr
+	} else {
+		node.Labels[constants.KubeletUpdateLabelKey] = "false"
+	}
+	err = r.Patch(ctx, node, client.MergeFrom(unmodified))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *NodeReconciler) needsKubeletUpdate(node *v1.Node) (bool, error) {
