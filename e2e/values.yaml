@@ -10,9 +10,9 @@ rbac:
   serviceAccountName: maintenance-controller
 flatcar-linux-update-agent:
   image:
-    registry: keppel.eu-de-1.cloud.sap
-    repository: ccloud/flatcar-linux-update-operator
-    tag: v0.8.0-rc1
+    registry: ghcr.io
+    repository: flatcar-linux/flatcar-linux-update-operator
+    tag: v0.8.0
   rbac:
     create: true
     serviceAccountName: flatcar-linux-update-agent
