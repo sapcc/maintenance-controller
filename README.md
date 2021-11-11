@@ -152,7 +152,7 @@ config:
 __stagger__: Checks that a certain duration has passed since a previous node passed. This is implemented with `coordination.k8s.io/Lease`s, which needs to be manually removed when the maintenance controller is removed from a cluster.
 ```yaml
 config:
-  duration: the duration to await, required
+  duration: the duration to await according to the rules of golangs time.ParseDuration(), required
   leaseName: name prefix of the lease, required
   leaseNamespace: namespace of the lease, required
   parallel: the amount of leases to use, optional (defaults to 1)
@@ -162,7 +162,8 @@ __timeWindow:__ Checks if the current systemtime is within the specified weekly 
 config:
   start: the timewindows start time in "hh:mm" format, required
   end: the timewindows end time in "hh:mm" format, required
-  weekdays: weekdays when the time window is valid as array e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
+  weekdays: weekdays when the time window is valid as array, e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
+  exclude: month/day combinations as array, when maintenances are not allowed to occur, e.g. ["Dec 24", "Oct 31"], optional
 ```
 __wait:__ Checks if a certain duration has passed since the last state transition
 ```yaml

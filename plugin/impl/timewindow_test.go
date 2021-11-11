@@ -30,7 +30,7 @@ import (
 var _ = Describe("The Timewindow plugin", func() {
 
 	It("can parse its config", func() {
-		configStr := "weekdays: [mon]\nstart: \"11:00\"\nend: \"19:30\""
+		configStr := "weekdays: [mon]\nstart: \"11:00\"\nend: \"19:30\"\nexclude: [\"Feb 3\"]"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base TimeWindow
@@ -39,12 +39,17 @@ var _ = Describe("The Timewindow plugin", func() {
 		start := plugin.(*TimeWindow).Start
 		end := plugin.(*TimeWindow).End
 		weekdays := plugin.(*TimeWindow).Weekdays
+		exclude := plugin.(*TimeWindow).Exclude
 		Expect(start.Hour()).To(Equal(11))
 		Expect(start.Minute()).To(Equal(0))
 		Expect(end.Hour()).To(Equal(19))
 		Expect(end.Minute()).To(Equal(30))
 		Expect(weekdays).To(HaveLen(1))
 		Expect(weekdays[0]).To(Equal(time.Monday))
+		Expect(exclude).To(HaveLen(1))
+		dayMonth, err := time.Parse(dayMonthFormat, "Feb 3")
+		Expect(err).To(Succeed())
+		Expect(exclude[0]).To(Equal(dayMonth))
 	})
 
 	It("should fail creation if no weekdays are provided", func() {
@@ -110,6 +115,27 @@ var _ = Describe("The Timewindow plugin", func() {
 			targetDate := time.Date(2020, time.June, 25, 15, 0, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
 			Expect(result).To(BeFalse())
+		})
+
+		Context("and an exclusion for february 2nd", func() {
+
+			start, _ := time.Parse(timeFormat, "10:30")
+			end, _ := time.Parse(timeFormat, "15:20")
+			exclude, _ := time.Parse(dayMonthFormat, "Feb 2")
+
+			plugin := TimeWindow{
+				Start:    start,
+				End:      end,
+				Weekdays: []time.Weekday{time.Monday, time.Tuesday},
+				Exclude:  []time.Time{exclude},
+			}
+
+			It("fails at 15:00 on tuesday february 2nd 2021", func() {
+				targetDate := time.Date(2021, 2, 2, 15, 0, 0, 0, time.UTC)
+				result := plugin.checkInternal(targetDate)
+				Expect(result).To(BeFalse())
+			})
+
 		})
 
 	})

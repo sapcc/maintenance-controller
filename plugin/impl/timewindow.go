@@ -47,12 +47,14 @@ var weekdayMap = map[string]time.Weekday{
 }
 
 const timeFormat = "15:04"
+const dayMonthFormat = "Jan 2"
 
 // TimeWindow is a check plugin that checks whether it is invoked on a certain weekday with a specified timewindow.
 type TimeWindow struct {
 	Start    time.Time
 	End      time.Time
 	Weekdays []time.Weekday
+	Exclude  []time.Time
 }
 
 // New creates a new TimeWindow instance with the given config.
@@ -61,6 +63,7 @@ func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
 		Start    string
 		End      string
 		Weekdays []string
+		Exclude  []string
 	}{}
 	err := config.Unpack(&conf)
 	if err != nil {
@@ -90,6 +93,13 @@ func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
 		}
 		timewindow.Weekdays = append(timewindow.Weekdays, weekday)
 	}
+	for _, excludeStr := range conf.Exclude {
+		exclude, err := time.Parse(dayMonthFormat, excludeStr)
+		if err != nil {
+			return nil, err
+		}
+		timewindow.Exclude = append(timewindow.Exclude, exclude)
+	}
 	return timewindow, nil
 }
 
@@ -112,9 +122,20 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 	for _, weekday := range tw.Weekdays {
 		if weekday == current.Weekday() {
 			containsWeekday = true
+			break
 		}
 	}
 	if !containsWeekday {
+		return false
+	}
+	isExcluded := false
+	for _, exclude := range tw.Exclude {
+		if exclude.Day() == current.Day() && exclude.Month() == current.Month() {
+			isExcluded = true
+			break
+		}
+	}
+	if isExcluded {
 		return false
 	}
 	// It is required to set the date to the configured values only keeping the time
