@@ -12,8 +12,9 @@ Using the `cloud.sap/kubelet-needs-update` and `cloud.sap/delete-node` labels al
 The Kubernikus controller is bundled within the maintenance controller binary. It needs to be enabled using the `--enable-kubernikus-maintenance` flag.
 
 ## Configuration
-__Ensure to disable Kuberniku's own Servicing controller.__
-There is no synchronization between the Servicing controller and the maintenance-controller.
+~~Ensure to disable Kuberniku's own servicing-controller.~~
+Recent Kubernikus versions bail out of servicing automatically if at least one node within a cluster has a `cloud.sap/maintenance-profile` label with a value.
+There is no synchronization between the servicing-controller and the maintenance-controller performing maintenances.
 The main configuration should be placed in `./config/kubernikus.yaml`
 ```yaml
 intervals:
