@@ -175,13 +175,10 @@ type ProfileSelector struct {
 // If a nodes state is required or in-maintenance transitions can only happen
 // based on the profile that caused the whole maintenance "procedure".
 func GetApplicableProfiles(selector ProfileSelector) ([]Profile, error) {
-	all, err := getProfiles(selector.NodeProfiles, selector.AvailableProfiles)
-	if err != nil {
-		return nil, err
-	}
+	all := getProfiles(selector.NodeProfiles, selector.AvailableProfiles)
 	switch selector.NodeState {
 	case Operational:
-		return all, err
+		return all, nil
 	case InMaintenance, Required:
 		for _, profile := range all {
 			if profile.Name == selector.Data.LastProfile {
@@ -192,15 +189,16 @@ func GetApplicableProfiles(selector ProfileSelector) ([]Profile, error) {
 	return nil, fmt.Errorf("no applicable profiles found for the current state %v", string(selector.NodeState))
 }
 
-// parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).
-func getProfiles(profilesStr string, availableProfiles map[string]Profile) ([]Profile, error) {
+// Parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).
+// Skips a possible profile if profileStr contains a profile, which is not part of availableProfiles.
+func getProfiles(profilesStr string, availableProfiles map[string]Profile) []Profile {
 	profiles := make([]Profile, 0)
 	for _, iterProfile := range strings.Split(profilesStr, profileSeparator) {
 		profile, ok := availableProfiles[iterProfile]
 		if !ok {
-			return nil, fmt.Errorf("cannot find the requested maintenance profile %v", iterProfile)
+			continue
 		}
 		profiles = append(profiles, profile)
 	}
-	return profiles, nil
+	return profiles
 }

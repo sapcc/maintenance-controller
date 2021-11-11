@@ -80,7 +80,7 @@ var _ = Describe("The controller", func() {
 		}).Should(BeTrue())
 	})
 
-	It("should use the profile described in the annotation", func() {
+	It("should use the profile described in the label", func() {
 		var node corev1.Node
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
@@ -164,6 +164,29 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).ToNot(HaveKey("alter"))
+	})
+
+	It("should use a profile even if other specified profiles have not been configured", func() {
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		Expect(err).To(Succeed())
+		unmodifiedNode := node.DeepCopy()
+
+		node.Annotations = make(map[string]string)
+		node.Labels = make(map[string]string)
+		node.Labels[constants.ProfileLabelKey] = "does-not-exist--test"
+		node.Labels["transition"] = trueStr
+		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
+		Expect(err).To(Succeed())
+
+		Eventually(func() string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			Expect(err).To(Succeed())
+
+			val := node.Labels[constants.StateLabelKey]
+			return val
+		}).Should(Equal(string(state.InMaintenance)))
 	})
 
 	It("should parse the count profile", func() {
