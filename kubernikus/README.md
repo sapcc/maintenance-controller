@@ -23,6 +23,7 @@ intervals:
   podDeletion:
     period: 20s
     timeout: 5m
+  postDrain: 5s # Duration to be awaited after deleting all pods from a node, could help giving volume controllers enough time to unmount volumes properly, defaults to 10s
 ```
 Also OpenStack credentials have to provided to delete the virtual machine backing a Kubernikus node.
 These have to be placed in `./provider/cloudprovider.conf`.

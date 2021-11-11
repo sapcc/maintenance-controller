@@ -43,9 +43,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const DefaultPostDrainTimeout = 10 * time.Second
+
 type Config struct {
 	Intervals struct {
 		Requeue     time.Duration `config:"requeue" validate:"required"`
+		PostDrain   time.Duration `config:"postDrain"`
 		PodDeletion struct {
 			Period  time.Duration `config:"period" validate:"required"`
 			Timeout time.Duration `config:"timeout" validate:"required"`
@@ -69,6 +72,7 @@ func (r *NodeReconciler) loadConfig() (Config, error) {
 		return Config{}, err
 	}
 	var conf Config
+	conf.Intervals.PostDrain = DefaultPostDrainTimeout
 	err = yamlConf.Unpack(&conf)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (semantic error)")
@@ -110,10 +114,14 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// delete if requested
 	shouldDelete, ok := node.Labels[constants.DeleteNodeLabelKey]
 	if ok && shouldDelete == constants.TrueStr {
-		err = r.deleteNode(ctx, node, common.WaitParameters{
-			Client:  r.Client,
-			Period:  conf.Intervals.PodDeletion.Period,
-			Timeout: conf.Intervals.PodDeletion.Timeout,
+		err = r.deleteNode(ctx, DeleteNodeParameters{
+			node: node,
+			wait: common.WaitParameters{
+				Client:  r.Client,
+				Period:  conf.Intervals.PodDeletion.Period,
+				Timeout: conf.Intervals.PodDeletion.Timeout,
+			},
+			postDrain: conf.Intervals.PostDrain,
 		})
 		if err != nil {
 			return ctrl.Result{}, err
@@ -174,21 +182,28 @@ func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
 	return version, nil
 }
 
-func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.WaitParameters) error {
-	r.Log.Info("Cordoning, draining and deleting node", "node", node.Name)
-	err := common.EnsureSchedulable(ctx, r.Client, node, false)
+type DeleteNodeParameters struct {
+	node      *v1.Node
+	wait      common.WaitParameters
+	postDrain time.Duration
+}
+
+func (r *NodeReconciler) deleteNode(ctx context.Context, params DeleteNodeParameters) error {
+	r.Log.Info("Cordoning, draining and deleting node", "node", params.node.Name)
+	err := common.EnsureSchedulable(ctx, r.Client, params.node, false)
 	// In case of error just retry, cordoning is ensured again
 	if err != nil {
-		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
+		return fmt.Errorf("failed to cordon node %s: %w", params.node.Name, err)
 	}
-	err = common.EnsureDrain(ctx, node, r.Log, params)
+	err = common.EnsureDrain(ctx, params.node, r.Log, params.wait)
 	// In case of error just retry, draining is ensured again
 	if err != nil {
-		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
+		return fmt.Errorf("failed to drain node %s: %w", params.node.Name, err)
 	}
-	err = deleteVM(ctx, node.Name)
+	time.Sleep(params.postDrain)
+	err = deleteVM(ctx, params.node.Name)
 	if err != nil {
-		return fmt.Errorf("failed to delete VM backing node %s: %w", node.Name, err)
+		return fmt.Errorf("failed to delete VM backing node %s: %w", params.node.Name, err)
 	}
 	return nil
 }

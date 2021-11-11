@@ -55,6 +55,7 @@ region="qa-de-1"
 const config string = `
 intervals:
   requeue: 250ms
+  postDrain: 0s
   podDeletion:
     period: 2s
     timeout: 30s
