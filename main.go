@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -77,7 +78,6 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
 	if kubecontext == "" {
 		kubecontext = os.Getenv("KUBECONTEXT")
 	}
@@ -88,14 +88,17 @@ func main() {
 	}
 	setupLog.Info("Loaded kubeconfig", "context", kubecontext, "host", restConfig.Host)
 
+	leaderElectionRetry := 5 * time.Second //nolint:gomnd
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443, //nolint:gomnd
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "maintenance-controller-leader-election.cloud.sap",
-		EventBroadcaster:       event.NewNodeBroadcaster(),
+		Scheme:                     scheme,
+		MetricsBindAddress:         metricsAddr,
+		Port:                       9443, //nolint:gomnd
+		HealthProbeBindAddress:     probeAddr,
+		EventBroadcaster:           event.NewNodeBroadcaster(),
+		LeaderElectionResourceLock: "leases",
+		LeaderElection:             enableLeaderElection,
+		LeaderElectionID:           "maintenance-controller-leader-election.cloud.sap",
+		RetryPeriod:                &leaderElectionRetry,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
