@@ -142,17 +142,16 @@ func setupReconcilers(mgr manager.Manager, enableESXMaintenance bool, enableKube
 		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}
 
-	if enableKubernikusMaintenance || enableESXMaintenance {
-		err := mgr.GetFieldIndexer().IndexField(context.Background(),
-			&v1.Pod{},
-			"spec.nodeName",
-			func(o client.Object) []string {
-				pod := o.(*v1.Pod) // nolint:forcetypeassert
-				return []string{pod.Spec.NodeName}
-			})
-		if err != nil {
-			return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
-		}
+	// Required for affinity check plugin as well as kubernikus and ESX integration
+	err := mgr.GetFieldIndexer().IndexField(context.Background(),
+		&v1.Pod{},
+		"spec.nodeName",
+		func(o client.Object) []string {
+			pod := o.(*v1.Pod) // nolint:forcetypeassert
+			return []string{pod.Spec.NodeName}
+		})
+	if err != nil {
+		return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
 	}
 
 	if enableKubernikusMaintenance {
