@@ -70,52 +70,54 @@ instances:
   notify: null
   # check plugin instances
   check:
-  # the list entries define the chosen plugin type
-  - hasLabel:
-      # name of the instance, which is used in the plugin chain configurations
-      # do not use spaces or other special characters, besides the underscore, which is allowed
-      name: transition
-      # the configuration for the plugin. That block depends on the plugin type
-      config:
-        key: transition
-        value: "true"
+  - type: hasLabel # the plugin type
+    # name of the instance, which is used in the plugin chain configurations
+    # do not use spaces or other special characters, besides the underscore, which is allowed
+    name: transition
+    # the configuration for the plugin. That block depends on the plugin type
+    config:
+      key: transition
+      value: "true"
   # trigger plugin instances
   trigger:
-  - alterLabel:
-      name: alter
-      config:
-        key: alter
-        value: "true"
-        remove: false
+  - type: alterLabel
+    name: alter
+    config:
+      key: alter
+      value: "true"
+      remove: false
 profiles:
-  # define a maintenance profile called someprofile
-  someprofile:
-    # define the plugin chains for the operational state
-    operational:
+# define a maintenance profile called someprofile
+- name: someprofile
+  # define the plugin chains for the operational state
+  operational:
+    # the notification instances to invoke while in the operational state
+    notify: somenotificationplugin
+    transitions:
       # the exit condition for the operational state refers to the "transition" plugin instance defined in the instances section
-      check: transition
-      # the notification instances to invoke while in the operational state
-      notify: somenotificationplugin
+    - check: transition
       # the trigger instances which are invoked when leaving the operational state
       trigger: alter
-    # define the plugin chains for the maintenance-required state
-    maintenance-required:
-      # define chains as shown with the operational state
-      check: null
-      notify: null
-      trigger: null
-    # define plugin chains for the in-maintenance state
-    in-maintenance:
+      # the following state after passing checks and executing triggers
+      next: maintenance-required
+  # define the plugin chains for the maintenance-required state
+  maintenance-required:
+    # define chains as shown with the operational state
+    check: null
+    transitions: null
+  # define plugin chains for the in-maintenance state
+  in-maintenance:
+    # multiple notification instances can be used
+    notify: g && h
+    transitions:
       # check chains support boolean operations which evaluate multiple instances
-      check: transition && !(a || b)
-      # multiple notification instances can be used also
-      notify: g && h
+    - check: "transition && !(a || b)"
       # multiple trigger instances can be used also
       trigger: t && u
 ```
 Chains be undefined or empty.
-Trigger and Notification chains are configured by specifying the desired instance names separated by ```&&```, e.g. ```alter && othertriggerplugin```
-Check chains be build using boolean expression, e.g. ```transition && !(a || b)```
+Trigger and Notification chains are configured by specifying the desired instance names separated by ```&&```, e.g. ```alter && othertriggerplugin```.
+Check chains are build using boolean expression, e.g. ```transition && !(a || b)```.
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
 The default profile can be reconfigured, if it is defined within the config file.
@@ -255,63 +257,69 @@ config:
 This example requires that the Flatcar-Linux-Update-Agent is present on the nodes.
 ```yaml
 intervals:
-    requeue: 60s
-    notify: 5h
+  requeue: 60s
+  notify: 5h
 instances:
-    notify:
-    - slack:
-        name: approval_required
-        config:
-          hook: Your hook
-          channel: Your channel
-          message: |
-            The node {{ .Node.Name }} requires maintenance. Manual approval is required.
-            Approve to drain and reboot this node by running:
-            `kubectl annotate node {{ .Node.Name }} cloud.sap/maintenance-approved=true`
-    - slack:
-        name: maintenance_started
-        config:
-          hook: Your hook
-          channel: Your channel
-          message: |
-            Maintenance for node {{ .Node.Name }} has started.
-    check:
-    - hasAnnotation:
-        name: reboot_needed
-        config:
-            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
-            value: "true"
-    - hasAnnotation:
-        name: check_approval
-        config:
-            key: cloud.sap/maintenance-approved
-            value: "true"
-    trigger:
-    - alterAnnotation:
-        name: reboot-ok
-        config:
-            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
-            value: "true"
-    - alterAnnotation:
-        name: remove_approval
-        config:
-            key: cloud.sap/maintenance-approved
-            remove: true
-    - alterAnnotation:
-        name: remove_reboot_ok
-        config:
-            key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
-            remove: true
+  notify:
+  - type: slack
+    name: approval_required
+    config:
+      hook: Your hook
+      channel: Your channel
+      message: |
+        The node {{ .Node.Name }} requires maintenance. Manual approval is required.
+        Approve to drain and reboot this node by running:
+        `kubectl annotate node {{ .Node.Name }} cloud.sap/maintenance-approved=true`
+  - type: slack
+    name: maintenance_started
+    config:
+      hook: Your hook
+      channel: Your channel
+      message: |
+        Maintenance for node {{ .Node.Name }} has started.
+  check:
+  - type: hasAnnotation
+    name: reboot_needed
+    config:
+      key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
+      value: "true"
+  - type: hasAnnotation
+    name: check_approval
+    config:
+      key: cloud.sap/maintenance-approved
+      value: "true"
+  trigger:
+  - type: alterAnnotation
+    name: reboot-ok
+    config:
+      key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+      value: "true"
+  - type: alterAnnotation
+    name: remove_approval
+    config:
+      key: cloud.sap/maintenance-approved
+      remove: true
+  - type: alterAnnotation
+    name: remove_reboot_ok
+    config:
+      key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+      remove: true
 profiles:
-  flatcar:
-    operational:
-      check: reboot_needed
-    maintenance-required:
-      check: check_approval
-      notify: approval_required
+- name: flatcar
+  operational:
+    transitions:
+    - check: reboot_needed
+      next: maintenance-required
+  maintenance-required:
+    notify: approval_required
+    transitions:
+    - check: check_approval
       trigger: remove_approval && reboot-ok
-    in-maintenance:
-      check: "!reboot_needed"
-      notify: maintenance_started
+      next: in-maintenance
+  in-maintenance:
+    notify: maintenance_started
+    transitions:
+    - check: "!reboot_needed"
       trigger: remove_reboot_ok
+      next: operational
 ```

@@ -70,17 +70,19 @@ var _ = Describe("Registry", func() {
 
 			It("loads check plugin instances", func() {
 				var configStr = `check:
-                - someCheckPlugin:
-                    name: test
-                    config:
-                        key: somekey
-                        value: someval
+                - type: someCheckPlugin
+                  name: test
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.CheckPlugins["someCheckPlugin"] = &trueCheck{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.CheckInstances).To(HaveLen(1))
 				instance := registry.CheckInstances["test"]
@@ -89,17 +91,19 @@ var _ = Describe("Registry", func() {
 
 			It("loads notification plugin instances", func() {
 				var configStr = `notify:
-                - someNotificationPlugin:
-                    name: test
-                    config:
-                        key: somekey
-                        value: someval
+                - type: someNotificationPlugin
+                  name: test
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.NotificationPlugins["someNotificationPlugin"] = &successfulNotification{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.NotificationInstances).To(HaveLen(1))
 				instance := registry.NotificationInstances["test"]
@@ -108,17 +112,19 @@ var _ = Describe("Registry", func() {
 
 			It("loads trigger plugin instances", func() {
 				var configStr = `trigger:
-                - someTriggerPlugin:
-                    name: test
-                    config:
-                        key: somekey
-                        value: someval
+                - type: someTriggerPlugin
+                  name: test
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.TriggerPlugins["someTriggerPlugin"] = &successfulTrigger{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.TriggerInstances).To(HaveLen(1))
 				instance := registry.TriggerInstances["test"]
@@ -133,7 +139,12 @@ var _ = Describe("Registry", func() {
 				registry := NewRegistry()
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				err = config.Unpack(&descriptor)
+				if err != nil {
+					return
+				}
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(HaveOccurred())
 			}
 

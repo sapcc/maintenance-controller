@@ -152,7 +152,10 @@ func reconcileInternal(params reconcileParameters) error {
 	log := params.log
 
 	// fetch the current node state
-	stateLabel := parseNodeState(node, constants.StateLabelKey)
+	stateLabel, err := parseNodeState(node, constants.StateLabelKey)
+	if err != nil {
+		return err
+	}
 	stateStr := string(stateLabel)
 	data, err := state.ParseData(node)
 	if err != nil {
@@ -217,18 +220,18 @@ func writeData(node *corev1.Node, data state.Data) error {
 	return nil
 }
 
-func parseNodeState(node *corev1.Node, key string) state.NodeStateLabel {
+func parseNodeState(node *corev1.Node, key string) (state.NodeStateLabel, error) {
 	// get the current node state
 	stateStr, ok := node.Labels[key]
 	if ok {
-		return state.NodeStateLabel(stateStr)
+		return state.ValidateLabel(stateStr)
 	}
 	// if not found attach operational state
 	if node.Labels == nil {
 		node.Labels = make(map[string]string)
 	}
 	node.Labels[key] = string(state.Operational)
-	return state.Operational
+	return state.Operational, nil
 }
 
 // SetupWithManager attaches the controller to the given manager.

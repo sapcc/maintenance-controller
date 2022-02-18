@@ -20,6 +20,7 @@
 package state
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -53,22 +54,15 @@ func (s *operational) Notify(params plugin.Parameters, data *Data) error {
 	return nil
 }
 
-func (s *operational) Trigger(params plugin.Parameters, data *Data) error {
-	return s.chains.Trigger.Execute(params)
+func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+	for _, transition := range s.chains.Transitions {
+		if transition.Next == next {
+			return transition.Trigger.Execute(params)
+		}
+	}
+	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
 func (s *operational) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if no checks are configured the node will be ignored by the controller
-	// (by staying in operational state all the time)
-	if len(s.chains.Check.Plugins) == 0 {
-		return Operational, nil
-	}
-	result, err := s.chains.Check.Execute(params)
-	if err != nil {
-		return Operational, err
-	}
-	if result {
-		return Required, nil
-	}
-	return Operational, nil
+	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

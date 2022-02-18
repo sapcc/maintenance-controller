@@ -100,7 +100,7 @@ var _ = Describe("The controller", func() {
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
-		}).Should(Equal(string(state.InMaintenance)))
+		}).Should(Equal(string(state.Required)))
 
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
@@ -186,7 +186,7 @@ var _ = Describe("The controller", func() {
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
-		}).Should(Equal(string(state.InMaintenance)))
+		}).Should(Equal(string(state.Required)))
 	})
 
 	It("should parse the count profile", func() {
@@ -198,17 +198,17 @@ var _ = Describe("The controller", func() {
 		profile := conf.Profiles["count"]
 		Expect(profile.Name).To(Equal("count"))
 		operational := profile.Chains[state.Operational]
-		Expect(operational.Check.Plugins).To(HaveLen(1))
+		Expect(operational.Transitions[0].Check.Plugins).To(HaveLen(1))
 		Expect(operational.Notification.Plugins).To(HaveLen(0))
-		Expect(operational.Trigger.Plugins).To(HaveLen(1))
+		Expect(operational.Transitions[0].Trigger.Plugins).To(HaveLen(1))
 		required := profile.Chains[state.Required]
-		Expect(required.Check.Plugins).To(HaveLen(2))
+		Expect(required.Transitions[0].Check.Plugins).To(HaveLen(2))
 		Expect(required.Notification.Plugins).To(HaveLen(0))
-		Expect(required.Trigger.Plugins).To(HaveLen(0))
+		Expect(required.Transitions[0].Trigger.Plugins).To(HaveLen(0))
 		maintenance := profile.Chains[state.InMaintenance]
-		Expect(maintenance.Check.Plugins).To(HaveLen(3))
+		Expect(maintenance.Transitions[0].Check.Plugins).To(HaveLen(3))
 		Expect(maintenance.Notification.Plugins).To(HaveLen(0))
-		Expect(maintenance.Trigger.Plugins).To(HaveLen(0))
+		Expect(maintenance.Transitions[0].Trigger.Plugins).To(HaveLen(0))
 	})
 
 })

@@ -196,7 +196,12 @@ var _ = Describe("Apply", func() {
 			label:    Operational,
 			interval: 1 * time.Hour,
 			chains: PluginChains{
-				Check: chain,
+				Transitions: []Transition{
+					{
+						Check: chain,
+						Next:  Required,
+					},
+				},
 			},
 		}
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
@@ -213,8 +218,13 @@ var _ = Describe("Apply", func() {
 			label:    Operational,
 			interval: 1 * time.Hour,
 			chains: PluginChains{
-				Check:   checkChain,
-				Trigger: triggerChain,
+				Transitions: []Transition{
+					{
+						Check:   checkChain,
+						Trigger: triggerChain,
+						Next:    Required,
+					},
+				},
 			},
 		}
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())

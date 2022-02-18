@@ -29,54 +29,77 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 )
 
+var Registry plugin.Registry
+
+func init() {
+	Registry = plugin.NewRegistry()
+	addPluginsToRegistry(&Registry)
+}
+
+type ProfileDescriptor struct {
+	Name                string `config:"name" validate:"required"`
+	Operational         StateDescriptor
+	MaintenanceRequired StateDescriptor `config:"maintenance-required"`
+	InMaintenance       StateDescriptor `config:"in-maintenance"`
+}
+
+type StateDescriptor struct {
+	Notify      string
+	Transitions []TransitionDescriptor
+}
+
+type TransitionDescriptor struct {
+	Check   string `config:"check" validate:"required"`
+	Next    string `config:"next" validate:"required"`
+	Trigger string
+}
+
+// ConfigDescriptor describes the configuration structure to be parsed.
+type ConfigDescriptor struct {
+	Intervals struct {
+		Requeue time.Duration `config:"requeue" validate:"required"`
+		Notify  time.Duration `config:"notify" validate:"required"`
+	} `config:"intervals" validate:"required"`
+	Instances plugin.InstancesDescriptor
+	Profiles  []ProfileDescriptor
+}
+
 // Config represents the controllers global configuration.
 type Config struct {
 	// RequeueInterval defines a duration after the a node is reconceiled again by the controller
 	RequeueInterval time.Duration
 	// NotificationInterval specifies a duration after which notifications are resend
 	NotificationInterval time.Duration
-	// Registry is the global plugin Registry
-	Registry plugin.Registry
 	// Profiles contains all known profiles
 	Profiles map[string]state.Profile
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
 func LoadConfig(config *ucfg.Config) (*Config, error) {
-	c := &Config{}
-	global := struct {
-		Intervals struct {
-			Requeue time.Duration `config:"requeue" validate:"required"`
-			Notify  time.Duration `config:"notify" validate:"required"`
-		} `config:"intervals" validate:"required"`
-		Instances *ucfg.Config
-		Profiles  *ucfg.Config
-	}{}
+	var global ConfigDescriptor
 	err := config.Unpack(&global)
 	if err != nil {
 		return nil, err
 	}
-	c.RequeueInterval = global.Intervals.Requeue
-	c.NotificationInterval = global.Intervals.Notify
-
-	c.Registry = plugin.NewRegistry()
-	addPluginsToRegistry(&c.Registry)
-	err = c.Registry.LoadInstances(global.Instances)
+	err = Registry.LoadInstances(&global.Instances)
 	if err != nil {
 		return nil, err
 	}
-
-	c.Profiles = make(map[string]state.Profile)
-	err = loadProfiles(global.Profiles, c)
+	profileMap, err := loadProfiles(global.Profiles)
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return &Config{
+		RequeueInterval:      global.Intervals.Notify,
+		NotificationInterval: global.Intervals.Requeue,
+		Profiles:             profileMap,
+	}, nil
 }
 
-func loadProfiles(config *ucfg.Config, c *Config) error {
+func loadProfiles(profiles []ProfileDescriptor) (map[string]state.Profile, error) {
+	profileMap := make(map[string]state.Profile)
 	// add an empty default profile
-	c.Profiles[constants.DefaultProfileName] = state.Profile{
+	profileMap[constants.DefaultProfileName] = state.Profile{
 		Name: constants.DefaultProfileName,
 		Chains: map[state.NodeStateLabel]state.PluginChains{
 			state.Operational:   {},
@@ -84,34 +107,21 @@ func loadProfiles(config *ucfg.Config, c *Config) error {
 			state.Required:      {},
 		},
 	}
-	for _, profileName := range config.GetFields() {
-		currentProfile, err := config.Child(profileName, -1)
+	for _, profile := range profiles {
+		operationalChain, err := loadPluginChains(profile.Operational, &Registry)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		states := struct {
-			Operational *ucfg.Config `config:"operational"`
-			Required    *ucfg.Config `config:"maintenance-required"`
-			Maintenance *ucfg.Config `config:"in-maintenance"`
-		}{}
-		err = currentProfile.Unpack(&states)
+		requiredChain, err := loadPluginChains(profile.MaintenanceRequired, &Registry)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		operationalChain, err := loadPluginChains(states.Operational, &c.Registry)
+		maintenanceChain, err := loadPluginChains(profile.InMaintenance, &Registry)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		requiredChain, err := loadPluginChains(states.Required, &c.Registry)
-		if err != nil {
-			return err
-		}
-		maintenanceChain, err := loadPluginChains(states.Maintenance, &c.Registry)
-		if err != nil {
-			return err
-		}
-		c.Profiles[profileName] = state.Profile{
-			Name: profileName,
+		profileMap[profile.Name] = state.Profile{
+			Name: profile.Name,
 			Chains: map[state.NodeStateLabel]state.PluginChains{
 				state.Operational:   operationalChain,
 				state.Required:      requiredChain,
@@ -119,37 +129,36 @@ func loadProfiles(config *ucfg.Config, c *Config) error {
 			},
 		}
 	}
-	return nil
+	return profileMap, nil
 }
 
-func loadPluginChains(config *ucfg.Config, registry *plugin.Registry) (state.PluginChains, error) {
+func loadPluginChains(config StateDescriptor, registry *plugin.Registry) (state.PluginChains, error) {
 	var chains state.PluginChains
-	if config == nil {
-		return chains, nil
-	}
-	texts := struct {
-		Check   string
-		Notify  string
-		Trigger string
-	}{}
-	if err := config.Unpack(&texts); err != nil {
-		return chains, err
-	}
-	checkChain, err := registry.NewCheckChain(texts.Check)
-	if err != nil {
-		return chains, err
-	}
-	chains.Check = checkChain
-	notificationChain, err := registry.NewNotificationChain(texts.Notify)
+	notificationChain, err := registry.NewNotificationChain(config.Notify)
 	if err != nil {
 		return chains, err
 	}
 	chains.Notification = notificationChain
-	triggerChain, err := registry.NewTriggerChain(texts.Trigger)
-	if err != nil {
-		return chains, err
+	chains.Transitions = make([]state.Transition, 0)
+	for _, transitionConfig := range config.Transitions {
+		var transition state.Transition
+		checkChain, err := registry.NewCheckChain(transitionConfig.Check)
+		if err != nil {
+			return chains, err
+		}
+		transition.Check = checkChain
+		triggerChain, err := registry.NewTriggerChain(transitionConfig.Trigger)
+		if err != nil {
+			return chains, err
+		}
+		transition.Trigger = triggerChain
+		label, err := state.ValidateLabel(transitionConfig.Next)
+		if err != nil {
+			return chains, err
+		}
+		transition.Next = label
+		chains.Transitions = append(chains.Transitions, transition)
 	}
-	chains.Trigger = triggerChain
 	return chains, nil
 }
 

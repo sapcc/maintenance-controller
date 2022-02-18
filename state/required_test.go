@@ -36,11 +36,11 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 	Context("with empty CheckChain", func() {
 
-		It("transitions to in maintenance", func() {
+		It("transitions to maintenance-required", func() {
 			mr := newMaintenanceRequired(PluginChains{}, time.Hour)
 			next, err := mr.Transition(plugin.Parameters{}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(InMaintenance))
+			Expect(next).To(Equal(Required))
 		})
 
 	})
@@ -60,15 +60,20 @@ var _ = Describe("MaintenanceRequired State", func() {
 			var triggerChain plugin.TriggerChain
 			triggerChain, trigger = mockTriggerChain()
 			chains = PluginChains{
-				Check:        checkChain,
+				Transitions: []Transition{
+					{
+						Check:   checkChain,
+						Trigger: triggerChain,
+						Next:    InMaintenance,
+					},
+				},
 				Notification: notificationChain,
-				Trigger:      triggerChain,
 			}
 		})
 
 		It("executes the triggers", func() {
 			mr := newMaintenanceRequired(chains, time.Hour)
-			err := mr.Trigger(plugin.Parameters{}, &Data{})
+			err := mr.Trigger(plugin.Parameters{}, InMaintenance, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})

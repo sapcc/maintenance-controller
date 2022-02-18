@@ -45,11 +45,28 @@ const InMaintenance NodeStateLabel = "in-maintenance"
 // profileSeparator is used to split the maintenance profile label string into multple profile names.
 const profileSeparator string = "--"
 
+func ValidateLabel(s string) (NodeStateLabel, error) {
+	switch s {
+	case string(Operational):
+		return Operational, nil
+	case string(Required):
+		return Required, nil
+	case string(InMaintenance):
+		return InMaintenance, nil
+	}
+	return Operational, fmt.Errorf("'%s' is not a valid NodeStateLabel", s)
+}
+
+type Transition struct {
+	Check   plugin.CheckChain
+	Trigger plugin.TriggerChain
+	Next    NodeStateLabel
+}
+
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
-	Check        plugin.CheckChain
 	Notification plugin.NotificationChain
-	Trigger      plugin.TriggerChain
+	Transitions  []Transition
 }
 
 type Profile struct {
@@ -84,7 +101,7 @@ type NodeState interface {
 	// Notify executes the notification chain if required
 	Notify(params plugin.Parameters, data *Data) error
 	// Trigger executes the trigger chain
-	Trigger(params plugin.Parameters, data *Data) error
+	Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error
 	// Trigger executes the check chain and determines, which state should be the next one.
 	// If an error is returned the NodeStateLabel must match the current state.
 	Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error)
@@ -131,7 +148,7 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 
 	// check if a transition should happen
 	if next != state.Label() {
-		err = state.Trigger(params, data)
+		err = state.Trigger(params, next, data)
 		if err != nil {
 			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile.Current)
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
@@ -144,6 +161,22 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 		return next, nil
 	}
 	return state.Label(), nil
+}
+
+// notifyDefault is a default NodeState.Transition implementation that checks
+// each specified transition in order and returns the next state. If len(trans)
+// is 0, the current state is returned.
+func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans []Transition) (NodeStateLabel, error) {
+	for _, transition := range trans {
+		shouldTransition, err := transition.Check.Execute(params)
+		if err != nil {
+			return current, err
+		}
+		if shouldTransition {
+			return transition.Next, nil
+		}
+	}
+	return current, nil
 }
 
 // notifyDefault is a default NodeState.Notify implemention that executes

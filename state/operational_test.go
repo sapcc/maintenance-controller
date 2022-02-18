@@ -60,15 +60,20 @@ var _ = Describe("Operational State", func() {
 			var triggerChain plugin.TriggerChain
 			triggerChain, trigger = mockTriggerChain()
 			chains = PluginChains{
-				Check:        checkChain,
+				Transitions: []Transition{
+					{
+						Check:   checkChain,
+						Trigger: triggerChain,
+						Next:    Required,
+					},
+				},
 				Notification: notificationChain,
-				Trigger:      triggerChain,
 			}
 		})
 
 		It("executes the triggers", func() {
 			op := newOperational(chains, time.Hour)
-			err := op.Trigger(plugin.Parameters{}, &Data{})
+			err := op.Trigger(plugin.Parameters{}, Required, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
