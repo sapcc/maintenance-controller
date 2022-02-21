@@ -29,13 +29,6 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 )
 
-var Registry plugin.Registry
-
-func init() {
-	Registry = plugin.NewRegistry()
-	addPluginsToRegistry(&Registry)
-}
-
 type ProfileDescriptor struct {
 	Name                string `config:"name" validate:"required"`
 	Operational         StateDescriptor
@@ -72,6 +65,8 @@ type Config struct {
 	NotificationInterval time.Duration
 	// Profiles contains all known profiles
 	Profiles map[string]state.Profile
+	// Contains reference to all plugins and their instances
+	Registry plugin.Registry
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
@@ -81,11 +76,13 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = Registry.LoadInstances(&global.Instances)
+	registry := plugin.NewRegistry()
+	addPluginsToRegistry(&registry)
+	err = registry.LoadInstances(&global.Instances)
 	if err != nil {
 		return nil, err
 	}
-	profileMap, err := loadProfiles(global.Profiles)
+	profileMap, err := loadProfiles(global.Profiles, &registry)
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +90,11 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 		RequeueInterval:      global.Intervals.Notify,
 		NotificationInterval: global.Intervals.Requeue,
 		Profiles:             profileMap,
+		Registry:             registry,
 	}, nil
 }
 
-func loadProfiles(profiles []ProfileDescriptor) (map[string]state.Profile, error) {
+func loadProfiles(profiles []ProfileDescriptor, registry *plugin.Registry) (map[string]state.Profile, error) {
 	profileMap := make(map[string]state.Profile)
 	// add an empty default profile
 	profileMap[constants.DefaultProfileName] = state.Profile{
@@ -108,15 +106,15 @@ func loadProfiles(profiles []ProfileDescriptor) (map[string]state.Profile, error
 		},
 	}
 	for _, profile := range profiles {
-		operationalChain, err := loadPluginChains(profile.Operational, &Registry)
+		operationalChain, err := loadPluginChains(profile.Operational, registry)
 		if err != nil {
 			return nil, err
 		}
-		requiredChain, err := loadPluginChains(profile.MaintenanceRequired, &Registry)
+		requiredChain, err := loadPluginChains(profile.MaintenanceRequired, registry)
 		if err != nil {
 			return nil, err
 		}
-		maintenanceChain, err := loadPluginChains(profile.InMaintenance, &Registry)
+		maintenanceChain, err := loadPluginChains(profile.InMaintenance, registry)
 		if err != nil {
 			return nil, err
 		}
