@@ -23,6 +23,7 @@ import (
 	"errors"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -55,7 +56,7 @@ func (n *failingTrigger) New(config *ucfg.Config) (Trigger, error) {
 
 var _ = Describe("TriggerChain", func() {
 
-	var emptyParams Parameters
+	emptyParams := Parameters{Log: logr.Discard()}
 
 	Context("is empty", func() {
 

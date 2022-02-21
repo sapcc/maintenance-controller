@@ -21,6 +21,7 @@ package impl
 
 import (
 	"github.com/elastic/go-ucfg/yaml"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -55,7 +56,7 @@ var _ = Describe("The Condition plugin", func() {
 				},
 			},
 			Client: nil,
-			Log:    nil,
+			Log:    logr.Discard(),
 		}
 
 		It("matches when configured Ready=True", func() {

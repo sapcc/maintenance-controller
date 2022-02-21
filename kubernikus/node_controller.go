@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blang/semver"
+	semver "github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"

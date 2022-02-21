@@ -22,6 +22,7 @@ package state
 import (
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -73,14 +74,14 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("executes the triggers", func() {
 			mr := newMaintenanceRequired(chains, time.Hour)
-			err := mr.Trigger(plugin.Parameters{}, InMaintenance, &Data{})
+			err := mr.Trigger(plugin.Parameters{Log: logr.Discard()}, InMaintenance, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("executes the notifications", func() {
 			mr := newMaintenanceRequired(chains, time.Hour)
-			err := mr.Notify(plugin.Parameters{}, &Data{})
+			err := mr.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(notification.Invoked).To(Equal(1))
 		})
@@ -88,7 +89,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to in maintenance if checks pass", func() {
 			check.Result = true
 			mr := newMaintenanceRequired(chains, time.Hour)
-			next, err := mr.Transition(plugin.Parameters{}, &Data{})
+			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(InMaintenance))
 			Expect(check.Invoked).To(Equal(1))
@@ -97,7 +98,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to required if checks do not pass", func() {
 			check.Result = false
 			mr := newMaintenanceRequired(chains, time.Hour)
-			next, err := mr.Transition(plugin.Parameters{}, &Data{})
+			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Required))
 			Expect(check.Invoked).To(Equal(1))
@@ -106,7 +107,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to required if checks fail", func() {
 			check.Fail = true
 			mr := newMaintenanceRequired(chains, time.Hour)
-			next, err := mr.Transition(plugin.Parameters{}, &Data{})
+			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
 			Expect(next).To(Equal(Required))
 			Expect(check.Invoked).To(Equal(1))

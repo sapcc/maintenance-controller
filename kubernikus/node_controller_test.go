@@ -71,27 +71,27 @@ var _ = Describe("The kubernikus controller", func() {
 
 	It("marks an outdated node for update", func() {
 		initNode("v1.1.0")
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
-			Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal(constants.TrueStr))
 	})
 
 	It("marks an up-to-date node as not needing an update", func() {
 		initNode("v1.19.2")
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
-			Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal("false"))
 	})
 
 	It("marks a node needing a downgrade", func() {
 		initNode("v1.20.2")
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
-			Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal(constants.TrueStr))
 	})
@@ -102,14 +102,14 @@ var _ = Describe("The kubernikus controller", func() {
 		unmodified := node.DeepCopy()
 		node.Labels = map[string]string{constants.DeleteNodeLabelKey: constants.TrueStr}
 		Expect(k8sClient.Patch(context.Background(), node, client.MergeFrom(unmodified))).To(Succeed())
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &v1.Node{}
-			Expect(k8sClient.Get(context.Background(), nodeName, node)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), nodeName, node)).To(Succeed())
 			return node.Spec.Unschedulable
 		}).Should(BeTrue())
-		Eventually(func() []v1.Pod {
+		Eventually(func(g Gomega) []v1.Pod {
 			pods := &v1.PodList{}
-			Expect(k8sClient.List(context.Background(), pods)).To(Succeed())
+			g.Expect(k8sClient.List(context.Background(), pods)).To(Succeed())
 			return pods.Items
 		}, 10*time.Second).Should(HaveLen(0))
 		// don't check for VM deletion here, won't spin up an Openstack setup

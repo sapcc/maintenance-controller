@@ -57,9 +57,7 @@ func (chain *NotificationChain) Execute(params Parameters) error {
 				Err:     err,
 			}
 		}
-		if params.Log != nil {
-			params.Log.Info("Executed notification instance", "instance", notifier.Name)
-		}
+		params.Log.Info("Executed notification instance", "instance", notifier.Name)
 	}
 	return nil
 }

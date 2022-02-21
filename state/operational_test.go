@@ -22,6 +22,7 @@ package state
 import (
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -38,7 +39,7 @@ var _ = Describe("Operational State", func() {
 
 		It("transitions to Operational", func() {
 			op := newOperational(PluginChains{}, time.Hour)
-			next, err := op.Transition(plugin.Parameters{}, &Data{})
+			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Operational))
 		})
@@ -73,14 +74,14 @@ var _ = Describe("Operational State", func() {
 
 		It("executes the triggers", func() {
 			op := newOperational(chains, time.Hour)
-			err := op.Trigger(plugin.Parameters{}, Required, &Data{})
+			err := op.Trigger(plugin.Parameters{Log: logr.Discard()}, Required, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("executes the notifications", func() {
 			op := newOperational(chains, time.Hour)
-			err := op.Notify(plugin.Parameters{}, &Data{})
+			err := op.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(notification.Invoked).To(Equal(1))
 		})
@@ -88,7 +89,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to required if checks pass", func() {
 			check.Result = true
 			op := newOperational(chains, time.Hour)
-			next, err := op.Transition(plugin.Parameters{}, &Data{})
+			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Required))
 			Expect(check.Invoked).To(Equal(1))
@@ -97,7 +98,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to operational if checks do not pass", func() {
 			check.Result = false
 			op := newOperational(chains, time.Hour)
-			next, err := op.Transition(plugin.Parameters{}, &Data{})
+			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Operational))
 			Expect(check.Invoked).To(Equal(1))
@@ -106,7 +107,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to operational if checks fail", func() {
 			check.Fail = true
 			op := newOperational(chains, time.Hour)
-			next, err := op.Transition(plugin.Parameters{}, &Data{})
+			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
 			Expect(next).To(Equal(Operational))
 			Expect(check.Invoked).To(Equal(1))
@@ -124,7 +125,7 @@ var _ = Describe("Operational State", func() {
 		oper := operational{
 			chains: PluginChains{Notification: chain},
 		}
-		err := oper.Notify(plugin.Parameters{}, &data)
+		err := oper.Notify(plugin.Parameters{Log: logr.Discard()}, &data)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})
@@ -139,7 +140,7 @@ var _ = Describe("Operational State", func() {
 		oper := operational{
 			chains: PluginChains{Notification: chain},
 		}
-		err := oper.Notify(plugin.Parameters{}, &data)
+		err := oper.Notify(plugin.Parameters{Log: logr.Discard()}, &data)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})

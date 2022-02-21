@@ -23,6 +23,7 @@ import (
 	"errors"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -55,7 +56,7 @@ func (n *failingNotification) New(config *ucfg.Config) (Notifier, error) {
 
 var _ = Describe("NotificationChain", func() {
 
-	var emptyParams Parameters
+	emptyParams := Parameters{Log: logr.Discard()}
 
 	Context("is empty", func() {
 

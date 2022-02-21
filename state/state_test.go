@@ -156,7 +156,7 @@ var _ = Describe("NotifyDefault", func() {
 			LastNotificationState: Operational,
 		}
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{}, &data, 30*time.Millisecond, &chain, Operational)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, 30*time.Millisecond, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})
