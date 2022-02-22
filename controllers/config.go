@@ -51,7 +51,6 @@ type TransitionDescriptor struct {
 type ConfigDescriptor struct {
 	Intervals struct {
 		Requeue time.Duration `config:"requeue" validate:"required"`
-		Notify  time.Duration `config:"notify" validate:"required"`
 	} `config:"intervals" validate:"required"`
 	Instances plugin.InstancesDescriptor
 	Profiles  []ProfileDescriptor
@@ -61,8 +60,6 @@ type ConfigDescriptor struct {
 type Config struct {
 	// RequeueInterval defines a duration after the a node is reconceiled again by the controller
 	RequeueInterval time.Duration
-	// NotificationInterval specifies a duration after which notifications are resend
-	NotificationInterval time.Duration
 	// Profiles contains all known profiles
 	Profiles map[string]state.Profile
 	// Contains reference to all plugins and their instances
@@ -87,10 +84,9 @@ func LoadConfig(config *ucfg.Config) (*Config, error) {
 		return nil, err
 	}
 	return &Config{
-		RequeueInterval:      global.Intervals.Notify,
-		NotificationInterval: global.Intervals.Requeue,
-		Profiles:             profileMap,
-		Registry:             registry,
+		RequeueInterval: global.Intervals.Requeue,
+		Profiles:        profileMap,
+		Registry:        registry,
 	}, nil
 }
 

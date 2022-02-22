@@ -10,8 +10,10 @@ A Kubernetes controller to manage node maintenance.
 - Concept
 - Installation
 - Configuration
+  - General
   - Check Plugins
   - Notification Plugins
+  - Notification Schedules
   - Trigger Plugins
 - Additional integrations
 - Example configuration for flatcar update agents
@@ -28,7 +30,7 @@ It is built with flexibility in mind and should be adaptable to different enviro
 This property is achieved with an extensible plugin system.
 
 ## Concept
-Kubernetes nodes are modelled as finite state machines and can be in one of three states.
+Kubernetes nodes are modelled as finite state machines, which can be in one of the following three states:
 - Operational
 - Maintenance Required
 - In Maintenance
@@ -39,11 +41,10 @@ Such plugin chains can be configured for each state individually via maintenance
 Cluster administrators can assign a maintenance profile to a node using the `cloud.sap/maintenance-profile` label.
 Before the transition is finished a chain of "trigger plugins" can be invoked, which can perform any action related to termination or startup logic.
 While a node is in a certain state, a chain of "notifications plugins" informs the cluster users and administrators regularly about the node being in that state.
-Multiple plugins exist.
-It is possible to check or alter labels, to be notified via Slack, ...
+Multiple plugins exist, so one can check or alter labels, be notified via Slack and so on.
 
-Currently, most actual maintenance actions like Cordoning, Draining and Rebooting nodes are not carried out by the maintenance-controller and are instead delegated to inbuilt or external other controllers.
 The maintenance-controller only does the decision making, whether a node can be maintained or not.
+Currently, most actual maintenance actions like Cordoning, Draining and Rebooting nodes are not carried out by the maintenance-controller and are instead delegated to inbuilt or external other controllers.
 Check out the additional integrations further down.
 
 ## Installation
@@ -53,6 +54,21 @@ Alternatively, execute ```make deploy IMG=sapcc/maintenance-controller```.
 
 ## Configuration
 
+### General
+The maintenance-controller contains multiple plugins, which are configurable themselves.
+`checkLabel` for example needs to know, which label needs to checked for which value.
+The combination of a plugin type like `checkLabel` and its specific configuration is referred to as an instance.
+Notification instances require a schedule, which describes when and how often to notify about state changes, additionally.
+These instances can be chained together to construct more complex check, trigger and notification actions.
+In that regard plugin chains refer to instances being used in conjunction.
+
+Profiles describe a single maintenance workflow each by specifying how a node moves through the state machine.
+For each state a notification chain can be configured.
+Also transitions have to be defined.
+These consist of at least of a check chain and the state, which should follow next.
+Optionally, a trigger chain can be configured to perform actions, when a node moves from one state into the next one.
+
+### Format
 There is a global configuration, which defines some general options, plugin instances and maintenance profiles.
 The global configuration should be named ```./config/maintenance.yaml``` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
 A secret is recommend as some plugins may need authentication data.
@@ -61,13 +77,21 @@ The basic structure looks like the following:
 intervals:
   # defines the minimum duration after which a node should be checked again
   requeue: 200ms
-  # defines how frequent to send reminder notifications
-  # notifications about nodes being operational occur only once
-  notify: 500ms
 # plugin instances are the combination of a plugin and its configuration
 instances:
-  # the are no notification plugins configured here, but their configuration works the same way as for check and trigger plugins
-  notify: null
+  # notification plugin instances
+  notify:
+  - type: slack # the plugin type
+    name: somenotificationplugin
+    config:
+      hook: slack-webhook
+      channel: "#the_channel"
+      message: the message
+    # notification schedule
+    schedule:
+      type: periodic
+      config:
+        interval: 24h
   # check plugin instances
   check:
   - type: hasLabel # the plugin type
@@ -103,7 +127,7 @@ profiles:
   # define the plugin chains for the maintenance-required state
   maintenance-required:
     # define chains as shown with the operational state
-    check: null
+    notify: null
     transitions: null
   # define plugin chains for the in-maintenance state
   in-maintenance:
@@ -115,7 +139,7 @@ profiles:
       # multiple trigger instances can be used also
       trigger: t && u
 ```
-Chains be undefined or empty.
+Chains can be undefined or empty.
 Trigger and Notification chains are configured by specifying the desired instance names separated by ```&&```, e.g. ```alter && othertriggerplugin```.
 Check chains are build using boolean expression, e.g. ```transition && !(a || b)```.
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
@@ -233,6 +257,22 @@ One can get the current profile in a template using `{{ .Profile.Current }}`.
 Be careful about using it in an instance that is invoked during the `operational` state, as all profiles attached to a node are considered for notification.
 `{{ .Profile.Last }}` can be used instead, which refers to profile that caused the last state transition.
 
+### Notification Schedules
+__periodic__: Notifies after a state change and when the specified interval passed since the last notification if the node is currently not in the operational state.
+This reflects the old implicit notification behavior.
+```yaml
+type: periodic
+config:
+  interval: a duration according to the rules of golangs time.ParseDuration(), required
+```
+__scheduled__: Notifies at a certain time only on specified weekdays.
+```yaml
+type: scheduled
+config:
+  instant: the point in time, when the notification should be sent, "hh:mm" format, required
+  weekdays: weekdays when notification should be sent, e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
+```
+
 ### Trigger Plugins
 __alterAnnotation:__ Adds, changes or removes an annotation
 ```yaml
@@ -270,6 +310,10 @@ instances:
         The node {{ .Node.Name }} requires maintenance. Manual approval is required.
         Approve to drain and reboot this node by running:
         `kubectl annotate node {{ .Node.Name }} cloud.sap/maintenance-approved=true`
+    schedule:
+      type: periodic
+      config:
+        interval: 24h
   - type: slack
     name: maintenance_started
     config:
@@ -277,6 +321,10 @@ instances:
       channel: Your channel
       message: |
         Maintenance for node {{ .Node.Name }} has started.
+    schedule:
+      type: periodic
+      config:
+        interval: 24h
   check:
   - type: hasAnnotation
     name: reboot_needed

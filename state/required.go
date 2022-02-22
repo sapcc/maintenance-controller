@@ -21,20 +21,18 @@ package state
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // maintenanceRequired implements the transition and notification logic if a node is in the MaintenanceRequired state.
 type maintenanceRequired struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newMaintenanceRequired(chains PluginChains, interval time.Duration) NodeState {
-	return &maintenanceRequired{chains: chains, interval: interval, label: Required}
+func newMaintenanceRequired(chains PluginChains) NodeState {
+	return &maintenanceRequired{chains: chains, label: Required}
 }
 
 func (s *maintenanceRequired) Label() NodeStateLabel {
@@ -42,7 +40,7 @@ func (s *maintenanceRequired) Label() NodeStateLabel {
 }
 
 func (s *maintenanceRequired) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
 func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {

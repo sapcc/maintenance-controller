@@ -21,20 +21,18 @@ package state
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // operational implements the transition and notification logic if a node is in the operational state.
 type operational struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newOperational(chains PluginChains, interval time.Duration) NodeState {
-	return &operational{chains: chains, interval: interval, label: Operational}
+func newOperational(chains PluginChains) NodeState {
+	return &operational{chains: chains, label: Operational}
 }
 
 func (s *operational) Label() NodeStateLabel {
@@ -42,16 +40,7 @@ func (s *operational) Label() NodeStateLabel {
 }
 
 func (s *operational) Notify(params plugin.Parameters, data *Data) error {
-	if data.LastNotificationState == Operational {
-		return nil
-	}
-	err := s.chains.Notification.Execute(params)
-	if err != nil {
-		return err
-	}
-	data.LastNotification = time.Now()
-	data.LastNotificationState = Operational
-	return nil
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
 func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {

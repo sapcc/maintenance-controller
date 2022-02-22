@@ -21,20 +21,18 @@ package state
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // inMaintenance implements the transition and notification logic if a node is in the InMaintenance state.
 type inMaintenance struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newInMaintenance(chains PluginChains, interval time.Duration) NodeState {
-	return &inMaintenance{chains: chains, interval: interval, label: InMaintenance}
+func newInMaintenance(chains PluginChains) NodeState {
+	return &inMaintenance{chains: chains, label: InMaintenance}
 }
 
 func (s *inMaintenance) Label() NodeStateLabel {
@@ -42,7 +40,7 @@ func (s *inMaintenance) Label() NodeStateLabel {
 }
 
 func (s *inMaintenance) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
 func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
@@ -55,8 +53,5 @@ func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, d
 }
 
 func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if len(s.chains.Transitions) == 0 {
-	// 	return Operational, nil
-	// }
 	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

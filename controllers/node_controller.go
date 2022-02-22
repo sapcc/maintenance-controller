@@ -180,7 +180,7 @@ func reconcileInternal(params reconcileParameters) error {
 
 	for _, profile := range profiles {
 		// construct state
-		stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel], params.config.NotificationInterval)
+		stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel])
 		if err != nil {
 			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 		}

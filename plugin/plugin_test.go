@@ -93,6 +93,10 @@ var _ = Describe("Registry", func() {
 				var configStr = `notify:
                 - type: someNotificationPlugin
                   name: test
+                  schedule:
+                    type: periodic
+                    config:
+                      interval: 5m
                   config:
                     key: somekey
                     value: someval

@@ -20,11 +20,14 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 // Notifier is the interface that notification plugins need to implement.
@@ -38,8 +41,9 @@ type Notifier interface {
 
 // NotificationInstance represents a configured and named instance of a notification plugin.
 type NotificationInstance struct {
-	Plugin Notifier
-	Name   string
+	Plugin   Notifier
+	Schedule Scheduler
+	Name     string
 }
 
 // NotificationChain represents a collection of multiple NotificationInstance that can be executed one after another.
@@ -62,6 +66,7 @@ func (chain *NotificationChain) Execute(params Parameters) error {
 	return nil
 }
 
+// Renders the given template string using the provided parameters.
 func RenderNotificationTemplate(templateStr string, params *Parameters) (string, error) {
 	templateObj, err := template.New("template").Parse(templateStr)
 	if err != nil {
@@ -73,4 +78,94 @@ func RenderNotificationTemplate(templateStr string, params *Parameters) (string,
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// Data used to determine, whether to notify or not.
+type NotificationData struct {
+	// Technically state.NodeStateLabel, but that causes a cyclic import
+	State string
+	Time  time.Time
+}
+
+// Interface notification schedulers need to implement.
+type Scheduler interface {
+	// Determines if a notification is required.
+	ShouldNotify(current NotificationData, last NotificationData) bool
+}
+
+// Notifies on state changes and after passing the interval since the
+// last notification if not the operational state.
+type NotifyPeriodic struct {
+	Interval time.Duration
+}
+
+func newNotifyPeriodic(config *ucfg.Config) (*NotifyPeriodic, error) {
+	conf := struct {
+		Interval time.Duration
+	}{Interval: time.Hour}
+	if err := config.Unpack(&conf); err != nil {
+		return nil, err
+	}
+	return &NotifyPeriodic{Interval: conf.Interval}, nil
+}
+
+func (np *NotifyPeriodic) ShouldNotify(current NotificationData, last NotificationData) bool {
+	return (current.Time.Sub(last.Time) >= np.Interval && last.State != "operational") || current.State != last.State
+}
+
+// Notifies when the given instant passed on an allowed weekday.
+type NotifyScheduled struct {
+	Instant  time.Time
+	Weekdays []time.Weekday
+}
+
+func newNotifyScheduled(config *ucfg.Config) (*NotifyScheduled, error) {
+	conf := struct {
+		Instant  string
+		Weekdays []string
+	}{}
+	err := config.Unpack(&conf)
+	if err != nil {
+		return nil, err
+	}
+	// sanity check
+	if len(conf.Weekdays) == 0 {
+		return nil, errors.New("a notification schedule needs to have weekdays specified")
+	}
+	instant, err := time.Parse("15:04", conf.Instant)
+	if err != nil {
+		return nil, err
+	}
+	scheduled := &NotifyScheduled{Instant: instant}
+	for _, weekdayStr := range conf.Weekdays {
+		weekday, err := common.WeekdayFromString(weekdayStr)
+		if err != nil {
+			return nil, err
+		}
+		scheduled.Weekdays = append(scheduled.Weekdays, weekday)
+	}
+	return scheduled, nil
+}
+
+func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last NotificationData) bool {
+	// check that a notification can be triggered on the current weekday
+	containsWeekday := false
+	for _, weekday := range ns.Weekdays {
+		if weekday == current.Time.Weekday() {
+			containsWeekday = true
+			break
+		}
+	}
+	if !containsWeekday {
+		return false
+	}
+	// ensure the notification triggers after that the specified instant
+	// it is required to set the date to the configured values only keeping the time
+	compare := time.Date(ns.Instant.Year(), ns.Instant.Month(), ns.Instant.Day(), current.Time.Hour(),
+		current.Time.Minute(), current.Time.Second(), current.Time.Nanosecond(), time.UTC)
+	if compare.Before(ns.Instant) {
+		return false
+	}
+	// ensure the notification triggers only once a day
+	return last.Time.Day() != current.Time.Day()
 }

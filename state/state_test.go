@@ -89,8 +89,9 @@ func (n *mockNotificaiton) New(config *ucfg.Config) (plugin.Notifier, error) {
 func mockNotificationChain() (plugin.NotificationChain, *mockNotificaiton) {
 	p := &mockNotificaiton{}
 	instance := plugin.NotificationInstance{
-		Plugin: p,
-		Name:   "mock",
+		Schedule: &plugin.NotifyPeriodic{Interval: time.Hour},
+		Plugin:   p,
+		Name:     "mock",
 	}
 	chain := plugin.NotificationChain{
 		Plugins: []plugin.NotificationInstance{instance},
@@ -141,9 +142,9 @@ var _ = Describe("NotifyDefault", func() {
 		chain, notification := mockNotificationChain()
 		err := notifyDefault(plugin.Parameters{}, &Data{
 			LastTransition:        time.Now(),
-			LastNotification:      time.Now(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
 			LastNotificationState: Operational,
-		}, 1*time.Hour, &chain, Operational)
+		}, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})
@@ -152,13 +153,28 @@ var _ = Describe("NotifyDefault", func() {
 		chain, notification := mockNotificationChain()
 		data := Data{
 			LastTransition:        time.Now(),
-			LastNotification:      time.Now(),
-			LastNotificationState: Operational,
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastNotificationState: InMaintenance,
 		}
+		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, 30*time.Millisecond, &chain, Operational)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
+	})
+
+	It("should not execute the notification chain if the interval has passed in operational state", func() {
+		chain, notification := mockNotificationChain()
+		data := Data{
+			LastTransition:        time.Now(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastNotificationState: Operational,
+		}
+		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
+		time.Sleep(40 * time.Millisecond)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational)
+		Expect(err).To(Succeed())
+		Expect(notification.Invoked).To(Equal(0))
 	})
 
 })
@@ -178,13 +194,12 @@ var _ = Describe("Apply", func() {
 		chain, notify := mockNotificationChain()
 		notify.Fail = true
 		nodeState := operational{
-			label:    Operational,
-			interval: 1 * time.Hour,
+			label: Operational,
 			chains: PluginChains{
 				Notification: chain,
 			},
 		}
-		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		result, err := Apply(&nodeState, &v1.Node{}, &Data{LastNotificationTimes: make(map[string]time.Time)}, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result).To(Equal(Operational))
 	})
@@ -193,8 +208,7 @@ var _ = Describe("Apply", func() {
 		chain, check := mockCheckChain()
 		check.Fail = true
 		nodeState := operational{
-			label:    Operational,
-			interval: 1 * time.Hour,
+			label: Operational,
 			chains: PluginChains{
 				Transitions: []Transition{
 					{
@@ -215,8 +229,7 @@ var _ = Describe("Apply", func() {
 		triggerChain, trigger := mockTriggerChain()
 		trigger.Fail = true
 		nodeState := operational{
-			label:    Operational,
-			interval: 1 * time.Hour,
+			label: Operational,
 			chains: PluginChains{
 				Transitions: []Transition{
 					{

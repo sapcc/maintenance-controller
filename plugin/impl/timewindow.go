@@ -22,29 +22,12 @@ package impl
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
-
-var weekdayMap = map[string]time.Weekday{
-	"monday":    time.Monday,
-	"mon":       time.Monday,
-	"tuesday":   time.Tuesday,
-	"tue":       time.Tuesday,
-	"wednesday": time.Wednesday,
-	"wed":       time.Wednesday,
-	"thursday":  time.Thursday,
-	"thu":       time.Thursday,
-	"friday":    time.Friday,
-	"fri":       time.Friday,
-	"saturday":  time.Saturday,
-	"sat":       time.Saturday,
-	"sunday":    time.Sunday,
-	"sun":       time.Sunday,
-}
 
 const timeFormat = "15:04"
 const dayMonthFormat = "Jan 2"
@@ -87,7 +70,7 @@ func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
 	}
 	timewindow := &TimeWindow{Start: start, End: end}
 	for _, weekdayStr := range conf.Weekdays {
-		weekday, err := weekdayFromString(weekdayStr)
+		weekday, err := common.WeekdayFromString(weekdayStr)
 		if err != nil {
 			return nil, err
 		}
@@ -101,14 +84,6 @@ func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
 		timewindow.Exclude = append(timewindow.Exclude, exclude)
 	}
 	return timewindow, nil
-}
-
-func weekdayFromString(s string) (time.Weekday, error) {
-	weekday, ok := weekdayMap[strings.ToLower(s)]
-	if !ok {
-		return time.Monday, fmt.Errorf("'%v' is not a known weekday", s)
-	}
-	return weekday, nil
 }
 
 // Check checks whether the current time is within specified time window on allowed weekdays.

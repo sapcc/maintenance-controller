@@ -21,8 +21,10 @@ package plugin
 
 import (
 	"errors"
+	"time"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,6 +117,111 @@ var _ = Describe("The notification", func() {
 		result, err := RenderNotificationTemplate("{{.State}}", &Parameters{State: "def"})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal("def"))
+	})
+
+})
+
+var _ = Describe("NotifyPeriodic", func() {
+
+	It("can parse its configuration", func() {
+		configStr := "interval: 5m"
+		conf, err := yaml.NewConfig([]byte(configStr))
+		Expect(err).To(Succeed())
+		np, err := newNotifyPeriodic(conf)
+		Expect(err).To(Succeed())
+		Expect(np.Interval).To(Equal(5 * time.Minute))
+	})
+
+})
+
+var _ = Describe("NotifyScheduled", func() {
+
+	makeSchedule := func() *NotifyScheduled {
+		instant, err := time.Parse("15:04", "12:00")
+		Expect(err).To(Succeed())
+		return &NotifyScheduled{
+			Instant:  instant,
+			Weekdays: []time.Weekday{time.Monday},
+		}
+	}
+
+	It("can parse its configuration", func() {
+		configStr := "instant: \"15:23\"\nweekdays: [\"fri\", \"sat\"]\n"
+		conf, err := yaml.NewConfig([]byte(configStr))
+		Expect(err).To(Succeed())
+		ns, err := newNotifyScheduled(conf)
+		Expect(err).To(Succeed())
+		Expect(ns.Instant.Hour()).To(Equal(15))
+		Expect(ns.Instant.Minute()).To(Equal(23))
+		Expect(ns.Weekdays).To(ContainElements(time.Friday, time.Saturday))
+	})
+
+	Context("on tuesdays", func() {
+
+		It("should not trigger before 12:00", func() {
+			currentDate := time.Date(2022, time.February, 22, 11, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  currentDate.Add(-25 * time.Hour),
+			})
+			Expect(result).To(BeFalse())
+		})
+
+		It("should not trigger after 12:00", func() {
+			currentDate := time.Date(2022, time.February, 22, 13, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  currentDate.Add(-25 * time.Hour),
+			})
+			Expect(result).To(BeFalse())
+		})
+
+	})
+
+	Context("on mondays", func() {
+
+		It("should not trigger before 12:00", func() {
+			currentDate := time.Date(2022, time.February, 21, 11, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  currentDate.Add(-25 * time.Hour),
+			})
+			Expect(result).To(BeFalse())
+		})
+
+		It("should trigger after 12:00", func() {
+			currentDate := time.Date(2022, time.February, 21, 13, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  currentDate.Add(-25 * time.Hour),
+			})
+			Expect(result).To(BeTrue())
+		})
+
+		It("should not trigger more than once a day", func() {
+			currentDate := time.Date(2022, time.February, 21, 14, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  currentDate.Add(-1 * time.Hour),
+			})
+			Expect(result).To(BeFalse())
+		})
+
 	})
 
 })

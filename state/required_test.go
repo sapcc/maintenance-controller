@@ -31,14 +31,14 @@ import (
 var _ = Describe("MaintenanceRequired State", func() {
 
 	It("should have Required Label", func() {
-		mr := newMaintenanceRequired(PluginChains{}, time.Hour)
+		mr := newMaintenanceRequired(PluginChains{})
 		Expect(mr.Label()).To(Equal(Required))
 	})
 
 	Context("with empty CheckChain", func() {
 
 		It("transitions to maintenance-required", func() {
-			mr := newMaintenanceRequired(PluginChains{}, time.Hour)
+			mr := newMaintenanceRequired(PluginChains{})
 			next, err := mr.Transition(plugin.Parameters{}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Required))
@@ -73,22 +73,22 @@ var _ = Describe("MaintenanceRequired State", func() {
 		})
 
 		It("executes the triggers", func() {
-			mr := newMaintenanceRequired(chains, time.Hour)
+			mr := newMaintenanceRequired(chains)
 			err := mr.Trigger(plugin.Parameters{Log: logr.Discard()}, InMaintenance, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("executes the notifications", func() {
-			mr := newMaintenanceRequired(chains, time.Hour)
-			err := mr.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			mr := newMaintenanceRequired(chains)
+			err := mr.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{LastNotificationTimes: make(map[string]time.Time)})
 			Expect(err).To(Succeed())
 			Expect(notification.Invoked).To(Equal(1))
 		})
 
 		It("transitions to in maintenance if checks pass", func() {
 			check.Result = true
-			mr := newMaintenanceRequired(chains, time.Hour)
+			mr := newMaintenanceRequired(chains)
 			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(InMaintenance))
@@ -97,7 +97,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("transitions to required if checks do not pass", func() {
 			check.Result = false
-			mr := newMaintenanceRequired(chains, time.Hour)
+			mr := newMaintenanceRequired(chains)
 			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(Required))
@@ -106,7 +106,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("transitions to required if checks fail", func() {
 			check.Fail = true
-			mr := newMaintenanceRequired(chains, time.Hour)
+			mr := newMaintenanceRequired(chains)
 			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
 			Expect(next).To(Equal(Required))

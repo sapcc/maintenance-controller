@@ -53,12 +53,28 @@ func (e *ChainError) Unwrap() error {
 	return e.Err
 }
 
+// Specifies the configuration for a Scheduler.
+type ScheduleDescriptor struct {
+	Type   string
+	Config *ucfg.Config
+}
+
+// Specifies the configuration for instances.
 type InstancesDescriptor struct {
 	Check   []InstanceDescriptor
-	Notify  []InstanceDescriptor
+	Notify  []NotificationDescriptor
 	Trigger []InstanceDescriptor
 }
 
+// Specifies the configuration for a single notification instance.
+type NotificationDescriptor struct {
+	Name     string
+	Type     string
+	Schedule ScheduleDescriptor `config:"schedule" validate:"required"`
+	Config   *ucfg.Config
+}
+
+// Specifies the configuration for a single check/trigger instance.
 type InstanceDescriptor struct {
 	Name   string
 	Type   string
@@ -212,7 +228,7 @@ func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
 	return nil
 }
 
-func (r *Registry) loadNotificationInstance(config InstanceDescriptor) error {
+func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error {
 	instanceName := config.Name
 	subConfig := config.Config
 	basePlugin, ok := r.NotificationPlugins[config.Type]
@@ -223,9 +239,25 @@ func (r *Registry) loadNotificationInstance(config InstanceDescriptor) error {
 	if err != nil {
 		return err
 	}
+	var schedule Scheduler
+	switch strings.ToLower(config.Schedule.Type) {
+	case "periodic":
+		schedule, err = newNotifyPeriodic(config.Schedule.Config)
+		if err != nil {
+			return err
+		}
+	case "scheduled":
+		schedule, err = newNotifyScheduled(config.Schedule.Config)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("notification scheduler with name %s is unknown", config.Schedule.Type)
+	}
 	r.NotificationInstances[instanceName] = NotificationInstance{
-		Name:   instanceName,
-		Plugin: plugin,
+		Name:     instanceName,
+		Plugin:   plugin,
+		Schedule: schedule,
 	}
 	return nil
 }

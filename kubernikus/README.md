@@ -61,6 +61,10 @@ instances:
       channel: "#channel"
       title: "Updating the operating system of nodes."
       message: '{{ .Node.Name }} will reboot now to update Flatcar Linux from version {{ index .Node.Labels "flatcar-linux-update.v1.flatcar-linux.net/version" }} to version {{ index .Node.Annotations "flatcar-linux-update.v1.flatcar-linux.net/new-version" }}'
+    schedule:
+      type: periodic
+      config:
+        interval: 24h
   - type: slackThread
     name: maintenance_kubelet
     config:
@@ -72,6 +76,10 @@ instances:
       channel: "#channel"
       title: "Updating kubelets."
       message: '{{ .Node.Name }} will be replaced for kubelet update.'
+    schedule:
+      type: periodic
+      config:
+        interval: 24h
   check:
   - type: hasAnnotation
     name: reboot_needed

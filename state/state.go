@@ -76,8 +76,9 @@ type Profile struct {
 
 // Data represents global state which is saved with a node annotation.
 type Data struct {
-	LastTransition        time.Time
-	LastNotification      time.Time
+	LastTransition time.Time
+	// Maps a notification instance name to the last time it was triggered.
+	LastNotificationTimes map[string]time.Time
 	LastNotificationState NodeStateLabel
 	LastProfile           string
 }
@@ -108,14 +109,14 @@ type NodeState interface {
 }
 
 // FromLabel creates a new NodeState instance identified by the label with given chains and notification interval.
-func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration) (NodeState, error) {
+func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 	switch label {
 	case Operational:
-		return newOperational(chains, interval), nil
+		return newOperational(chains), nil
 	case Required:
-		return newMaintenanceRequired(chains, interval), nil
+		return newMaintenanceRequired(chains), nil
 	case InMaintenance:
-		return newInMaintenance(chains, interval), nil
+		return newInMaintenance(chains), nil
 	}
 	return nil, fmt.Errorf("node state \"%v\" is not known", label)
 }
@@ -181,17 +182,32 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 
 // notifyDefault is a default NodeState.Notify implemention that executes
 // the notification chain again after a specified interval.
-func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration,
+func notifyDefault(params plugin.Parameters, data *Data,
 	chain *plugin.NotificationChain, label NodeStateLabel) error {
-	// ensure there is a new state or the interval has passed
-	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
-		return nil
+	for _, notifyPlugin := range chain.Plugins {
+		if notifyPlugin.Schedule == nil {
+			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyPlugin.Name)
+		}
+		_, ok := data.LastNotificationTimes[notifyPlugin.Name]
+		if !ok {
+			data.LastNotificationTimes[notifyPlugin.Name] = time.Time{}
+		}
+		now := time.Now()
+		shouldNotify := notifyPlugin.Schedule.ShouldNotify(plugin.NotificationData{
+			State: string(label),
+			Time:  now,
+		}, plugin.NotificationData{
+			State: string(data.LastNotificationState),
+			Time:  data.LastNotificationTimes[notifyPlugin.Name],
+		})
+		if !shouldNotify {
+			continue
+		}
+		if err := chain.Execute(params); err != nil {
+			return err
+		}
+		data.LastNotificationTimes[notifyPlugin.Name] = now
 	}
-	if err := chain.Execute(params); err != nil {
-		return err
-	}
-	data.LastNotification = time.Now()
-	data.LastNotificationState = label
 	return nil
 }
 
