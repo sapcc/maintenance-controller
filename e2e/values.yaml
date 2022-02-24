@@ -59,17 +59,17 @@ config: |
           remove: true
   profiles:
   - name: flatcar
-      operational:
-        transitions:
-        - check: reboot_needed
-          next: maintenance-required
-      maintenance-required:
-        transitions:
-        - check: check_approval
-          trigger: remove_approval && reboot-ok
-          next: in-maintenance
-      in-maintenance:
-        transitions:
-        - check: "!reboot_needed"
-          trigger: remove_reboot_ok
-          next: operational
+    operational:
+      transitions:
+      - check: reboot_needed
+        next: maintenance-required
+    maintenance-required:
+      transitions:
+      - check: check_approval
+        trigger: remove_approval && reboot-ok
+        next: in-maintenance
+    in-maintenance:
+      transitions:
+      - check: "!reboot_needed"
+        trigger: remove_reboot_ok
+        next: operational
