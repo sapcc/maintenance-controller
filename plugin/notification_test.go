@@ -210,6 +210,18 @@ var _ = Describe("NotifyScheduled", func() {
 			Expect(result).To(BeTrue())
 		})
 
+		It("should trigger after 12:00 with previous time being zero value", func() {
+			currentDate := time.Date(2022, time.February, 21, 13, 0, 0, 0, time.UTC)
+			result := makeSchedule().ShouldNotify(NotificationData{
+				State: "operational",
+				Time:  currentDate,
+			}, NotificationData{
+				State: "operational",
+				Time:  time.Time{},
+			})
+			Expect(result).To(BeTrue())
+		})
+
 		It("should not trigger more than once a day", func() {
 			currentDate := time.Date(2022, time.February, 21, 14, 0, 0, 0, time.UTC)
 			result := makeSchedule().ShouldNotify(NotificationData{

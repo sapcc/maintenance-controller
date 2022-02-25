@@ -30,6 +30,7 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -243,6 +244,18 @@ var _ = Describe("Apply", func() {
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result).To(Equal(Operational))
+	})
+
+})
+
+var _ = Describe("ParseData", func() {
+
+	It("should initialize the notification times map", func() {
+		var node v1.Node
+		node.Annotations = map[string]string{constants.DataAnnotationKey: "{}"}
+		data, err := ParseData(&node)
+		Expect(err).To(Succeed())
+		Expect(data.LastNotificationTimes).ToNot(BeNil())
 	})
 
 })

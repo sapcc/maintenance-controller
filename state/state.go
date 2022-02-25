@@ -92,6 +92,9 @@ func ParseData(node *v1.Node) (Data, error) {
 			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
+	if data.LastNotificationTimes == nil {
+		data.LastNotificationTimes = make(map[string]time.Time)
+	}
 	return data, nil
 }
 
@@ -164,7 +167,7 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	return state.Label(), nil
 }
 
-// notifyDefault is a default NodeState.Transition implementation that checks
+// transitionDefault is a default NodeState.Transition implementation that checks
 // each specified transition in order and returns the next state. If len(trans)
 // is 0, the current state is returned.
 func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans []Transition) (NodeStateLabel, error) {
@@ -207,6 +210,7 @@ func notifyDefault(params plugin.Parameters, data *Data,
 			return err
 		}
 		data.LastNotificationTimes[notifyPlugin.Name] = now
+		data.LastNotificationState = label
 	}
 	return nil
 }
