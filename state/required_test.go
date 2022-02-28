@@ -79,6 +79,13 @@ var _ = Describe("MaintenanceRequired State", func() {
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
+		It("fails to transition if target state is not defined", func() {
+			mr := newMaintenanceRequired(chains)
+			err := mr.Trigger(plugin.Parameters{Log: logr.Discard()}, Operational, &Data{})
+			Expect(err).ToNot(Succeed())
+			Expect(trigger.Invoked).To(Equal(0))
+		})
+
 		It("executes the notifications", func() {
 			mr := newMaintenanceRequired(chains)
 			err := mr.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{LastNotificationTimes: make(map[string]time.Time)})

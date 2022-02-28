@@ -79,6 +79,13 @@ var _ = Describe("Operational State", func() {
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
+		It("fails to transition if target state is not defined", func() {
+			op := newOperational(chains)
+			err := op.Trigger(plugin.Parameters{Log: logr.Discard()}, InMaintenance, &Data{})
+			Expect(err).ToNot(Succeed())
+			Expect(trigger.Invoked).To(Equal(0))
+		})
+
 		It("executes the notifications", func() {
 			op := newOperational(chains)
 			err := op.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{LastNotificationTimes: make(map[string]time.Time)})

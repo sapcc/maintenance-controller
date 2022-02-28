@@ -258,4 +258,20 @@ var _ = Describe("ParseData", func() {
 		Expect(data.LastNotificationTimes).ToNot(BeNil())
 	})
 
+	It("should fail with invalid json", func() {
+		var node v1.Node
+		node.Annotations = map[string]string{constants.DataAnnotationKey: "{{}"}
+		_, err := ParseData(&node)
+		Expect(err).ToNot(Succeed())
+	})
+
+})
+
+var _ = Describe("ValidateLabel", func() {
+
+	It("fails on invalid input", func() {
+		_, err := ValidateLabel("hello")
+		Expect(err).ToNot(Succeed())
+	})
+
 })
