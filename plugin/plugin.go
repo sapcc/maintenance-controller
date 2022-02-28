@@ -53,6 +53,34 @@ func (e *ChainError) Unwrap() error {
 	return e.Err
 }
 
+// Specifies the configuration for a Scheduler.
+type ScheduleDescriptor struct {
+	Type   string
+	Config *ucfg.Config
+}
+
+// Specifies the configuration for instances.
+type InstancesDescriptor struct {
+	Check   []InstanceDescriptor
+	Notify  []NotificationDescriptor
+	Trigger []InstanceDescriptor
+}
+
+// Specifies the configuration for a single notification instance.
+type NotificationDescriptor struct {
+	Name     string
+	Type     string
+	Schedule ScheduleDescriptor `config:"schedule" validate:"required"`
+	Config   *ucfg.Config
+}
+
+// Specifies the configuration for a single check/trigger instance.
+type InstanceDescriptor struct {
+	Name   string
+	Type   string
+	Config *ucfg.Config
+}
+
 type ProfileInfo struct {
 	Current string
 	Last    string
@@ -160,44 +188,21 @@ func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 
 // LoadInstances parses the given config and constructs plugin instances accordingly.
 // These instances are put into the respective instances map within the registry.
-func (r *Registry) LoadInstances(config *ucfg.Config) error {
-	err := r.loadCheckInstances(config)
-	if err != nil {
-		return err
-	}
-	err = r.loadNotificationInstances(config)
-	if err != nil {
-		return err
-	}
-	err = r.loadTriggerInstances(config)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *Registry) loadCheckInstances(config *ucfg.Config) error {
-	checkID := "check"
-	checkCount, err := config.CountField(checkID)
-	// no checks configured, return without error is valid
-	if err != nil {
-		return nil // nolint:nilerr
-	}
-	for i := 0; i < checkCount; i++ {
-		oneCheck, err := config.Child(checkID, i)
+func (r *Registry) LoadInstances(config *InstancesDescriptor) error {
+	for _, instance := range config.Check {
+		err := r.loadCheckInstance(instance)
 		if err != nil {
 			return err
 		}
-		fieldNames := oneCheck.GetFields()
-		if len(fieldNames) != 1 {
-			return fmt.Errorf("check list entry has %v values. Expected a single value", len(fieldNames))
-		}
-		pluginType := fieldNames[0]
-		pluginConfig, err := oneCheck.Child(pluginType, -1)
+	}
+	for _, instance := range config.Notify {
+		err := r.loadNotificationInstance(instance)
 		if err != nil {
 			return err
 		}
-		err = r.loadCheckInstance(pluginConfig, pluginType)
+	}
+	for _, instance := range config.Trigger {
+		err := r.loadTriggerInstance(instance)
 		if err != nil {
 			return err
 		}
@@ -205,18 +210,12 @@ func (r *Registry) loadCheckInstances(config *ucfg.Config) error {
 	return nil
 }
 
-func (r *Registry) loadCheckInstance(config *ucfg.Config, pluginType string) error {
-	instanceName, err := config.String("name", -1)
-	if err != nil {
-		return err
-	}
-	subConfig, err := config.Child("config", -1)
-	if err != nil {
-		return err
-	}
-	basePlugin, ok := r.CheckPlugins[pluginType]
+func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
+	instanceName := config.Name
+	subConfig := config.Config
+	basePlugin, ok := r.CheckPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", pluginType)
+		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {
@@ -229,100 +228,46 @@ func (r *Registry) loadCheckInstance(config *ucfg.Config, pluginType string) err
 	return nil
 }
 
-func (r *Registry) loadNotificationInstances(config *ucfg.Config) error {
-	notificationID := "notify"
-	notificationCount, err := config.CountField(notificationID)
-	// no notifications configured, return without error is valid
-	if err != nil {
-		return nil // nolint:nilerr
-	}
-	for i := 0; i < notificationCount; i++ {
-		oneCheck, err := config.Child(notificationID, i)
-		if err != nil {
-			return err
-		}
-		fieldNames := oneCheck.GetFields()
-		if len(fieldNames) != 1 {
-			return fmt.Errorf("notification list entry has %v values. Expected a single value", len(fieldNames))
-		}
-		pluginType := fieldNames[0]
-		pluginConfig, err := oneCheck.Child(pluginType, -1)
-		if err != nil {
-			return err
-		}
-		err = r.loadNotificationInstance(pluginConfig, pluginType)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Registry) loadNotificationInstance(config *ucfg.Config, pluginType string) error {
-	instanceName, err := config.String("name", -1)
-	if err != nil {
-		return err
-	}
-	subConfig, err := config.Child("config", -1)
-	if err != nil {
-		return err
-	}
-	basePlugin, ok := r.NotificationPlugins[pluginType]
+func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error {
+	instanceName := config.Name
+	subConfig := config.Config
+	basePlugin, ok := r.NotificationPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", pluginType)
+		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {
 		return err
 	}
+	var schedule Scheduler
+	switch strings.ToLower(config.Schedule.Type) {
+	case "periodic":
+		schedule, err = newNotifyPeriodic(config.Schedule.Config)
+		if err != nil {
+			return err
+		}
+	case "scheduled":
+		schedule, err = newNotifyScheduled(config.Schedule.Config)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("notification scheduler with name %s is unknown", config.Schedule.Type)
+	}
 	r.NotificationInstances[instanceName] = NotificationInstance{
-		Name:   instanceName,
-		Plugin: plugin,
+		Name:     instanceName,
+		Plugin:   plugin,
+		Schedule: schedule,
 	}
 	return nil
 }
 
-func (r *Registry) loadTriggerInstances(config *ucfg.Config) error {
-	triggerID := "trigger"
-	triggerCount, err := config.CountField(triggerID)
-	// no triggers configured, return without error is valid
-	if err != nil {
-		return nil // nolint:nilerr
-	}
-	for i := 0; i < triggerCount; i++ {
-		oneCheck, err := config.Child(triggerID, i)
-		if err != nil {
-			return err
-		}
-		fieldNames := oneCheck.GetFields()
-		if len(fieldNames) != 1 {
-			return fmt.Errorf("trigger list entry has %v values. Expected a single value", len(fieldNames))
-		}
-		pluginType := fieldNames[0]
-		pluginConfig, err := oneCheck.Child(pluginType, -1)
-		if err != nil {
-			return err
-		}
-		err = r.loadTriggerInstance(pluginConfig, pluginType)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Registry) loadTriggerInstance(config *ucfg.Config, pluginType string) error {
-	instanceName, err := config.String("name", -1)
-	if err != nil {
-		return err
-	}
-	subConfig, err := config.Child("config", -1)
-	if err != nil {
-		return err
-	}
-	basePlugin, ok := r.TriggerPlugins[pluginType]
+func (r *Registry) loadTriggerInstance(config InstanceDescriptor) error {
+	instanceName := config.Name
+	subConfig := config.Config
+	basePlugin, ok := r.TriggerPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", pluginType)
+		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {

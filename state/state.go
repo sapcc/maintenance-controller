@@ -45,11 +45,28 @@ const InMaintenance NodeStateLabel = "in-maintenance"
 // profileSeparator is used to split the maintenance profile label string into multple profile names.
 const profileSeparator string = "--"
 
+func ValidateLabel(s string) (NodeStateLabel, error) {
+	switch s {
+	case string(Operational):
+		return Operational, nil
+	case string(Required):
+		return Required, nil
+	case string(InMaintenance):
+		return InMaintenance, nil
+	}
+	return Operational, fmt.Errorf("'%s' is not a valid NodeStateLabel", s)
+}
+
+type Transition struct {
+	Check   plugin.CheckChain
+	Trigger plugin.TriggerChain
+	Next    NodeStateLabel
+}
+
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
-	Check        plugin.CheckChain
 	Notification plugin.NotificationChain
-	Trigger      plugin.TriggerChain
+	Transitions  []Transition
 }
 
 type Profile struct {
@@ -59,8 +76,9 @@ type Profile struct {
 
 // Data represents global state which is saved with a node annotation.
 type Data struct {
-	LastTransition        time.Time
-	LastNotification      time.Time
+	LastTransition time.Time
+	// Maps a notification instance name to the last time it was triggered.
+	LastNotificationTimes map[string]time.Time
 	LastNotificationState NodeStateLabel
 	LastProfile           string
 }
@@ -74,6 +92,9 @@ func ParseData(node *v1.Node) (Data, error) {
 			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
+	if data.LastNotificationTimes == nil {
+		data.LastNotificationTimes = make(map[string]time.Time)
+	}
 	return data, nil
 }
 
@@ -84,21 +105,21 @@ type NodeState interface {
 	// Notify executes the notification chain if required
 	Notify(params plugin.Parameters, data *Data) error
 	// Trigger executes the trigger chain
-	Trigger(params plugin.Parameters, data *Data) error
+	Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error
 	// Trigger executes the check chain and determines, which state should be the next one.
 	// If an error is returned the NodeStateLabel must match the current state.
 	Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error)
 }
 
 // FromLabel creates a new NodeState instance identified by the label with given chains and notification interval.
-func FromLabel(label NodeStateLabel, chains PluginChains, interval time.Duration) (NodeState, error) {
+func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 	switch label {
 	case Operational:
-		return newOperational(chains, interval), nil
+		return newOperational(chains), nil
 	case Required:
-		return newMaintenanceRequired(chains, interval), nil
+		return newMaintenanceRequired(chains), nil
 	case InMaintenance:
-		return newInMaintenance(chains, interval), nil
+		return newInMaintenance(chains), nil
 	}
 	return nil, fmt.Errorf("node state \"%v\" is not known", label)
 }
@@ -131,7 +152,7 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 
 	// check if a transition should happen
 	if next != state.Label() {
-		err = state.Trigger(params, data)
+		err = state.Trigger(params, next, data)
 		if err != nil {
 			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile.Current)
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
@@ -146,19 +167,51 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	return state.Label(), nil
 }
 
+// transitionDefault is a default NodeState.Transition implementation that checks
+// each specified transition in order and returns the next state. If len(trans)
+// is 0, the current state is returned.
+func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans []Transition) (NodeStateLabel, error) {
+	for _, transition := range trans {
+		shouldTransition, err := transition.Check.Execute(params)
+		if err != nil {
+			return current, err
+		}
+		if shouldTransition {
+			return transition.Next, nil
+		}
+	}
+	return current, nil
+}
+
 // notifyDefault is a default NodeState.Notify implemention that executes
 // the notification chain again after a specified interval.
-func notifyDefault(params plugin.Parameters, data *Data, interval time.Duration,
+func notifyDefault(params plugin.Parameters, data *Data,
 	chain *plugin.NotificationChain, label NodeStateLabel) error {
-	// ensure there is a new state or the interval has passed
-	if label == data.LastNotificationState && time.Since(data.LastNotification) <= interval {
-		return nil
+	for _, notifyPlugin := range chain.Plugins {
+		if notifyPlugin.Schedule == nil {
+			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyPlugin.Name)
+		}
+		_, ok := data.LastNotificationTimes[notifyPlugin.Name]
+		if !ok {
+			data.LastNotificationTimes[notifyPlugin.Name] = time.Time{}
+		}
+		now := time.Now()
+		shouldNotify := notifyPlugin.Schedule.ShouldNotify(plugin.NotificationData{
+			State: string(label),
+			Time:  now,
+		}, plugin.NotificationData{
+			State: string(data.LastNotificationState),
+			Time:  data.LastNotificationTimes[notifyPlugin.Name],
+		})
+		if !shouldNotify {
+			continue
+		}
+		if err := chain.Execute(params); err != nil {
+			return err
+		}
+		data.LastNotificationTimes[notifyPlugin.Name] = now
+		data.LastNotificationState = label
 	}
-	if err := chain.Execute(params); err != nil {
-		return err
-	}
-	data.LastNotification = time.Now()
-	data.LastNotificationState = label
 	return nil
 }
 

@@ -20,20 +20,19 @@
 package state
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // inMaintenance implements the transition and notification logic if a node is in the InMaintenance state.
 type inMaintenance struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newInMaintenance(chains PluginChains, interval time.Duration) NodeState {
-	return &inMaintenance{chains: chains, interval: interval, label: InMaintenance}
+func newInMaintenance(chains PluginChains) NodeState {
+	return &inMaintenance{chains: chains, label: InMaintenance}
 }
 
 func (s *inMaintenance) Label() NodeStateLabel {
@@ -41,24 +40,18 @@ func (s *inMaintenance) Label() NodeStateLabel {
 }
 
 func (s *inMaintenance) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
-func (s *inMaintenance) Trigger(params plugin.Parameters, data *Data) error {
-	return s.chains.Trigger.Execute(params)
+func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+	for _, transition := range s.chains.Transitions {
+		if transition.Next == next {
+			return transition.Trigger.Execute(params)
+		}
+	}
+	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
 func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if no checks are configured the node is considered as operational again
-	if len(s.chains.Check.Plugins) == 0 {
-		return Operational, nil
-	}
-	result, err := s.chains.Check.Execute(params)
-	if err != nil {
-		return InMaintenance, err
-	}
-	if result {
-		return Operational, nil
-	}
-	return InMaintenance, nil
+	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

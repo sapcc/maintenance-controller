@@ -130,10 +130,10 @@ var _ = Describe("The maintenance controller", func() {
 		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("maintenance-required"))
 
@@ -143,41 +143,41 @@ var _ = Describe("The maintenance controller", func() {
 		err = k8sClient.Patch(context.Background(), maintainedNode, client.MergeFrom(unmodified))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("in-maintenance"))
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-ok"] == TrueString &&
 				node.Annotations["flatcar-linux-update.v1.flatcar-linux.net/reboot-needed"] == TrueString
 		}).Should(BeTrue())
 
 		// node may reboot to fast to become NotReady
 		By("check node schedulable")
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 2*time.Minute).Should(BeTrue())
 
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 2*time.Minute).Should(BeFalse())
 
 		By("check operational")
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), maintainedKey, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("operational"))
 	})
@@ -206,9 +206,9 @@ var _ = Describe("The maintenance controller", func() {
 		toDelete.Labels[constants.DeleteNodeLabelKey] = constants.TrueStr
 		Expect(k8sClient.Patch(context.Background(), toDelete, client.MergeFrom(unmodified))).To(Succeed())
 		By("assert node gets deleted")
-		Eventually(func() []string {
+		Eventually(func(g Gomega) []string {
 			nodes := &v1.NodeList{}
-			Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 			nodeNames := make([]string, 0)
 			for _, node := range nodes.Items {
 				nodeNames = append(nodeNames, node.Name)
@@ -216,9 +216,9 @@ var _ = Describe("The maintenance controller", func() {
 			return nodeNames
 		}, 5*time.Minute).Should(HaveLen(1))
 		By("assert an other node gets added")
-		Eventually(func() []string {
+		Eventually(func(g Gomega) []string {
 			nodes := &v1.NodeList{}
-			Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 			nodeNames := make([]string, 0)
 			for _, node := range nodes.Items {
 				nodeNames = append(nodeNames, node.Name)

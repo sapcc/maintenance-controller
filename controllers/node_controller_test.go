@@ -59,10 +59,10 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should label a previously unmanaged node", func() {
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
@@ -70,10 +70,10 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should add the data annotation", func() {
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Annotations[constants.DataAnnotationKey]
 			return json.Valid([]byte(val))
@@ -93,14 +93,14 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
-		}).Should(Equal(string(state.InMaintenance)))
+		}).Should(Equal(string(state.Required)))
 
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
@@ -125,16 +125,16 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			dataStr := node.Annotations[constants.DataAnnotationKey]
 			fmt.Printf("Data Annotation: %v\n", dataStr)
 			var data state.Data
 			err = json.Unmarshal([]byte(dataStr), &data)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return data.LastProfile
 		}).Should(Equal("test"))
 	})
@@ -152,10 +152,10 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
@@ -179,14 +179,14 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
-		}).Should(Equal(string(state.InMaintenance)))
+		}).Should(Equal(string(state.Required)))
 	})
 
 	It("should parse the count profile", func() {
@@ -198,17 +198,17 @@ var _ = Describe("The controller", func() {
 		profile := conf.Profiles["count"]
 		Expect(profile.Name).To(Equal("count"))
 		operational := profile.Chains[state.Operational]
-		Expect(operational.Check.Plugins).To(HaveLen(1))
+		Expect(operational.Transitions[0].Check.Plugins).To(HaveLen(1))
 		Expect(operational.Notification.Plugins).To(HaveLen(0))
-		Expect(operational.Trigger.Plugins).To(HaveLen(1))
+		Expect(operational.Transitions[0].Trigger.Plugins).To(HaveLen(1))
 		required := profile.Chains[state.Required]
-		Expect(required.Check.Plugins).To(HaveLen(2))
+		Expect(required.Transitions[0].Check.Plugins).To(HaveLen(2))
 		Expect(required.Notification.Plugins).To(HaveLen(0))
-		Expect(required.Trigger.Plugins).To(HaveLen(0))
+		Expect(required.Transitions[0].Trigger.Plugins).To(HaveLen(0))
 		maintenance := profile.Chains[state.InMaintenance]
-		Expect(maintenance.Check.Plugins).To(HaveLen(3))
+		Expect(maintenance.Transitions[0].Check.Plugins).To(HaveLen(3))
 		Expect(maintenance.Notification.Plugins).To(HaveLen(0))
-		Expect(maintenance.Trigger.Plugins).To(HaveLen(0))
+		Expect(maintenance.Transitions[0].Trigger.Plugins).To(HaveLen(0))
 	})
 
 })
@@ -365,11 +365,11 @@ var _ = Describe("The slack thread plugin", func() {
 		server.Stop()
 	})
 
-	fetchMessages := func() []slack.Msg {
+	fetchMessages := func(g Gomega) []slack.Msg {
 		msgs := make([]slack.Msg, 0)
 		for _, outbound := range server.GetSeenOutboundMessages() {
 			msg := slack.Msg{}
-			Expect(json.Unmarshal([]byte(outbound), &msg)).To(Succeed())
+			g.Expect(json.Unmarshal([]byte(outbound), &msg)).To(Succeed())
 			msgs = append(msgs, msg)
 		}
 		return msgs

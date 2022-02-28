@@ -70,36 +70,70 @@ var _ = Describe("Registry", func() {
 
 			It("loads check plugin instances", func() {
 				var configStr = `check:
-                - someCheckPlugin:
-                    name: test
-                    config:
-                        key: somekey
-                        value: someval
+                - type: someCheckPlugin
+                  name: test
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.CheckPlugins["someCheckPlugin"] = &trueCheck{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.CheckInstances).To(HaveLen(1))
 				instance := registry.CheckInstances["test"]
 				Expect(instance.Name).To(Equal("test"))
 			})
 
-			It("loads notification plugin instances", func() {
+			It("loads periodic notification plugin instances", func() {
 				var configStr = `notify:
-                - someNotificationPlugin:
-                    name: test
+                - type: someNotificationPlugin
+                  name: test
+                  schedule:
+                    type: periodic
                     config:
-                        key: somekey
-                        value: someval
+                      interval: 5m
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.NotificationPlugins["someNotificationPlugin"] = &successfulNotification{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
+				Expect(err).To(Succeed())
+				Expect(registry.NotificationInstances).To(HaveLen(1))
+				instance := registry.NotificationInstances["test"]
+				Expect(instance.Name).To(Equal("test"))
+			})
+
+			It("loads scheduled notification plugin instances", func() {
+				var configStr = `notify:
+                - type: someNotificationPlugin
+                  name: test
+                  schedule:
+                    type: scheduled
+                    config:
+                      instant: 11:00
+                      weekdays: ["tue"]
+                  config:
+                    key: somekey
+                    value: someval
+                `
+				registry := NewRegistry()
+				registry.NotificationPlugins["someNotificationPlugin"] = &successfulNotification{}
+				config, err := yaml.NewConfig([]byte(configStr))
+				Expect(err).To(Succeed())
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.NotificationInstances).To(HaveLen(1))
 				instance := registry.NotificationInstances["test"]
@@ -108,17 +142,19 @@ var _ = Describe("Registry", func() {
 
 			It("loads trigger plugin instances", func() {
 				var configStr = `trigger:
-                - someTriggerPlugin:
-                    name: test
-                    config:
-                        key: somekey
-                        value: someval
+                - type: someTriggerPlugin
+                  name: test
+                  config:
+                    key: somekey
+                    value: someval
                 `
 				registry := NewRegistry()
 				registry.TriggerPlugins["someTriggerPlugin"] = &successfulTrigger{}
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.TriggerInstances).To(HaveLen(1))
 				instance := registry.TriggerInstances["test"]
@@ -133,7 +169,12 @@ var _ = Describe("Registry", func() {
 				registry := NewRegistry()
 				config, err := yaml.NewConfig([]byte(configStr))
 				Expect(err).To(Succeed())
-				err = registry.LoadInstances(config)
+				var descriptor InstancesDescriptor
+				err = config.Unpack(&descriptor)
+				if err != nil {
+					return
+				}
+				err = registry.LoadInstances(&descriptor)
 				Expect(err).To(HaveOccurred())
 			}
 
@@ -267,6 +308,27 @@ var _ = Describe("Registry", func() {
                     config: null
                 `
 				assertError(configStr)
+			})
+
+			It("fails to load notification plugin instances with unknown scheduler", func() {
+				var configStr = `notify:
+                - type: someNotificationPlugin
+                  name: test
+                  schedule:
+                    type: unknown
+                    config: null
+                  config:
+                    key: somekey
+                    value: someval
+                `
+				registry := NewRegistry()
+				registry.NotificationPlugins["someNotificationPlugin"] = &successfulNotification{}
+				config, err := yaml.NewConfig([]byte(configStr))
+				Expect(err).To(Succeed())
+				var descriptor InstancesDescriptor
+				Expect(config.Unpack(&descriptor)).To(Succeed())
+				err = registry.LoadInstances(&descriptor)
+				Expect(err).ToNot(Succeed())
 			})
 
 		})

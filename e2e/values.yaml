@@ -31,39 +31,45 @@ config: |
   instances:
       notify: null
       check:
-      - hasAnnotation:
-          name: reboot_needed
-          config:
-              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
-              value: "true"
-      - hasAnnotation:
-          name: check_approval
-          config:
-              key: cloud.sap/maintenance-approved
-              value: "true"
+      - type: hasAnnotation
+        name: reboot_needed
+        config:
+          key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
+          value: "true"
+      - type: hasAnnotation
+        name: check_approval
+        config:
+          key: cloud.sap/maintenance-approved
+          value: "true"
       trigger:
-      - alterAnnotation:
-          name: reboot-ok
-          config:
-              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
-              value: "true"
-      - alterAnnotation:
-          name: remove_approval
-          config:
-              key: cloud.sap/maintenance-approved
-              remove: true
-      - alterAnnotation:
-          name: remove_reboot_ok
-          config:
-              key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
-              remove: true
+      - type: alterAnnotation
+        name: reboot-ok
+        config:
+          key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+          value: "true"
+      - type: alterAnnotation
+        name: remove_approval
+        config:
+          key: cloud.sap/maintenance-approved
+          remove: true
+      - type: alterAnnotation
+        name: remove_reboot_ok
+        config:
+          key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
+          remove: true
   profiles:
-    flatcar:
-      operational:
-        check: reboot_needed
-      maintenance-required:
-        check: check_approval
+  - name: flatcar
+    operational:
+      transitions:
+      - check: reboot_needed
+        next: maintenance-required
+    maintenance-required:
+      transitions:
+      - check: check_approval
         trigger: remove_approval && reboot-ok
-      in-maintenance:
-        check: "!reboot_needed"
+        next: in-maintenance
+    in-maintenance:
+      transitions:
+      - check: "!reboot_needed"
         trigger: remove_reboot_ok
+        next: operational

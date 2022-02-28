@@ -20,20 +20,19 @@
 package state
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // maintenanceRequired implements the transition and notification logic if a node is in the MaintenanceRequired state.
 type maintenanceRequired struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newMaintenanceRequired(chains PluginChains, interval time.Duration) NodeState {
-	return &maintenanceRequired{chains: chains, interval: interval, label: Required}
+func newMaintenanceRequired(chains PluginChains) NodeState {
+	return &maintenanceRequired{chains: chains, label: Required}
 }
 
 func (s *maintenanceRequired) Label() NodeStateLabel {
@@ -41,24 +40,18 @@ func (s *maintenanceRequired) Label() NodeStateLabel {
 }
 
 func (s *maintenanceRequired) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, s.interval, &s.chains.Notification, s.label)
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
-func (s *maintenanceRequired) Trigger(params plugin.Parameters, data *Data) error {
-	return s.chains.Trigger.Execute(params)
+func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+	for _, transition := range s.chains.Transitions {
+		if transition.Next == next {
+			return transition.Trigger.Execute(params)
+		}
+	}
+	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
 func (s *maintenanceRequired) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if there are no checks configured the node can be put into maintenance, because no additional approvals are required
-	if len(s.chains.Check.Plugins) == 0 {
-		return InMaintenance, nil
-	}
-	result, err := s.chains.Check.Execute(params)
-	if err != nil {
-		return Required, err
-	}
-	if result {
-		return InMaintenance, nil
-	}
-	return Required, nil
+	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

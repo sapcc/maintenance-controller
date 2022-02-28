@@ -128,18 +128,18 @@ var _ = Describe("The ESX controller", func() {
 	})
 
 	It("labels previously unlabeled nodes", func() {
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(NoMaintenance)))
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
@@ -160,18 +160,18 @@ var _ = Describe("The ESX controller", func() {
 		err = task.Wait(context.Background())
 		Expect(err).To(Succeed())
 
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(InMaintenance)))
-		Eventually(func() string {
+		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
@@ -200,34 +200,34 @@ var _ = Describe("The ESX controller", func() {
 		Expect(allowMaintenance(firstNode)).To(Succeed())
 		Expect(allowMaintenance(secondNode)).To(Succeed())
 
-		Eventually(func() map[string]string {
+		Eventually(func(g Gomega) map[string]string {
 			node := &corev1.Node{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Annotations
 		}).Should(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
 			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}).Should(BeTrue())
-		Eventually(func() []corev1.Pod {
+		Eventually(func(g Gomega) []corev1.Pod {
 			var podList corev1.PodList
 			err = k8sClient.List(context.Background(), &podList)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return podList.Items
 		}, 10*time.Second).Should(HaveLen(0))
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			mgr := view.NewManager(vcClient.Client)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			view, err := mgr.CreateContainerView(context.Background(),
 				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			var vms []mo.VirtualMachine
 			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
 				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
 		}).Should(BeTrue())
 
@@ -263,28 +263,28 @@ var _ = Describe("The ESX controller", func() {
 		Expect(markInitiated(firstNode)).To(Succeed())
 		Expect(markInitiated(secondNode)).To(Succeed())
 
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 10*time.Second).Should(BeFalse())
-		Eventually(func() map[string]string {
+		Eventually(func(g Gomega) map[string]string {
 			node := &corev1.Node{}
 			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return node.Annotations
 		}).ShouldNot(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
-		Eventually(func() bool {
+		Eventually(func(g Gomega) bool {
 			mgr := view.NewManager(vcClient.Client)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			view, err := mgr.CreateContainerView(context.Background(),
 				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			var vms []mo.VirtualMachine
 			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
 				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
-			Expect(err).To(Succeed())
+			g.Expect(err).To(Succeed())
 			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		}).Should(BeTrue())
 	})

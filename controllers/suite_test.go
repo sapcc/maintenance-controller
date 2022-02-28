@@ -49,50 +49,65 @@ const config = `
 intervals:
   requeue: 200ms
   notify: 500ms
-keys:
-  state: state
-  chain: chain
 instances:
   notify: null
   check:
-  - hasLabel:
-      name: transition
-      config:
-        key: transition
-        value: "true"
+  - type: hasLabel
+    name: transition
+    config:
+      key: transition
+      value: "true"
   trigger:
-  - alterLabel:
-      name: alter
-      config:
-        key: alter
-        value: "true"
-        remove: false
+  - type: alterLabel
+    name: alter
+    config:
+      key: alter
+      value: "true"
+      remove: false
 profiles:
-  count:
-    operational:
-      check: transition
+- name: count
+  operational:
+    transitions:
+    - check: transition
       trigger: alter
-    maintenance-required:
-      check: transition && transition
-    in-maintenance:
-      check: transition && transition && transition
-  test:
-    operational:
-      check: transition
+      next: maintenance-required
+  maintenance-required:
+    transitions:
+    - check: transition && transition
+      next: in-maintenance
+  in-maintenance:
+    transitions:
+    - check: transition && transition && transition
+      next: operational
+- name: test
+  operational:
+    transitions:
+    - check: transition
       trigger: alter
-  multi:
-    operational:
-      check: transition
+      next: maintenance-required
+- name: multi
+  operational:
+    transitions:
+    - check: transition
       trigger: alter
-    maintenance-required:
-      check: transition
-    in-maintenance:
-      check: "!transition"
-  block:
-    operational:
-      check: transition
-    maintenance-required:
-      check: "!transition"
+      next: maintenance-required
+  maintenance-required:
+    transitions:
+    - check: transition
+      next: in-maintenance
+  in-maintenance:
+    transitions:
+    - check: "!transition"
+      next: operational
+- name: block
+  operational:
+    transitions:
+    - check: transition
+      next: maintenance-required
+  maintenance-required:
+    transitions:
+    - check: "!transition"
+      next: in-maintenance
 `
 
 var cfg *rest.Config

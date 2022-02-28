@@ -20,20 +20,19 @@
 package state
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // operational implements the transition and notification logic if a node is in the operational state.
 type operational struct {
-	chains   PluginChains
-	label    NodeStateLabel
-	interval time.Duration
+	chains PluginChains
+	label  NodeStateLabel
 }
 
-func newOperational(chains PluginChains, interval time.Duration) NodeState {
-	return &operational{chains: chains, interval: interval, label: Operational}
+func newOperational(chains PluginChains) NodeState {
+	return &operational{chains: chains, label: Operational}
 }
 
 func (s *operational) Label() NodeStateLabel {
@@ -41,34 +40,18 @@ func (s *operational) Label() NodeStateLabel {
 }
 
 func (s *operational) Notify(params plugin.Parameters, data *Data) error {
-	if data.LastNotificationState == Operational {
-		return nil
-	}
-	err := s.chains.Notification.Execute(params)
-	if err != nil {
-		return err
-	}
-	data.LastNotification = time.Now()
-	data.LastNotificationState = Operational
-	return nil
+	return notifyDefault(params, data, &s.chains.Notification, s.label)
 }
 
-func (s *operational) Trigger(params plugin.Parameters, data *Data) error {
-	return s.chains.Trigger.Execute(params)
+func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+	for _, transition := range s.chains.Transitions {
+		if transition.Next == next {
+			return transition.Trigger.Execute(params)
+		}
+	}
+	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
 func (s *operational) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
-	// if no checks are configured the node will be ignored by the controller
-	// (by staying in operational state all the time)
-	if len(s.chains.Check.Plugins) == 0 {
-		return Operational, nil
-	}
-	result, err := s.chains.Check.Execute(params)
-	if err != nil {
-		return Operational, err
-	}
-	if result {
-		return Required, nil
-	}
-	return Operational, nil
+	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }
