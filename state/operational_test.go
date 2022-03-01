@@ -125,8 +125,8 @@ var _ = Describe("Operational State", func() {
 	It("should execute the notification chain if the state has changed", func() {
 		chain, notification := mockNotificationChain()
 		data := Data{
-			LastTransition:        time.Now(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastTransition:        time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
 			LastNotificationState: InMaintenance,
 		}
 		oper := operational{
@@ -140,8 +140,8 @@ var _ = Describe("Operational State", func() {
 	It("should not execute the notification chain if the state has not changed", func() {
 		chain, notification := mockNotificationChain()
 		data := Data{
-			LastTransition:        time.Now(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastTransition:        time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
 			LastNotificationState: Operational,
 		}
 		oper := newOperational(PluginChains{Notification: chain})

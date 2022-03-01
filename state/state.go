@@ -195,7 +195,7 @@ func notifyDefault(params plugin.Parameters, data *Data,
 		if !ok {
 			data.LastNotificationTimes[notifyPlugin.Name] = time.Time{}
 		}
-		now := time.Now()
+		now := time.Now().UTC()
 		shouldNotify := notifyPlugin.Schedule.ShouldNotify(plugin.NotificationData{
 			State: string(label),
 			Time:  now,

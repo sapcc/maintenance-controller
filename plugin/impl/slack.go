@@ -163,7 +163,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		return err
 	}
 	// check lease
-	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+	if time.Now().UTC().Sub(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 		// post into thread
 		if lease.Spec.HolderIdentity == nil {
 			return fmt.Errorf("Slack Thread leases has no holder")
@@ -229,7 +229,7 @@ func (st *SlackThread) createLease(params *plugin.Parameters, parentTS string) e
 	lease.Namespace = st.LeaseName.Namespace
 	lease.Spec.HolderIdentity = &parentTS
 	now := v1.MicroTime{
-		Time: time.Now(),
+		Time: time.Now().UTC(),
 	}
 	lease.Spec.AcquireTime = &now
 	lease.Spec.RenewTime = &now
@@ -242,7 +242,7 @@ func (st *SlackThread) createLease(params *plugin.Parameters, parentTS string) e
 func (st *SlackThread) updateLease(params *plugin.Parameters, parentTS string, lease *coordinationv1.Lease) error {
 	unmodified := lease.DeepCopy()
 	lease.Spec.HolderIdentity = &parentTS
-	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now()}
+	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now().UTC()}
 	err := params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
 	return err
 }

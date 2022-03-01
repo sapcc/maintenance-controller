@@ -142,8 +142,8 @@ var _ = Describe("NotifyDefault", func() {
 	It("should not execute the notification chain if the interval has not passed", func() {
 		chain, notification := mockNotificationChain()
 		err := notifyDefault(plugin.Parameters{}, &Data{
-			LastTransition:        time.Now(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastTransition:        time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
 			LastNotificationState: Operational,
 		}, &chain, Operational)
 		Expect(err).To(Succeed())
@@ -153,8 +153,8 @@ var _ = Describe("NotifyDefault", func() {
 	It("should execute the notification chain if the interval has passed", func() {
 		chain, notification := mockNotificationChain()
 		data := Data{
-			LastTransition:        time.Now(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastTransition:        time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
 			LastNotificationState: InMaintenance,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
@@ -167,8 +167,8 @@ var _ = Describe("NotifyDefault", func() {
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
 		chain, notification := mockNotificationChain()
 		data := Data{
-			LastTransition:        time.Now(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now()},
+			LastTransition:        time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
 			LastNotificationState: Operational,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond

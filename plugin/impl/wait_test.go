@@ -43,7 +43,7 @@ var _ = Describe("The wait plugin", func() {
 	It("passes if the defined time has passed", func() {
 		wait := Wait{Duration: 10 * time.Minute}
 		result, err := wait.Check(plugin.Parameters{
-			LastTransition: time.Now().Add(-12 * time.Minute),
+			LastTransition: time.Now().UTC().Add(-12 * time.Minute),
 		})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeTrue())
@@ -52,7 +52,7 @@ var _ = Describe("The wait plugin", func() {
 	It("fails if the time has not passed", func() {
 		wait := Wait{Duration: 15 * time.Minute}
 		result, err := wait.Check(plugin.Parameters{
-			LastTransition: time.Now().Add(-12 * time.Minute),
+			LastTransition: time.Now().UTC().Add(-12 * time.Minute),
 		})
 		Expect(err).To(Succeed())
 		Expect(result).To(BeFalse())

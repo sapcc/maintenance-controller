@@ -69,7 +69,7 @@ func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+		if time.Now().UTC().Sub(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 			s.grabIndex = i
 			return true, nil
 		}
@@ -93,7 +93,7 @@ func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordina
 	// Create the lease in the past, so it can immediately pass the timeout check.
 	// In AfterEval() the lease will then also receive sensible values.
 	past := v1.MicroTime{
-		Time: time.Now().Add(-2 * s.Duration),
+		Time: time.Now().UTC().Add(-2 * s.Duration),
 	}
 	lease.Spec.AcquireTime = &past
 	lease.Spec.RenewTime = &past
@@ -123,7 +123,7 @@ func (s *Stagger) grabLease(params *plugin.Parameters, lease *coordinationv1.Lea
 	unmodified := lease.DeepCopy()
 	lease.Spec.HolderIdentity = &params.Node.Name
 	now := v1.MicroTime{
-		Time: time.Now(),
+		Time: time.Now().UTC(),
 	}
 	lease.Spec.AcquireTime = &now
 	lease.Spec.RenewTime = &now
