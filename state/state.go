@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -177,6 +178,16 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 			return current, err
 		}
 		if shouldTransition {
+			if transition.Next == InMaintenance {
+				if err := metrics.RecordShuffles(
+					params.Ctx,
+					params.Client,
+					params.Node,
+					params.Profile.Current,
+				); err != nil {
+					return current, err
+				}
+			}
 			return transition.Next, nil
 		}
 	}

@@ -26,6 +26,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var _ = Describe("MaintenanceRequired State", func() {
@@ -96,7 +98,11 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to in maintenance if checks pass", func() {
 			check.Result = true
 			mr := newMaintenanceRequired(chains)
-			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			next, err := mr.Transition(plugin.Parameters{
+				Log:    logr.Discard(),
+				Node:   &v1.Node{},
+				Client: fake.NewClientBuilder().Build(),
+			}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(next).To(Equal(InMaintenance))
 			Expect(check.Invoked).To(Equal(1))
