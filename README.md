@@ -191,10 +191,16 @@ config:
   weekdays: weekdays when the time window is valid as array, e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
   exclude: month/day combinations as array, when maintenances are not allowed to occur, e.g. ["Dec 24", "Oct 31"], optional
 ```
-__wait:__ Checks if a certain duration has passed since the last state transition
+__wait:__ Checks if a certain duration has passed since the last state transition.
 ```yaml
 config:
   duration: a duration according to the rules of golangs time.ParseDuration(), required
+```
+__waitExclude:__ Checks if a certain duration has passed since the last state transition, while time does not progress on excluded days. This likely to have some inaccuracies, e.g. leap seconds due to the involved math.
+```yaml
+config:
+  duration: a duration according to the rules of golangs time.ParseDuration(), required
+  exclude: weekdays when the time does not progress, e.g. [monday, tuesday, wednesday, thursday, friday, saturday, sunday], required
 ```
 __affinity:__ Pods are rescheduled, when a node is drained. While maintaining a whole cluster it is possible that are rescheduled onto nodes, which are subject to another drain soon.
 This effect can be reduced by specifying a preferred node affinity towards nodes in the operational state.
@@ -292,6 +298,9 @@ config:
 ## Additional integrations
 - Support for [VMware ESX maintenances](esx/README.md)
 - Support for [Kubernikus](kubernikus/README.md)
+- The maintenance controller exports a bunch of prometheus metrics, but especially
+  - `maintenance_controller_shuffle_count`: Counts pods in DaemonSets, Deployments and StatefulSets, that were likely shuffled by a node send into maintenance
+  - `maintenance_controller_shuffles_per_replica`: Count of pods in DaemonSets, Deployments and StatefulSets, that were likely shuffled by a node send into maintenance, divided by the replica count when the event occurred
 
 ## Example configuration for flatcar update agents
 This example requires that the Flatcar-Linux-Update-Agent is present on the nodes.

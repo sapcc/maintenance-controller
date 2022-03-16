@@ -167,6 +167,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["stagger"] = &impl.Stagger{}
 	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
 	registry.CheckPlugins["wait"] = &impl.Wait{}
+	registry.CheckPlugins["waitExclude"] = &impl.WaitExclude{}
 
 	registry.NotificationPlugins["mail"] = &impl.Mail{}
 	registry.NotificationPlugins["slack"] = &impl.SlackWebhook{}
