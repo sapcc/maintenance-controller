@@ -45,7 +45,7 @@ func (w *Wait) New(config *ucfg.Config) (plugin.Checker, error) {
 }
 
 func (w *Wait) Check(params plugin.Parameters) (bool, error) {
-	if time.Now().UTC().Sub(params.LastTransition) > w.Duration {
+	if time.Since(params.LastTransition) > w.Duration {
 		return true, nil
 	}
 	return false, nil

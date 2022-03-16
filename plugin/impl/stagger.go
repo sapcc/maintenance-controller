@@ -69,7 +69,7 @@ func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if time.Now().UTC().Sub(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 			s.grabIndex = i
 			return true, nil
 		}

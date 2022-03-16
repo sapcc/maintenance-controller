@@ -163,7 +163,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 		return err
 	}
 	// check lease
-	if time.Now().UTC().Sub(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 		// post into thread
 		if lease.Spec.HolderIdentity == nil {
 			return fmt.Errorf("Slack Thread leases has no holder")
