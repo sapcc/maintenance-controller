@@ -40,8 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const trueStr = "true"
-
 var _ = Describe("The controller", func() {
 
 	var targetNode *corev1.Node
@@ -80,7 +78,7 @@ var _ = Describe("The controller", func() {
 		}).Should(BeTrue())
 	})
 
-	It("should use the profile described in the label", func() {
+	createNodeWithProfile := func(profile string) {
 		var node corev1.Node
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
@@ -88,10 +86,14 @@ var _ = Describe("The controller", func() {
 
 		node.Annotations = make(map[string]string)
 		node.Labels = make(map[string]string)
-		node.Labels[constants.ProfileLabelKey] = "test"
-		node.Labels["transition"] = trueStr
+		node.Labels[constants.ProfileLabelKey] = profile
+		node.Labels["transition"] = constants.TrueStr
 		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
 		Expect(err).To(Succeed())
+	}
+
+	It("should use the profile described in the label", func() {
+		createNodeWithProfile("test")
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
@@ -102,9 +104,10 @@ var _ = Describe("The controller", func() {
 			return val
 		}).Should(Equal(string(state.Required)))
 
-		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
-		Expect(node.Labels["alter"]).To(Equal(trueStr))
+		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
 		events := &corev1.EventList{}
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
@@ -113,17 +116,7 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should annotate the last used profile", func() {
-		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-		Expect(err).To(Succeed())
-		unmodifiedNode := node.DeepCopy()
-
-		node.Annotations = make(map[string]string)
-		node.Labels = make(map[string]string)
-		node.Labels[constants.ProfileLabelKey] = "test"
-		node.Labels["transition"] = trueStr
-		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
-		Expect(err).To(Succeed())
+		createNodeWithProfile("test")
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
@@ -140,17 +133,7 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should follow one profile after leaving the operational state", func() {
-		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-		Expect(err).To(Succeed())
-		unmodifiedNode := node.DeepCopy()
-
-		node.Annotations = make(map[string]string)
-		node.Labels = make(map[string]string)
-		node.Labels[constants.ProfileLabelKey] = "block--multi"
-		node.Labels["transition"] = trueStr
-		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
-		Expect(err).To(Succeed())
+		createNodeWithProfile("block--multi")
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
@@ -161,23 +144,14 @@ var _ = Describe("The controller", func() {
 			return val
 		}).Should(Equal(string(state.Required)))
 
-		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).ToNot(HaveKey("alter"))
 	})
 
 	It("should use a profile even if other specified profiles have not been configured", func() {
-		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-		Expect(err).To(Succeed())
-		unmodifiedNode := node.DeepCopy()
-
-		node.Annotations = make(map[string]string)
-		node.Labels = make(map[string]string)
-		node.Labels[constants.ProfileLabelKey] = "does-not-exist--test"
-		node.Labels["transition"] = trueStr
-		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodifiedNode))
-		Expect(err).To(Succeed())
+		createNodeWithProfile("does-not-exist--test")
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node

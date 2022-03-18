@@ -178,6 +178,9 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 			return current, err
 		}
 		if shouldTransition {
+			// Shuffles need to be recorded when entering the in-maintenance state.
+			// So we do it here, instead of checking in Transition() of each NodeState
+			// implementation.
 			if transition.Next == InMaintenance {
 				if err := metrics.RecordShuffles(
 					params.Ctx,

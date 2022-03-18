@@ -141,4 +141,16 @@ var _ = Describe("The waitExclude plugin", func() {
 
 	})
 
+	Context("with a duration of 1 second and exclusions on monday and wednesday", func() {
+
+		It("passes on sunday after a second", func() {
+			we := WaitExclude{Duration: 1 * time.Second, Exclude: []time.Weekday{time.Monday, time.Wednesday}}
+			lastTransition := time.Date(2022, time.March, 6, 12, 00, 00, 00, time.UTC)
+			now := time.Date(2022, time.March, 6, 12, 00, 02, 00, time.UTC)
+			result := checkWaitExclude(&we, lastTransition, now)
+			Expect(result).To(BeTrue())
+		})
+
+	})
+
 })
