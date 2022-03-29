@@ -57,7 +57,7 @@ var _ = Describe("Operational State", func() {
 			var checkChain plugin.CheckChain
 			checkChain, check = mockCheckChain()
 			var notificationChain plugin.NotificationChain
-			notificationChain, notification = mockNotificationChain()
+			notificationChain, notification = mockNotificationChain(1)
 			var triggerChain plugin.TriggerChain
 			triggerChain, trigger = mockTriggerChain()
 			chains = PluginChains{
@@ -123,7 +123,7 @@ var _ = Describe("Operational State", func() {
 	})
 
 	It("should execute the notification chain if the state has changed", func() {
-		chain, notification := mockNotificationChain()
+		chain, notification := mockNotificationChain(1)
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
@@ -138,7 +138,7 @@ var _ = Describe("Operational State", func() {
 	})
 
 	It("should not execute the notification chain if the state has not changed", func() {
-		chain, notification := mockNotificationChain()
+		chain, notification := mockNotificationChain(1)
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},

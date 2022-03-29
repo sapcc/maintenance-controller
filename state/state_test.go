@@ -87,15 +87,21 @@ func (n *mockNotificaiton) New(config *ucfg.Config) (plugin.Notifier, error) {
 	return &mockNotificaiton{}, nil
 }
 
-func mockNotificationChain() (plugin.NotificationChain, *mockNotificaiton) {
+func mockNotificationChain(instanceCount int) (plugin.NotificationChain, *mockNotificaiton) {
+	if instanceCount < 0 {
+		panic("mockNotificationChain requires at least zero instances.")
+	}
 	p := &mockNotificaiton{}
-	instance := plugin.NotificationInstance{
-		Schedule: &plugin.NotifyPeriodic{Interval: time.Hour},
-		Plugin:   p,
-		Name:     "mock",
+	instances := make([]plugin.NotificationInstance, 0)
+	for i := 0; i < instanceCount; i++ {
+		instances = append(instances, plugin.NotificationInstance{
+			Schedule: &plugin.NotifyPeriodic{Interval: time.Hour},
+			Plugin:   p,
+			Name:     fmt.Sprintf("mock%v", i),
+		})
 	}
 	chain := plugin.NotificationChain{
-		Plugins: []plugin.NotificationInstance{instance},
+		Plugins: instances,
 	}
 	return chain, p
 }
@@ -140,10 +146,10 @@ func mockCheckChain() (plugin.CheckChain, *mockCheck) {
 var _ = Describe("NotifyDefault", func() {
 
 	It("should not execute the notification chain if the interval has not passed", func() {
-		chain, notification := mockNotificationChain()
+		chain, notification := mockNotificationChain(1)
 		err := notifyDefault(plugin.Parameters{}, &Data{
 			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
+			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
 			LastNotificationState: Operational,
 		}, &chain, Operational)
 		Expect(err).To(Succeed())
@@ -151,10 +157,10 @@ var _ = Describe("NotifyDefault", func() {
 	})
 
 	It("should execute the notification chain if the interval has passed", func() {
-		chain, notification := mockNotificationChain()
+		chain, notification := mockNotificationChain(1)
 		data := Data{
 			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
+			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
 			LastNotificationState: InMaintenance,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
@@ -165,10 +171,10 @@ var _ = Describe("NotifyDefault", func() {
 	})
 
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
-		chain, notification := mockNotificationChain()
+		chain, notification := mockNotificationChain(1)
 		data := Data{
 			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
+			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
 			LastNotificationState: Operational,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
@@ -176,6 +182,22 @@ var _ = Describe("NotifyDefault", func() {
 		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
+	})
+
+	It("should execute each notification instance once", func() {
+		chain, notification := mockNotificationChain(3)
+		data := Data{
+			LastTransition: time.Now().UTC(),
+			LastNotificationTimes: map[string]time.Time{
+				"mock0": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
+				"mock1": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
+				"mock2": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
+			},
+			LastNotificationState: InMaintenance,
+		}
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, InMaintenance)
+		Expect(err).To(Succeed())
+		Expect(notification.Invoked).To(Equal(3))
 	})
 
 })
@@ -192,7 +214,7 @@ var _ = Describe("Apply", func() {
 	}
 
 	It("fails if the notification plugin fails", func() {
-		chain, notify := mockNotificationChain()
+		chain, notify := mockNotificationChain(1)
 		notify.Fail = true
 		nodeState := operational{
 			label: Operational,

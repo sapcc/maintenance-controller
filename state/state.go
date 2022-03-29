@@ -220,7 +220,7 @@ func notifyDefault(params plugin.Parameters, data *Data,
 		if !shouldNotify {
 			continue
 		}
-		if err := chain.Execute(params); err != nil {
+		if err := notifyPlugin.Plugin.Notify(params); err != nil {
 			return err
 		}
 		data.LastNotificationTimes[notifyPlugin.Name] = now

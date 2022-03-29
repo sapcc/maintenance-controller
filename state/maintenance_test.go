@@ -57,7 +57,7 @@ var _ = Describe("InMaintenance State", func() {
 			var checkChain plugin.CheckChain
 			checkChain, check = mockCheckChain()
 			var notificationChain plugin.NotificationChain
-			notificationChain, notification = mockNotificationChain()
+			notificationChain, notification = mockNotificationChain(1)
 			var triggerChain plugin.TriggerChain
 			triggerChain, trigger = mockTriggerChain()
 			chains = PluginChains{

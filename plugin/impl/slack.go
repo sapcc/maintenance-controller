@@ -152,7 +152,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	if k8serrors.IsNotFound(err) {
 		parentTS, err := st.startThread(&params, api)
 		if err != nil {
-			return fmt.Errorf("Failed to reply to slack thread: %w", err)
+			return fmt.Errorf("Failed to create slack thread: %w", err)
 		}
 		err = st.createLease(&params, parentTS)
 		if err != nil {
@@ -176,7 +176,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	}
 	parentTS, err := st.startThread(&params, api)
 	if err != nil {
-		return fmt.Errorf("Failed to reply to slack thread: %w", err)
+		return fmt.Errorf("Failed to create slack thread: %w", err)
 	}
 	// update Lease
 	err = st.updateLease(&params, parentTS, &lease)
