@@ -26,8 +26,10 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -74,19 +76,13 @@ func main() {
 		"Enables an additional controller, which will indicate outdated kubelets and enable VM deletions.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.RFC3339TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	if kubecontext == "" {
-		kubecontext = os.Getenv("KUBECONTEXT")
-	}
-	restConfig, err := config.GetConfigWithContext(kubecontext)
-	if err != nil {
-		setupLog.Error(err, "Failed to load kubeconfig")
-		os.Exit(1)
-	}
+	restConfig := getKubeconfigOrDie(kubecontext)
 	setupLog.Info("Loaded kubeconfig", "context", kubecontext, "host", restConfig.Host)
 
 	leaderElectionRetry := 5 * time.Second //nolint:gomnd
@@ -120,6 +116,18 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getKubeconfigOrDie(kubecontext string) *rest.Config {
+	if kubecontext == "" {
+		kubecontext = os.Getenv("KUBECONTEXT")
+	}
+	restConfig, err := config.GetConfigWithContext(kubecontext)
+	if err != nil {
+		setupLog.Error(err, "Failed to load kubeconfig")
+		os.Exit(1)
+	}
+	return restConfig
 }
 
 func setupChecks(mgr manager.Manager) {

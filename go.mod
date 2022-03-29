@@ -14,6 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/slack-go/slack v0.10.2
 	github.com/vmware/govmomi v0.26.1
+	go.uber.org/zap v1.21.0
 	gopkg.in/ini.v1 v1.66.4
 	k8s.io/api v0.23.0
 	k8s.io/apimachinery v0.23.0
