@@ -296,8 +296,7 @@ func (r *Runnable) deleteAnnotation(ctx context.Context, node *v1.Node, key stri
 	if node.Annotations == nil {
 		return nil
 	}
-	_, ok := node.Annotations[key]
-	if !ok {
+	if _, ok := node.Annotations[key]; !ok {
 		return nil
 	}
 	cloned := node.DeepCopy()
