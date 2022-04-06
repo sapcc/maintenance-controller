@@ -223,6 +223,7 @@ func notifyDefault(params plugin.Parameters, data *Data,
 		if err := notifyPlugin.Plugin.Notify(params); err != nil {
 			return err
 		}
+		params.Log.Info("Executed notification instance", "instance", notifyPlugin.Name)
 		data.LastNotificationTimes[notifyPlugin.Name] = now
 		data.LastNotificationState = label
 	}

@@ -243,6 +243,8 @@ func (st *SlackThread) updateLease(params *plugin.Parameters, parentTS string, l
 	unmodified := lease.DeepCopy()
 	lease.Spec.HolderIdentity = &parentTS
 	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now().UTC()}
+	secs := int32(st.Period.Seconds())
+	lease.Spec.LeaseDurationSeconds = &secs
 	err := params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
 	return err
 }

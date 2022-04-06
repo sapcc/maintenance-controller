@@ -127,6 +127,8 @@ func (s *Stagger) grabLease(params *plugin.Parameters, lease *coordinationv1.Lea
 	}
 	lease.Spec.AcquireTime = &now
 	lease.Spec.RenewTime = &now
+	secs := int32(s.Duration.Seconds())
+	lease.Spec.LeaseDurationSeconds = &secs
 	transitions := int32(0)
 	if lease.Spec.LeaseTransitions != nil {
 		transitions = *lease.Spec.LeaseTransitions + 1
