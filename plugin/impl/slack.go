@@ -21,6 +21,7 @@ package impl
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,17 +94,89 @@ func (sw *SlackWebhook) Notify(params plugin.Parameters) error {
 	return nil
 }
 
+type SlackLease struct {
+	Name   types.NamespacedName
+	Period time.Duration
+	// Should return parentTS
+	OnReset func(params *plugin.Parameters, api *slack.Client) (string, error)
+	InTime  func(params *plugin.Parameters, api *slack.Client, parentTS string) error
+}
+
+func (sl *SlackLease) tryReset(params *plugin.Parameters, api *slack.Client) error {
+	var lease coordinationv1.Lease
+	err := params.Client.Get(params.Ctx, sl.Name, &lease)
+	if k8serrors.IsNotFound(err) {
+		parentTS, err := sl.OnReset(params, api)
+		if err != nil {
+			return fmt.Errorf("Failed to create slack thread: %w", err)
+		}
+		err = sl.createLease(params.Ctx, params.Client, parentTS)
+		if err != nil {
+			return fmt.Errorf("Failed to create slack thread lease %s: %w", sl.Name, err)
+		}
+		return nil
+	} else if err != nil {
+		return err
+	}
+	// check lease
+	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+		// post into thread
+		if lease.Spec.HolderIdentity == nil {
+			return fmt.Errorf("Slack Thread leases has no holder")
+		}
+		err := sl.InTime(params, api, *lease.Spec.HolderIdentity)
+		if err != nil {
+			return fmt.Errorf("Failed to reply to slack thread: %w", err)
+		}
+		return nil
+	}
+	parentTS, err := sl.OnReset(params, api)
+	if err != nil {
+		return fmt.Errorf("Failed to create slack thread: %w", err)
+	}
+	err = sl.updateLease(params.Ctx, params.Client, parentTS, &lease)
+	if err != nil {
+		return fmt.Errorf("Failed to update slack thread lease %s: %w", sl.Name, err)
+	}
+	return nil
+}
+
+func (sl *SlackLease) createLease(ctx context.Context, k8sClient client.Client, parentTS string) error {
+	var lease coordinationv1.Lease
+	lease.Name = sl.Name.Name
+	lease.Namespace = sl.Name.Namespace
+	lease.Spec.HolderIdentity = &parentTS
+	now := v1.MicroTime{
+		Time: time.Now().UTC(),
+	}
+	lease.Spec.AcquireTime = &now
+	lease.Spec.RenewTime = &now
+	secs := int32(sl.Period.Seconds())
+	lease.Spec.LeaseDurationSeconds = &secs
+	err := k8sClient.Create(ctx, &lease)
+	return err
+}
+
+func (sl *SlackLease) updateLease(ctx context.Context, k8sClient client.Client, parentTS string, lease *coordinationv1.Lease) error {
+	unmodified := lease.DeepCopy()
+	lease.Spec.HolderIdentity = &parentTS
+	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now().UTC()}
+	secs := int32(sl.Period.Seconds())
+	lease.Spec.LeaseDurationSeconds = &secs
+	err := k8sClient.Patch(ctx, lease, client.MergeFrom(unmodified))
+	return err
+}
+
 // Slack is a notification plugin that uses a slack webhook and a channel
 // to post a notification about the nodes state in slack while grouping
 // messages within a certain period in a thread.
 type SlackThread struct {
-	Token     string
-	Channel   string
-	Title     string
-	Message   string
-	LeaseName types.NamespacedName
-	Period    time.Duration
-	testURL   string
+	Token   string
+	Channel string
+	Title   string
+	Message string
+	Lease   SlackLease
+	testURL string
 }
 
 // New creates a new Slack instance with the given config.
@@ -126,10 +199,12 @@ func (st *SlackThread) New(config *ucfg.Config) (plugin.Notifier, error) {
 		Channel: conf.Channel,
 		Message: conf.Message,
 		Title:   conf.Title,
-		Period:  conf.Period,
-		LeaseName: types.NamespacedName{
-			Namespace: conf.LeaseNamespace,
-			Name:      conf.LeaseName,
+		Lease: SlackLease{
+			Name: types.NamespacedName{
+				Namespace: conf.LeaseNamespace,
+				Name:      conf.LeaseName,
+			},
+			Period: conf.Period,
 		},
 	}, nil
 }
@@ -146,44 +221,10 @@ func (st *SlackThread) makeSlack() *slack.Client {
 }
 
 func (st *SlackThread) Notify(params plugin.Parameters) error {
+	st.Lease.OnReset = st.startThread
+	st.Lease.InTime = st.replyMessage
 	api := st.makeSlack()
-	var lease coordinationv1.Lease
-	err := params.Client.Get(params.Ctx, st.LeaseName, &lease)
-	if k8serrors.IsNotFound(err) {
-		parentTS, err := st.startThread(&params, api)
-		if err != nil {
-			return fmt.Errorf("Failed to create slack thread: %w", err)
-		}
-		err = st.createLease(&params, parentTS)
-		if err != nil {
-			return fmt.Errorf("Failed to create slack thread lease %s: %w", st.LeaseName, err)
-		}
-		return nil
-	} else if err != nil {
-		return err
-	}
-	// check lease
-	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
-		// post into thread
-		if lease.Spec.HolderIdentity == nil {
-			return fmt.Errorf("Slack Thread leases has no holder")
-		}
-		err := st.replyMessage(&params, api, *lease.Spec.HolderIdentity)
-		if err != nil {
-			return fmt.Errorf("Failed to reply to slack thread: %w", err)
-		}
-		return nil
-	}
-	parentTS, err := st.startThread(&params, api)
-	if err != nil {
-		return fmt.Errorf("Failed to create slack thread: %w", err)
-	}
-	// update Lease
-	err = st.updateLease(&params, parentTS, &lease)
-	if err != nil {
-		return fmt.Errorf("Failed to update slack thread lease %s: %w", st.LeaseName, err)
-	}
-	return nil
+	return st.Lease.tryReset(&params, api)
 }
 
 func (st *SlackThread) startThread(params *plugin.Parameters, api *slack.Client) (string, error) {
@@ -221,30 +262,4 @@ func (st *SlackThread) replyMessage(params *plugin.Parameters, api *slack.Client
 		return err
 	}
 	return nil
-}
-
-func (st *SlackThread) createLease(params *plugin.Parameters, parentTS string) error {
-	var lease coordinationv1.Lease
-	lease.Name = st.LeaseName.Name
-	lease.Namespace = st.LeaseName.Namespace
-	lease.Spec.HolderIdentity = &parentTS
-	now := v1.MicroTime{
-		Time: time.Now().UTC(),
-	}
-	lease.Spec.AcquireTime = &now
-	lease.Spec.RenewTime = &now
-	secs := int32(st.Period.Seconds())
-	lease.Spec.LeaseDurationSeconds = &secs
-	err := params.Client.Create(params.Ctx, &lease)
-	return err
-}
-
-func (st *SlackThread) updateLease(params *plugin.Parameters, parentTS string, lease *coordinationv1.Lease) error {
-	unmodified := lease.DeepCopy()
-	lease.Spec.HolderIdentity = &parentTS
-	lease.Spec.RenewTime = &v1.MicroTime{Time: time.Now().UTC()}
-	secs := int32(st.Period.Seconds())
-	lease.Spec.LeaseDurationSeconds = &secs
-	err := params.Client.Patch(params.Ctx, lease, client.MergeFrom(unmodified))
-	return err
 }
