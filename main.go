@@ -128,6 +128,7 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+	setupLog.Info("Received SIGTERM or SIGINT. See you later.")
 }
 
 func getKubeconfigOrDie(kubecontext string) *rest.Config {
