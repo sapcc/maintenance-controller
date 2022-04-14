@@ -4,6 +4,7 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/sapcc/maintenance-controller)
 
 A Kubernetes controller to manage node maintenance.
+Serves roughly 50 production clusters across SAP Converged Cloud.
 
 ## Table of Contents
 - Motivation
@@ -11,6 +12,7 @@ A Kubernetes controller to manage node maintenance.
 - Installation
 - Configuration
   - General
+  - Format
   - Check Plugins
   - Notification Plugins
   - Notification Schedules
@@ -19,9 +21,9 @@ A Kubernetes controller to manage node maintenance.
 - Example configuration for flatcar update agents
 
 ## Motivation
-Sometimes the nodes of a Kubernetes cluster need to be put into maintenance.
+Sometimes nodes of a Kubernetes cluster need to be put into maintenance.
 There exist several reasons, like having to update the node's operating system or the kubelet daemon.
-Putting a node into maintenance requires to cordon and drain the node.
+Putting a node into maintenance requires to cordon and drain that node.
 Stateful applications might have special constraints regarding their termination, which cannot be handled easily using Kubernetes "PreStopHooks" (e.g. High Availability scenarios).
 In enterprise contexts, additional processes might influence, when a node maintenance is allowed to occur.
 
@@ -35,7 +37,7 @@ Kubernetes nodes are modelled as finite state machines, which can be in one of t
 - Maintenance Required
 - In Maintenance
 
-A node's current state is saved within the `cloud.sap/maintenance-state` node label.
+A node's current state is shown in the `cloud.sap/maintenance-state` node label.
 Nodes transition to the state if a chain of configurable "check plugins" decides that the node's state should move on.
 Such plugin chains can be configured for each state individually via maintenance profiles.
 Cluster administrators can assign a maintenance profile to a node using the `cloud.sap/maintenance-profile` label.
@@ -49,6 +51,7 @@ Check out the additional integrations further down.
 
 ## Installation
 
+Docker Images are on [DockerHub](https://hub.docker.com/r/sapcc/maintenance-controller).
 A helm chart can be found [here](https://github.com/sapcc/helm-charts/tree/master/system/maintenance-controller).
 Alternatively, execute ```make deploy IMG=sapcc/maintenance-controller```.
 
@@ -141,13 +144,12 @@ profiles:
 ```
 Chains can be undefined or empty.
 Trigger and Notification chains are configured by specifying the desired instance names separated by ```&&```, e.g. ```alter && othertriggerplugin```.
-Check chains are build using boolean expression, e.g. ```transition && !(a || b)```.
+Check chains are build using boolean expressions, e.g. ```transition && !(a || b)```.
 To attach a maintenance profile to a node, the label ```cloud.sap/maintenance-profile=NAME``` has to be assigned the desired profile name.
 If that label is not present on a node the controller will use the ```default``` profile, which does nothing at all.
 The default profile can be reconfigured, if it is defined within the config file.
 Multiple profiles can be assigned to a single node by setting ```cloud.sap/maintenance-profile=NAME1--NAME2--NAME3--...```.
-The operational state can then be left by the checks configured in all listed profiles.
-Any progress for the maintenance-required and in-maintenance states can only made using the profile, which initially triggered the whole maintenance workflow.
+These profiles are then executed concurrently with the only constraint being that only one profile can be `in-maintenance` at any point in time.
 That way specific maintenance workflows for different causes can be implemented.
 The controllers state is tracked with the ```cloud.sap/maintenance-state``` label and the ```cloud.sap/maintenance-data``` annotation.
 
