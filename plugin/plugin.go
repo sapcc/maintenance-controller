@@ -81,16 +81,12 @@ type InstanceDescriptor struct {
 	Config *ucfg.Config
 }
 
-type ProfileInfo struct {
-	Current string
-	Last    string
-}
-
 // Parameters describes the parameters plugins get to work with.
 type Parameters struct {
 	Node           *corev1.Node
 	State          string
-	Profile        ProfileInfo
+	Profile        string
+	InMaintenance  bool // if any profile is in-maintenance
 	Client         client.Client
 	Ctx            context.Context
 	Log            logr.Logger

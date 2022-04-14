@@ -152,11 +152,6 @@ func reconcileInternal(params reconcileParameters) error {
 	log := params.log
 
 	// fetch the current node state
-	stateLabel, err := parseNodeState(node, constants.StateLabelKey)
-	if err != nil {
-		return err
-	}
-	stateStr := string(stateLabel)
 	data, err := state.ParseData(node)
 	if err != nil {
 		return err
@@ -166,46 +161,68 @@ func reconcileInternal(params reconcileParameters) error {
 		profilesStr = constants.DefaultProfileName
 	}
 
-	// get applicable profiles
-	profiles, err := state.GetApplicableProfiles(state.ProfileSelector{
-		NodeState:         stateLabel,
-		NodeProfiles:      profilesStr,
-		AvailableProfiles: params.config.Profiles,
-		Data:              data,
-	})
+	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	if err != nil {
 		return fmt.Errorf("Has the %v label been changed while the node was non-operational? %w",
 			constants.ProfileLabelKey, err)
 	}
 
-	for _, profile := range profiles {
+	for _, ps := range profileStates {
 		// construct state
-		stateObj, err := state.FromLabel(stateLabel, profile.Chains[stateLabel])
+		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
 		if err != nil {
 			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 		}
 
 		// build plugin arguments
 		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log,
-			Profile: plugin.ProfileInfo{Current: profile.Name, Last: data.LastProfile}, Node: node,
-			State: stateStr, LastTransition: data.LastTransition, Recorder: params.recorder}
+			Profile: ps.Profile.Name, Node: node, InMaintenance: anyInMaintenance(profileStates),
+			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder}
 
 		next, err := state.Apply(stateObj, node, &data, pluginParams)
 		if err != nil {
 			return fmt.Errorf("Failed to apply current state: %w", err)
 		}
 		// check if a transition happened
-		if stateLabel != next {
+		if ps.State != next {
 			node.Labels[constants.StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
-			data.LastProfile = profile.Name
-			// break out of the loop to avoid multiple profiles to handle the same state transition
-			break
+			data.ProfileStates[ps.Profile.Name] = next
 		}
 	}
 
+	updateMaintenanceStateLabel(params.node, profileStates)
 	// update data annotation
 	return writeData(node, data)
+}
+
+func anyInMaintenance(profileStates []state.ProfileState) bool {
+	for _, ps := range profileStates {
+		if ps.State == state.InMaintenance {
+			return true
+		}
+	}
+	return false
+}
+
+func updateMaintenanceStateLabel(node *corev1.Node, profileStates []state.ProfileState) {
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+	for _, ps := range profileStates {
+		if ps.State == state.InMaintenance {
+			node.Labels[constants.StateLabelKey] = string(ps.State)
+			return
+		}
+	}
+	for _, ps := range profileStates {
+		if ps.State == state.Required {
+			node.Labels[constants.StateLabelKey] = string(ps.State)
+			return
+		}
+	}
+	node.Labels[constants.StateLabelKey] = string(state.Operational)
+	return
 }
 
 func writeData(node *corev1.Node, data state.Data) error {

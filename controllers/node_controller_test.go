@@ -22,7 +22,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
@@ -47,8 +46,13 @@ var _ = Describe("The controller", func() {
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
 		targetNode.Name = "targetnode"
-		err := k8sClient.Create(context.Background(), targetNode)
-		Expect(err).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
+
+		events := &corev1.EventList{}
+		Expect(k8sClient.List(context.Background(), events)).To(Succeed())
+		for _, event := range events.Items {
+			Expect(k8sClient.Delete(context.Background(), &event)).To(Succeed())
+		}
 	})
 
 	AfterEach(func() {
@@ -108,6 +112,9 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
+		data, err := state.ParseData(&node)
+		Expect(err).To(Succeed())
+		Expect(data.ProfileStates["test"]).To(Equal(state.Required))
 		events := &corev1.EventList{}
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
@@ -115,24 +122,7 @@ var _ = Describe("The controller", func() {
 		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo("targetnode"))
 	})
 
-	It("should annotate the last used profile", func() {
-		createNodeWithProfile("test")
-
-		Eventually(func(g Gomega) string {
-			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
-			g.Expect(err).To(Succeed())
-
-			dataStr := node.Annotations[constants.DataAnnotationKey]
-			fmt.Printf("Data Annotation: %v\n", dataStr)
-			var data state.Data
-			err = json.Unmarshal([]byte(dataStr), &data)
-			g.Expect(err).To(Succeed())
-			return data.LastProfile
-		}).Should(Equal("test"))
-	})
-
-	It("should follow one profile after leaving the operational state", func() {
+	It("should follow profiles concurrently", func() {
 		createNodeWithProfile("block--multi")
 
 		Eventually(func(g Gomega) string {
@@ -142,25 +132,73 @@ var _ = Describe("The controller", func() {
 
 			val := node.Labels[constants.StateLabelKey]
 			return val
-		}).Should(Equal(string(state.Required)))
+		}).Should(Equal(string(state.InMaintenance)))
 
 		var node corev1.Node
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 		Expect(err).To(Succeed())
-		Expect(node.Labels).ToNot(HaveKey("alter"))
+		Expect(node.Labels).To(HaveKey("alter"))
+		data, err := state.ParseData(&node)
+		Expect(err).To(Succeed())
+		Expect(data.ProfileStates["block"]).To(Equal(state.Required))
+		Expect(data.ProfileStates["multi"]).To(Equal(state.InMaintenance))
 	})
 
 	It("should use a profile even if other specified profiles have not been configured", func() {
 		createNodeWithProfile("does-not-exist--test")
 
-		Eventually(func(g Gomega) string {
+		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
 			g.Expect(err).To(Succeed())
 
-			val := node.Labels[constants.StateLabelKey]
-			return val
-		}).Should(Equal(string(state.Required)))
+			data, err := state.ParseData(&node)
+			g.Expect(err).To(Succeed())
+			return data.ProfileStates
+		}).Should(SatisfyAll(
+			Not(HaveKey("does-not-exist")),
+			Satisfy(func(ps map[string]state.NodeStateLabel) bool {
+				return ps["test"] == state.Required
+			}),
+		))
+	})
+
+	It("should only allow one profile to be in-maintenance concurrently", func() {
+		createNodeWithProfile("multi--to-maintenance")
+
+		Eventually(func(g Gomega) string {
+			var node corev1.Node
+			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)).To(Succeed())
+			return node.Labels[constants.StateLabelKey]
+		}).Should(Equal("in-maintenance"))
+
+		Consistently(func(g Gomega) int {
+			var node corev1.Node
+			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)).To(Succeed())
+			data, err := state.ParseData(&node)
+			g.Expect(err).To(Succeed())
+			var maintenanceCounter int
+			for _, val := range data.ProfileStates {
+				if val == state.InMaintenance {
+					maintenanceCounter++
+				}
+			}
+			return maintenanceCounter
+		}).Should(Equal(1))
+	})
+
+	It("should cleanup the profile-state map in the data annotation", func() {
+		createNodeWithProfile("multi--otherprofile1--otherprofile2")
+
+		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			g.Expect(err).To(Succeed())
+
+			data, err := state.ParseData(&node)
+			g.Expect(err).To(Succeed())
+			return data.ProfileStates
+		}).Should(HaveLen(1))
 	})
 
 	It("should parse the count profile", func() {
@@ -418,15 +456,33 @@ var _ = Describe("The affinity plugin", func() {
 	BeforeEach(func() {
 		firstNode = &corev1.Node{}
 		firstNode.Name = "firstnode"
-		firstNode.Labels = map[string]string{constants.StateLabelKey: string(state.Required)}
+		firstNode.Labels = map[string]string{constants.ProfileLabelKey: "block", "transition": constants.TrueStr}
 		err := k8sClient.Create(context.Background(), firstNode)
 		Expect(err).To(Succeed())
 
 		secondNode = &corev1.Node{}
 		secondNode.Name = "secondnode"
-		secondNode.Labels = map[string]string{constants.StateLabelKey: string(state.Required)}
+		secondNode.Labels = map[string]string{constants.ProfileLabelKey: "block", "transition": constants.TrueStr}
 		err = k8sClient.Create(context.Background(), secondNode)
 		Expect(err).To(Succeed())
+
+		awaitMaintenanceRequired := func(node *corev1.Node) {
+			Eventually(func(g Gomega) string {
+				local := &corev1.Node{}
+				err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), local)
+				g.Expect(err).To(Succeed())
+				if local.Labels == nil {
+					return ""
+				}
+				if state, ok := local.Labels[constants.StateLabelKey]; ok {
+					return state
+				}
+				return ""
+			}).Should(Equal(string(state.Required)))
+		}
+
+		awaitMaintenanceRequired(firstNode)
+		awaitMaintenanceRequired(secondNode)
 	})
 
 	AfterEach(func() {
@@ -443,18 +499,12 @@ var _ = Describe("The affinity plugin", func() {
 	})
 
 	buildParams := func(node *corev1.Node) plugin.Parameters {
-		var data state.Data
-		// if the data can not parsed, no data is attached as likely required by the test
-		_ = json.Unmarshal([]byte(node.Annotations[constants.DataAnnotationKey]), &data)
 		return plugin.Parameters{
-			Node:   node,
-			State:  node.Labels[constants.StateLabelKey],
-			Client: k8sClient,
-			Ctx:    context.Background(),
-			Profile: plugin.ProfileInfo{
-				Current: "",
-				Last:    data.LastProfile,
-			},
+			Node:    node,
+			State:   string(state.Required),
+			Client:  k8sClient,
+			Ctx:     context.Background(),
+			Profile: "block",
 		}
 	}
 
@@ -515,35 +565,22 @@ var _ = Describe("The affinity plugin", func() {
 	})
 
 	It("fails if node is not in maintenance-required", func() {
-		unmodified := firstNode.DeepCopy()
-		firstNode.Labels[constants.StateLabelKey] = string(state.InMaintenance)
-		Expect(k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))).To(Succeed())
+		params := buildParams(firstNode)
+		params.State = string(state.Operational)
 		affinity := impl.Affinity{}
-		_, err := affinity.Check(buildParams(firstNode))
+		_, err := affinity.Check(params)
 		Expect(err).To(HaveOccurred())
 	})
 
 	Context("with transitions caused by different profiles", func() {
 
 		It("passes if one node has an affinity pod and the other has none", func() {
-			unmodified := firstNode.DeepCopy()
-			dataBytes, err := json.Marshal(&state.Data{LastProfile: "profile1"})
-			Expect(err).To(Succeed())
-			firstNode.Annotations = map[string]string{constants.DataAnnotationKey: string(dataBytes)}
-			err = k8sClient.Patch(context.Background(), firstNode, client.MergeFrom(unmodified))
-			Expect(err).To(Succeed())
-
-			unmodified = secondNode.DeepCopy()
-			dataBytes, err = json.Marshal(&state.Data{LastProfile: "profile2"})
-			Expect(err).To(Succeed())
-			secondNode.Annotations = map[string]string{constants.DataAnnotationKey: string(dataBytes)}
-			err = k8sClient.Patch(context.Background(), secondNode, client.MergeFrom(unmodified))
-			Expect(err).To(Succeed())
-
 			attachAffinityPod(firstNode.Name)
 
 			affinity := impl.Affinity{}
-			result, err := affinity.Check(buildParams(firstNode))
+			params := buildParams(firstNode)
+			params.Profile = "otherprofile"
+			result, err := affinity.Check(params)
 			Expect(err).To(Succeed())
 			Expect(result).To(BeTrue())
 		})

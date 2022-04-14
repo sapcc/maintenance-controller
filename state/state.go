@@ -81,7 +81,7 @@ type Data struct {
 	// Maps a notification instance name to the last time it was triggered.
 	LastNotificationTimes map[string]time.Time
 	LastNotificationState NodeStateLabel
-	LastProfile           string
+	ProfileStates         map[string]NodeStateLabel
 }
 
 func ParseData(node *v1.Node) (Data, error) {
@@ -136,18 +136,18 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	if err != nil {
 		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one notification plugin failed for profile %v: Will stay in %v state",
-			params.Profile.Current, params.State)
+			params.Profile, params.State)
 		params.Log.Error(err, "Failed to notify", "state", params.State,
-			"profile", params.Profile.Current)
-		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile.Current, err)
+			"profile", params.Profile)
+		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile, err)
 	}
 	next, err := state.Transition(params, data)
 	if err != nil {
 		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one check plugin failed for profile %v: Will stay in %v state",
-			params.Profile.Current, params.State)
+			params.Profile, params.State)
 		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
-			"profile", params.Profile.Current)
+			"profile", params.Profile)
 		return state.Label(), err
 	}
 
@@ -155,14 +155,14 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	if next != state.Label() {
 		err = state.Trigger(params, next, data)
 		if err != nil {
-			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile.Current)
+			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile)
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile.Current, params.State)
+				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile, params.State)
 			return state.Label(), err
 		}
-		params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile.Current)
+		params.Log.Info("Moved node to next state", "state", string(next), "profile", params.Profile)
 		recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
-			"The node is now in the %v state caused by profile %v", string(next), params.Profile.Current)
+			"The node is now in the %v state caused by profile %v", string(next), params.Profile)
 		return next, nil
 	}
 	return state.Label(), nil
@@ -182,11 +182,15 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 			// So we do it here, instead of checking in Transition() of each NodeState
 			// implementation.
 			if transition.Next == InMaintenance {
+				// ensure only one profile can be in-maintenance at a time.
+				if params.InMaintenance {
+					return current, nil
+				}
 				if err := metrics.RecordShuffles(
 					params.Ctx,
 					params.Client,
 					params.Node,
-					params.Profile.Current,
+					params.Profile,
 				); err != nil {
 					return current, err
 				}
@@ -237,26 +241,6 @@ type ProfileSelector struct {
 	Data              Data
 }
 
-// Gets a slice of applicable profiles based on the current state,
-// the profile label and the profile that caused the last transition.
-// If a nodes state is operational all profiles can be used for a transition.
-// If a nodes state is required or in-maintenance transitions can only happen
-// based on the profile that caused the whole maintenance "procedure".
-func GetApplicableProfiles(selector ProfileSelector) ([]Profile, error) {
-	all := getProfiles(selector.NodeProfiles, selector.AvailableProfiles)
-	switch selector.NodeState {
-	case Operational:
-		return all, nil
-	case InMaintenance, Required:
-		for _, profile := range all {
-			if profile.Name == selector.Data.LastProfile {
-				return []Profile{profile}, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("no applicable profiles found for the current state %v", string(selector.NodeState))
-}
-
 // Parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).
 // Skips a possible profile if profileStr contains a profile, which is not part of availableProfiles.
 func getProfiles(profilesStr string, availableProfiles map[string]Profile) []Profile {
@@ -269,4 +253,44 @@ func getProfiles(profilesStr string, availableProfiles map[string]Profile) []Pro
 		profiles = append(profiles, profile)
 	}
 	return profiles
+}
+
+type ProfileState struct {
+	Profile Profile
+	State   NodeStateLabel
+}
+
+// TODO: cleanup state profile map
+func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
+	if d.ProfileStates == nil {
+		d.ProfileStates = make(map[string]NodeStateLabel)
+	}
+	// cleanup unused states
+	toRemove := make([]string, 0)
+	for profileName := range d.ProfileStates {
+		if !strings.Contains(profilesStr, profileName) {
+			toRemove = append(toRemove, profileName)
+		}
+	}
+	for _, remove := range toRemove {
+		delete(d.ProfileStates, remove)
+	}
+	// fetch old and add new states
+	result := make([]ProfileState, 0)
+	profiles := getProfiles(profilesStr, availableProfiles)
+	for _, profile := range profiles {
+		if state, ok := d.ProfileStates[profile.Name]; ok {
+			result = append(result, ProfileState{
+				Profile: profile,
+				State:   state,
+			})
+		} else {
+			d.ProfileStates[profile.Name] = Operational
+			result = append(result, ProfileState{
+				Profile: profile,
+				State:   Operational,
+			})
+		}
+	}
+	return result
 }

@@ -41,8 +41,8 @@ func (a *Affinity) New(config *ucfg.Config) (plugin.Checker, error) {
 
 func (a *Affinity) Check(params plugin.Parameters) (bool, error) {
 	if params.State != string(state.Required) {
-		return false, fmt.Errorf("affinity check plugin failed, node %v is not in maintenance-required state",
-			params.Node.Name)
+		return false, fmt.Errorf("affinity check plugin failed, node %v is not in maintenance-required but %v state",
+			params.Node.Name, params.State)
 	}
 	currentAffinity, err := hasAffinityPod(params.Node.Name, &params)
 	if err != nil {
@@ -57,9 +57,7 @@ func (a *Affinity) Check(params plugin.Parameters) (bool, error) {
 
 func checkOther(params *plugin.Parameters) (bool, error) {
 	var nodeList v1.NodeList
-	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{
-		constants.StateLabelKey: string(state.Required),
-	})
+	err := params.Client.List(params.Ctx, &nodeList)
 	if err != nil {
 		return false, fmt.Errorf("failed to list nodes in the cluster: %w", err)
 	}
@@ -77,7 +75,13 @@ func checkOther(params *plugin.Parameters) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if params.Profile.Last != nodeData.LastProfile {
+		// skip nodes, which don't have the profile
+		otherState, ok := nodeData.ProfileStates[params.Profile]
+		if !ok {
+			continue
+		}
+		// skip nodes, that are not in maintenance-required
+		if otherState != state.Required {
 			continue
 		}
 		// some other node in the cluster does not have any relevant pods, so block

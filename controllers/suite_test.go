@@ -20,6 +20,7 @@
 package controllers
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -108,6 +109,11 @@ profiles:
     transitions:
     - check: "!transition"
       next: in-maintenance
+- name: to-maintenance
+  operational:
+    transitions:
+    - check: transition
+      next: in-maintenance
 `
 
 var cfg *rest.Config
@@ -148,6 +154,15 @@ var _ = BeforeSuite(func() {
 		EventBroadcaster:   event.NewNodeBroadcaster(),
 	})
 	Expect(err).ToNot(HaveOccurred())
+
+	err = k8sManager.GetFieldIndexer().IndexField(context.Background(),
+		&corev1.Pod{},
+		"spec.nodeName",
+		func(o client.Object) []string {
+			pod := o.(*corev1.Pod)
+			return []string{pod.Spec.NodeName}
+		})
+	Expect(err).To(Succeed())
 
 	err = (&NodeReconciler{
 		Client:   k8sManager.GetClient(),

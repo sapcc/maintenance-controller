@@ -207,7 +207,7 @@ var _ = Describe("Apply", func() {
 	buildParams := func() plugin.Parameters {
 		return plugin.Parameters{
 			Recorder: record.NewFakeRecorder(128),
-			Profile:  plugin.ProfileInfo{Current: "profile"},
+			Profile:  "profile",
 			State:    string(Operational),
 			Log:      logr.Discard(),
 		}
