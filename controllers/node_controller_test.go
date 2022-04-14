@@ -50,8 +50,8 @@ var _ = Describe("The controller", func() {
 
 		events := &corev1.EventList{}
 		Expect(k8sClient.List(context.Background(), events)).To(Succeed())
-		for _, event := range events.Items {
-			Expect(k8sClient.Delete(context.Background(), &event)).To(Succeed())
+		for i := range events.Items {
+			Expect(k8sClient.Delete(context.Background(), &events.Items[i])).To(Succeed())
 		}
 	})
 

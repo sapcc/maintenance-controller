@@ -177,26 +177,27 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 		if err != nil {
 			return current, err
 		}
-		if shouldTransition {
-			// Shuffles need to be recorded when entering the in-maintenance state.
-			// So we do it here, instead of checking in Transition() of each NodeState
-			// implementation.
-			if transition.Next == InMaintenance {
-				// ensure only one profile can be in-maintenance at a time.
-				if params.InMaintenance {
-					return current, nil
-				}
-				if err := metrics.RecordShuffles(
-					params.Ctx,
-					params.Client,
-					params.Node,
-					params.Profile,
-				); err != nil {
-					return current, err
-				}
-			}
-			return transition.Next, nil
+		if !shouldTransition {
+			continue
 		}
+		// Shuffles need to be recorded when entering the in-maintenance state.
+		// So we do it here, instead of checking in Transition() of each NodeState
+		// implementation.
+		if transition.Next == InMaintenance {
+			// ensure only one profile can be in-maintenance at a time.
+			if params.InMaintenance {
+				return current, nil
+			}
+			if err := metrics.RecordShuffles(
+				params.Ctx,
+				params.Client,
+				params.Node,
+				params.Profile,
+			); err != nil {
+				return current, err
+			}
+		}
+		return transition.Next, nil
 	}
 	return current, nil
 }
@@ -260,7 +261,6 @@ type ProfileState struct {
 	State   NodeStateLabel
 }
 
-// TODO: cleanup state profile map
 func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
 	if d.ProfileStates == nil {
 		d.ProfileStates = make(map[string]NodeStateLabel)

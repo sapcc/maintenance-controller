@@ -162,11 +162,6 @@ func reconcileInternal(params reconcileParameters) error {
 	}
 
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
-	if err != nil {
-		return fmt.Errorf("Has the %v label been changed while the node was non-operational? %w",
-			constants.ProfileLabelKey, err)
-	}
-
 	for _, ps := range profileStates {
 		// construct state
 		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
@@ -222,7 +217,6 @@ func updateMaintenanceStateLabel(node *corev1.Node, profileStates []state.Profil
 		}
 	}
 	node.Labels[constants.StateLabelKey] = string(state.Operational)
-	return
 }
 
 func writeData(node *corev1.Node, data state.Data) error {
@@ -235,20 +229,6 @@ func writeData(node *corev1.Node, data state.Data) error {
 	}
 	node.Annotations[constants.DataAnnotationKey] = string(dataBytes)
 	return nil
-}
-
-func parseNodeState(node *corev1.Node, key string) (state.NodeStateLabel, error) {
-	// get the current node state
-	stateStr, ok := node.Labels[key]
-	if ok {
-		return state.ValidateLabel(stateStr)
-	}
-	// if not found attach operational state
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
-	}
-	node.Labels[key] = string(state.Operational)
-	return state.Operational, nil
 }
 
 // SetupWithManager attaches the controller to the given manager.
