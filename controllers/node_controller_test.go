@@ -229,13 +229,30 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	var targetNode *corev1.Node
 
+	awaitNodeState := func(node *corev1.Node, state state.NodeStateLabel) {
+		Eventually(func(g Gomega) string {
+			local := &corev1.Node{}
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), local)
+			g.Expect(err).To(Succeed())
+			if local.Labels == nil {
+				return ""
+			}
+			if state, ok := local.Labels[constants.StateLabelKey]; ok {
+				return state
+			}
+			return ""
+		}).Should(Equal(string(state)))
+	}
+
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
 		targetNode.Name = "targetnode"
 		targetNode.Labels = make(map[string]string)
-		targetNode.Labels[constants.StateLabelKey] = string(state.InMaintenance)
+		targetNode.Labels[constants.ProfileLabelKey] = "to-maintenance"
+		targetNode.Labels["transition"] = constants.TrueStr
 		err := k8sClient.Create(context.Background(), targetNode)
 		Expect(err).To(Succeed())
+		awaitNodeState(targetNode, state.InMaintenance)
 	})
 
 	AfterEach(func() {
@@ -254,9 +271,10 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	It("should pass if no node is in maintenance", func() {
 		patched := targetNode.DeepCopy()
-		patched.Labels[constants.StateLabelKey] = string(state.Operational)
+		patched.Labels[constants.ProfileLabelKey] = "block"
 		err := k8sClient.Patch(context.Background(), patched, client.MergeFrom(targetNode))
 		Expect(err).To(Succeed())
+		awaitNodeState(patched, state.Required)
 		max := impl.MaxMaintenance{MaxNodes: 1}
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
