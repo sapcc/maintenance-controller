@@ -22,22 +22,30 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slacktest"
+	appsv1 "k8s.io/api/apps/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const targetNodeName = "targetnode"
 
 var _ = Describe("The controller", func() {
 
@@ -45,7 +53,7 @@ var _ = Describe("The controller", func() {
 
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
-		targetNode.Name = "targetnode"
+		targetNode.Name = targetNodeName
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
 		events := &corev1.EventList{}
@@ -63,7 +71,7 @@ var _ = Describe("The controller", func() {
 	It("should label a previously unmanaged node", func() {
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
@@ -74,7 +82,7 @@ var _ = Describe("The controller", func() {
 	It("should add the data annotation", func() {
 		Eventually(func(g Gomega) bool {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Annotations[constants.DataAnnotationKey]
@@ -84,7 +92,7 @@ var _ = Describe("The controller", func() {
 
 	createNodeWithProfile := func(profile string) {
 		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		unmodifiedNode := node.DeepCopy()
 
@@ -101,7 +109,7 @@ var _ = Describe("The controller", func() {
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
@@ -109,7 +117,7 @@ var _ = Describe("The controller", func() {
 		}).Should(Equal(string(state.Required)))
 
 		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
 		data, err := state.ParseData(&node)
@@ -119,7 +127,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
 		Expect(events.Items).ToNot(HaveLen(0))
-		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo("targetnode"))
+		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo(targetNodeName))
 	})
 
 	It("should follow profiles concurrently", func() {
@@ -127,7 +135,7 @@ var _ = Describe("The controller", func() {
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.StateLabelKey]
@@ -135,7 +143,7 @@ var _ = Describe("The controller", func() {
 		}).Should(Equal(string(state.InMaintenance)))
 
 		var node corev1.Node
-		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
 		data, err := state.ParseData(&node)
@@ -149,7 +157,7 @@ var _ = Describe("The controller", func() {
 
 		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			data, err := state.ParseData(&node)
@@ -168,13 +176,13 @@ var _ = Describe("The controller", func() {
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)).To(Succeed())
 			return node.Labels[constants.StateLabelKey]
 		}).Should(Equal("in-maintenance"))
 
 		Consistently(func(g Gomega) int {
 			var node corev1.Node
-			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)).To(Succeed())
+			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)).To(Succeed())
 			data, err := state.ParseData(&node)
 			g.Expect(err).To(Succeed())
 			var maintenanceCounter int
@@ -192,7 +200,7 @@ var _ = Describe("The controller", func() {
 
 		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "targetnode"}, &node)
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
 			data, err := state.ParseData(&node)
@@ -246,7 +254,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
-		targetNode.Name = "targetnode"
+		targetNode.Name = targetNodeName
 		targetNode.Labels = make(map[string]string)
 		targetNode.Labels[constants.ProfileLabelKey] = "to-maintenance"
 		targetNode.Labels["transition"] = constants.TrueStr
@@ -291,7 +299,7 @@ var _ = Describe("The stagger plugin", func() {
 
 	BeforeEach(func() {
 		leaseName = types.NamespacedName{
-			Namespace: "default",
+			Namespace: metav1.NamespaceDefault,
 			Name:      "mc-lease",
 		}
 
@@ -353,7 +361,7 @@ var _ = Describe("The stagger plugin", func() {
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
 		err := k8sClient.Get(context.Background(), types.NamespacedName{
-			Namespace: "default",
+			Namespace: metav1.NamespaceDefault,
 			Name:      stagger.LeaseName + "-0",
 		}, lease)
 		Expect(err).To(Succeed())
@@ -381,7 +389,7 @@ var _ = Describe("The slack thread plugin", func() {
 	BeforeEach(func() {
 		leaseName = types.NamespacedName{
 			Name:      "slack-lease",
-			Namespace: "default",
+			Namespace: metav1.NamespaceDefault,
 		}
 		server = slacktest.NewTestServer()
 		server.Start()
@@ -528,7 +536,7 @@ var _ = Describe("The affinity plugin", func() {
 
 	attachAffinityPod := func(nodeName string) {
 		pod := &corev1.Pod{}
-		pod.Namespace = "default"
+		pod.Namespace = metav1.NamespaceDefault
 		pod.Name = nodeName + "-container"
 		pod.Spec.NodeName = nodeName
 		pod.Spec.Containers = []corev1.Container{
@@ -607,7 +615,7 @@ var _ = Describe("The affinity plugin", func() {
 
 	It("does not crash if a pod has no affinity set at all", func() {
 		pod := &corev1.Pod{}
-		pod.Namespace = "default"
+		pod.Namespace = metav1.NamespaceDefault
 		pod.Name = "container"
 		pod.Spec.NodeName = firstNode.Name
 		pod.Spec.Containers = []corev1.Container{
@@ -654,4 +662,84 @@ var _ = Describe("The nodecount plugin", func() {
 		Expect(err).To(Succeed())
 		Expect(result).To(BeFalse())
 	})
+})
+
+var _ = Describe("The metrics server", func() {
+
+	var targetNode *corev1.Node
+	var pod *corev1.Pod
+	var daemonSet *appsv1.DaemonSet
+	var stopServer context.CancelFunc
+
+	BeforeEach(func() {
+		targetNode = &corev1.Node{}
+		targetNode.Name = targetNodeName
+		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi", "transition": constants.TrueStr}
+		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
+
+		daemonSet = &appsv1.DaemonSet{}
+		daemonSet.Name = "ds"
+		daemonSet.Namespace = metav1.NamespaceDefault
+		daemonSet.Spec.Template.Labels = map[string]string{"selector": "val"}
+		daemonSet.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"selector": "val"}}
+		daemonSet.Spec.Template.Spec.Containers = []corev1.Container{
+			{
+				Name:  "container",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), daemonSet)).To(Succeed())
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(daemonSet), daemonSet)).To(Succeed())
+
+		pod = &corev1.Pod{}
+		pod.Name = "a-happy-pod"
+		pod.Namespace = metav1.NamespaceDefault
+		pod.Spec.NodeName = targetNodeName
+		pod.Spec.Containers = daemonSet.Spec.Template.Spec.Containers
+		pod.OwnerReferences = []metav1.OwnerReference{
+			{
+				Kind:       "DaemonSet",
+				Name:       "ds",
+				APIVersion: "apps/v1",
+				UID:        daemonSet.UID,
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+
+		metricsServer := metrics.PromServer{
+			Address:     ":15423",
+			WaitTimeout: 1 * time.Second,
+			Log:         logr.Discard(),
+		}
+		withCancel, cancel := context.WithCancel(context.Background())
+		stopServer = cancel
+		go func() {
+			_ = metricsServer.Start(withCancel)
+		}()
+	})
+
+	AfterEach(func() {
+		stopServer()
+		err := k8sClient.Delete(context.Background(), daemonSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), pod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), targetNode)
+		Expect(err).To(Succeed())
+	})
+
+	It("should create shuffle metrics", func() {
+		Eventually(func(g Gomega) string {
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := ioutil.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return string(data)
+		}).Should(SatisfyAll(
+			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"}"),
+			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"}"),
+		))
+	})
+
 })

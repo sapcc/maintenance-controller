@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
@@ -163,6 +164,10 @@ func reconcileInternal(params reconcileParameters) error {
 
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	for _, ps := range profileStates {
+		err = metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
+		if err != nil {
+			return fmt.Errorf("failed to touch metrics for profile %s: %w", ps.Profile.Name, err)
+		}
 		// construct state
 		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
 		if err != nil {

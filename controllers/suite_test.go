@@ -31,6 +31,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/event"
+	"github.com/sapcc/maintenance-controller/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -163,6 +164,8 @@ var _ = BeforeSuite(func() {
 			return []string{pod.Spec.NodeName}
 		})
 	Expect(err).To(Succeed())
+
+	metrics.RegisterMaintenanceMetrics()
 
 	err = (&NodeReconciler{
 		Client:   k8sManager.GetClient(),

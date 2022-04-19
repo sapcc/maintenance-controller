@@ -61,6 +61,7 @@ type fetchParams struct {
 	ref    types.NamespacedName
 }
 
+// Actually increment shuffle counters.
 func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, currentProfile string) error {
 	var podList v1.PodList
 	err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": node.Name})
@@ -98,10 +99,7 @@ func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node,
 	}
 	// actually record metrics, when no error can happen
 	for _, record := range records {
-		labels := prometheus.Labels{
-			"owner":   record.owner,
-			"profile": currentProfile,
-		}
+		labels := makeLabels(record.owner, currentProfile)
 		shuffleCount.With(labels).Inc()
 		shufflesPerReplica.With(labels).Add(record.perReplica)
 	}
@@ -164,4 +162,65 @@ func fetchShuffleStatefulSet(params fetchParams) (shuffleRecord, error) {
 		replicas = *statefulSet.Spec.Replicas
 	}
 	return shuffleRecord{owner: "stateful_set_" + statefulSet.Name, perReplica: 1 / float64(replicas)}, nil
+}
+
+// Add zero to shuffle counters as prometheus dislikes missing metrics.
+// This should require less requests than RecordShuffles().
+func TouchShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, currentProfile string) error {
+	var podList v1.PodList
+	err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": node.Name})
+	if err != nil {
+		return err
+	}
+	for _, pod := range podList.Items {
+		for _, ownerRef := range pod.OwnerReferences {
+			var labels prometheus.Labels
+			switch ownerRef.Kind {
+			case "DaemonSet":
+				labels = makeLabels("daemon_set_"+ownerRef.Name, currentProfile)
+			case "StatefulSet":
+				labels = makeLabels("stateful_set_"+ownerRef.Name, currentProfile)
+			case "ReplicaSet":
+				owner, err := fetchTouchReplicaSet(fetchParams{
+					ctx:    ctx,
+					client: k8sClient,
+					ref: types.NamespacedName{
+						Name:      ownerRef.Name,
+						Namespace: pod.Namespace,
+					},
+				})
+				if err != nil {
+					return err
+				}
+				labels = makeLabels(owner, currentProfile)
+			}
+			shuffleCount.With(labels).Add(0)
+			shufflesPerReplica.With(labels).Add(0)
+		}
+	}
+	return nil
+}
+
+func fetchTouchReplicaSet(params fetchParams) (string, error) {
+	var replicaSet appsv1.ReplicaSet
+	err := params.client.Get(params.ctx, params.ref, &replicaSet)
+	if err != nil {
+		return "", err
+	}
+	if len(replicaSet.OwnerReferences) == 0 {
+		return "replica_set_" + params.ref.Name, nil
+	}
+	for _, ownerRef := range replicaSet.OwnerReferences {
+		if ownerRef.Kind == "Deployment" {
+			return "deployment_" + ownerRef.Name, nil
+		}
+	}
+	return "", fmt.Errorf("owner of replicaSet %s is not a deployment", replicaSet.Name)
+}
+
+func makeLabels(owner string, profile string) prometheus.Labels {
+	return prometheus.Labels{
+		"owner":   owner,
+		"profile": profile,
+	}
 }
