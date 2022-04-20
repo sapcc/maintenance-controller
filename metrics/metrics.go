@@ -193,6 +193,8 @@ func TouchShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, 
 					return err
 				}
 				labels = makeLabels(owner, currentProfile)
+			default:
+				continue
 			}
 			shuffleCount.With(labels).Add(0)
 			shufflesPerReplica.With(labels).Add(0)
