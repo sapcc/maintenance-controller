@@ -166,7 +166,7 @@ func reconcileInternal(params reconcileParameters) error {
 	for _, ps := range profileStates {
 		err = metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
-			return fmt.Errorf("failed to touch metrics for profile %s: %w", ps.Profile.Name, err)
+			params.log.Info("failed to touch shuffle metrics", "profile", ps.Profile.Name, "error", err)
 		}
 		// construct state
 		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])

@@ -194,7 +194,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 				params.Node,
 				params.Profile,
 			); err != nil {
-				return current, err
+				params.Log.Info("failed to record shuffle metrics", "profile", params.Profile, "error", err)
 			}
 		}
 		return transition.Next, nil
