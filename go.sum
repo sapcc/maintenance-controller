@@ -270,6 +270,8 @@ github.com/gophercloud/gophercloud v0.24.0 h1:jDsIMGJ1KZpAjYfQgGI2coNQj5Q83oPzui
 github.com/gophercloud/gophercloud v0.24.0/go.mod h1:Q8fZtyi5zZxPS/j9aj3sSxtvj41AdQMDwyo1myduD5c=
 github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d h1:0Wsi5dvUuPF6dVn/CNfEA4xLxmaEtOt7tV2HD16xIf8=
 github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d/go.mod h1:qOGlfG6OIJ193/c3Xt/XjOfHataNZdQcVgiu93LxBUM=
+github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16 h1:slt/exMiitZNY+5OrKJ6ZvSogqN+SyzeYzAtyI6db9A=
+github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16/go.mod h1:qOGlfG6OIJ193/c3Xt/XjOfHataNZdQcVgiu93LxBUM=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
