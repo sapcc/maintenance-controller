@@ -40,7 +40,7 @@ func (s *maintenanceRequired) Label() NodeStateLabel {
 }
 
 func (s *maintenanceRequired) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, &s.chains.Notification, s.label)
+	return notifyDefault(params, data, &s.chains.Notification, s.label, data.PreviousStates[params.Profile])
 }
 
 func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {

@@ -127,12 +127,12 @@ var _ = Describe("Operational State", func() {
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
-			LastNotificationState: InMaintenance,
+			PreviousStates:        map[string]NodeStateLabel{"mock": InMaintenance},
 		}
 		oper := operational{
 			chains: PluginChains{Notification: chain},
 		}
-		err := oper.Notify(plugin.Parameters{Log: logr.Discard()}, &data)
+		err := oper.Notify(plugin.Parameters{Log: logr.Discard(), Profile: "mock"}, &data)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})
@@ -142,10 +142,10 @@ var _ = Describe("Operational State", func() {
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock": time.Now().UTC()},
-			LastNotificationState: Operational,
+			PreviousStates:        map[string]NodeStateLabel{"mock": Operational},
 		}
 		oper := newOperational(PluginChains{Notification: chain})
-		err := oper.Notify(plugin.Parameters{Log: logr.Discard()}, &data)
+		err := oper.Notify(plugin.Parameters{Log: logr.Discard(), Profile: "mock"}, &data)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})

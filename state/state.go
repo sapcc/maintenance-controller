@@ -80,8 +80,10 @@ type Data struct {
 	LastTransition time.Time
 	// Maps a notification instance name to the last time it was triggered.
 	LastNotificationTimes map[string]time.Time
-	LastNotificationState NodeStateLabel
-	ProfileStates         map[string]NodeStateLabel
+	// Current states of assigned profiles
+	ProfileStates map[string]NodeStateLabel
+	// States of profiles of the previous reconciliation
+	PreviousStates map[string]NodeStateLabel
 }
 
 func ParseData(node *v1.Node) (Data, error) {
@@ -95,6 +97,9 @@ func ParseData(node *v1.Node) (Data, error) {
 	}
 	if data.LastNotificationTimes == nil {
 		data.LastNotificationTimes = make(map[string]time.Time)
+	}
+	if data.PreviousStates == nil {
+		data.PreviousStates = make(map[string]NodeStateLabel)
 	}
 	return data, nil
 }
@@ -204,8 +209,8 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 
 // notifyDefault is a default NodeState.Notify implemention that executes
 // the notification chain again after a specified interval.
-func notifyDefault(params plugin.Parameters, data *Data,
-	chain *plugin.NotificationChain, label NodeStateLabel) error {
+func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.NotificationChain,
+	currentState NodeStateLabel, previousState NodeStateLabel) error {
 	for _, notifyPlugin := range chain.Plugins {
 		if notifyPlugin.Schedule == nil {
 			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyPlugin.Name)
@@ -216,10 +221,10 @@ func notifyDefault(params plugin.Parameters, data *Data,
 		}
 		now := time.Now().UTC()
 		shouldNotify := notifyPlugin.Schedule.ShouldNotify(plugin.NotificationData{
-			State: string(label),
+			State: string(currentState),
 			Time:  now,
 		}, plugin.NotificationData{
-			State: string(data.LastNotificationState),
+			State: string(previousState),
 			Time:  data.LastNotificationTimes[notifyPlugin.Name],
 		})
 		if !shouldNotify {
@@ -230,7 +235,6 @@ func notifyDefault(params plugin.Parameters, data *Data,
 		}
 		params.Log.Info("Executed notification instance", "instance", notifyPlugin.Name)
 		data.LastNotificationTimes[notifyPlugin.Name] = now
-		data.LastNotificationState = label
 	}
 	return nil
 }
@@ -293,4 +297,27 @@ func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[st
 		}
 	}
 	return result
+}
+
+func (d *Data) MaintainPreviousStates(profilesStr string, availableProfiles map[string]Profile) {
+	if d.PreviousStates == nil {
+		d.PreviousStates = make(map[string]NodeStateLabel)
+	}
+	// cleanup unused states
+	toRemove := make([]string, 0)
+	for profileName := range d.PreviousStates {
+		if !strings.Contains(profilesStr, profileName) {
+			toRemove = append(toRemove, profileName)
+		}
+	}
+	for _, remove := range toRemove {
+		delete(d.PreviousStates, remove)
+	}
+	// initialize missing previous values using the current values
+	profiles := getProfiles(profilesStr, availableProfiles)
+	for _, profile := range profiles {
+		if _, ok := d.PreviousStates[profile.Name]; !ok {
+			d.PreviousStates[profile.Name] = d.ProfileStates[profile.Name]
+		}
+	}
 }

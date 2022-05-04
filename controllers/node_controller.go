@@ -163,6 +163,7 @@ func reconcileInternal(params reconcileParameters) error {
 	}
 
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
+	data.MaintainPreviousStates(profilesStr, params.config.Profiles)
 	for _, ps := range profileStates {
 		err = metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
@@ -185,8 +186,8 @@ func reconcileInternal(params reconcileParameters) error {
 		}
 		// check if a transition happened
 		if ps.State != next {
-			node.Labels[constants.StateLabelKey] = string(next)
 			data.LastTransition = time.Now().UTC()
+			data.PreviousStates[ps.Profile.Name] = stateObj.Label()
 			data.ProfileStates[ps.Profile.Name] = next
 		}
 	}

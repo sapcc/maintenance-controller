@@ -150,8 +150,7 @@ var _ = Describe("NotifyDefault", func() {
 		err := notifyDefault(plugin.Parameters{}, &Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
-			LastNotificationState: Operational,
-		}, &chain, Operational)
+		}, &chain, Operational, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})
@@ -161,11 +160,10 @@ var _ = Describe("NotifyDefault", func() {
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
-			LastNotificationState: InMaintenance,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational, InMaintenance)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})
@@ -175,11 +173,10 @@ var _ = Describe("NotifyDefault", func() {
 		data := Data{
 			LastTransition:        time.Now().UTC(),
 			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
-			LastNotificationState: Operational,
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational, Operational)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})
@@ -193,9 +190,8 @@ var _ = Describe("NotifyDefault", func() {
 				"mock1": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 				"mock2": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 			},
-			LastNotificationState: InMaintenance,
 		}
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, InMaintenance)
+		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, InMaintenance, InMaintenance)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(3))
 	})
