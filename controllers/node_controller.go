@@ -187,9 +187,10 @@ func reconcileInternal(params reconcileParameters) error {
 		// check if a transition happened
 		if ps.State != next {
 			data.LastTransition = time.Now().UTC()
-			data.PreviousStates[ps.Profile.Name] = stateObj.Label()
 			data.ProfileStates[ps.Profile.Name] = next
 		}
+		// track the state of this reconciliation for the next run
+		data.PreviousStates[ps.Profile.Name] = stateObj.Label()
 	}
 
 	updateMaintenanceStateLabel(params.node, profileStates)
