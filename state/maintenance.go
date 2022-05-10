@@ -22,6 +22,7 @@ package state
 import (
 	"fmt"
 
+	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -37,6 +38,18 @@ func newInMaintenance(chains PluginChains) NodeState {
 
 func (s *inMaintenance) Label() NodeStateLabel {
 	return s.label
+}
+
+func (s *inMaintenance) Enter(params plugin.Parameters, data *Data) error {
+	if err := metrics.RecordShuffles(
+		params.Ctx,
+		params.Client,
+		params.Node,
+		params.Profile,
+	); err != nil {
+		params.Log.Info("failed to record shuffle metrics", "profile", params.Profile, "error", err)
+	}
+	return nil
 }
 
 func (s *inMaintenance) Notify(params plugin.Parameters, data *Data) error {

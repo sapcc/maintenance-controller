@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -110,6 +109,9 @@ func ParseData(node *v1.Node) (Data, error) {
 type NodeState interface {
 	// Label is the Label associated with the state
 	Label() NodeStateLabel
+	// Enter is executed when a node enters a new state.
+	// Its not executed when a profile gets freshly attached.
+	Enter(params plugin.Parameters, data *Data) error
 	// Notify executes the notification chain if required
 	Notify(params plugin.Parameters, data *Data) error
 	// Trigger executes the trigger chain
@@ -138,6 +140,14 @@ func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 // In case of an error state.Label() is retuned alongside with the error.
 func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (NodeStateLabel, error) {
 	recorder := params.Recorder
+	if data.PreviousStates[params.Profile] != data.ProfileStates[params.Profile] {
+		if err := state.Enter(params, data); err != nil {
+			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
+				"Failed to enter state for profile %v: Will stay in %v state",
+				params.Profile, params.State)
+			return state.Label(), fmt.Errorf("failed to enter state %v for profile %v: %w", state.Label(), params.Profile, err)
+		}
+	}
 	// invoke notifications and check for transition
 	err := state.Notify(params, data)
 	if err != nil {
@@ -155,7 +165,7 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			params.Profile, params.State)
 		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
 			"profile", params.Profile)
-		return state.Label(), err
+		return state.Label(), fmt.Errorf("failed transition for profile %v: %w", params.Profile, err)
 	}
 
 	// check if a transition should happen
@@ -187,22 +197,9 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 		if !shouldTransition {
 			continue
 		}
-		// Shuffles need to be recorded when entering the in-maintenance state.
-		// So we do it here, instead of checking in Transition() of each NodeState
-		// implementation.
-		if transition.Next == InMaintenance {
-			// ensure only one profile can be in-maintenance at a time.
-			if params.InMaintenance {
-				return current, nil
-			}
-			if err := metrics.RecordShuffles(
-				params.Ctx,
-				params.Client,
-				params.Node,
-				params.Profile,
-			); err != nil {
-				params.Log.Info("failed to record shuffle metrics", "profile", params.Profile, "error", err)
-			}
+		// ensure only one profile can be in-maintenance at a time.
+		if transition.Next == InMaintenance && params.InMaintenance {
+			return current, nil
 		}
 		return transition.Next, nil
 	}

@@ -39,6 +39,10 @@ func (s *operational) Label() NodeStateLabel {
 	return s.label
 }
 
+func (s *operational) Enter(params plugin.Parameters, data *Data) error {
+	return nil
+}
+
 func (s *operational) Notify(params plugin.Parameters, data *Data) error {
 	return notifyDefault(params, data, &s.chains.Notification, s.label, data.PreviousStates[params.Profile])
 }
