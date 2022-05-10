@@ -46,6 +46,7 @@ const InMaintenance NodeStateLabel = "in-maintenance"
 // profileSeparator is used to split the maintenance profile label string into multple profile names.
 const profileSeparator string = "--"
 
+// Returns whether s as NodeStateLabel if it is valid.
 func ValidateLabel(s string) (NodeStateLabel, error) {
 	switch s {
 	case string(Operational):
@@ -70,6 +71,7 @@ type PluginChains struct {
 	Transitions  []Transition
 }
 
+// Profile contains its name and attached plugin chains.
 type Profile struct {
 	Name   string
 	Chains map[NodeStateLabel]PluginChains
@@ -265,9 +267,34 @@ type ProfileState struct {
 	State   NodeStateLabel
 }
 
+// Returns a Profile instance with its corresponding state for each profile named in profileStr.
+// If profileStr is an empty string, falls back to the default profile.
+// Call MaintainProfileStates before.
 func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
+	// if no profile is attached, use the default profile
+	if profilesStr == "" {
+		profilesStr = constants.DefaultProfileName
+	}
+	result := make([]ProfileState, 0)
+	profiles := getProfiles(profilesStr, availableProfiles)
+	for _, profile := range profiles {
+		state := d.ProfileStates[profile.Name]
+		result = append(result, ProfileState{
+			Profile: profile,
+			State:   state,
+		})
+	}
+	return result
+}
+
+// Removes state data for removed profile and initializes it for added profiles.
+func (d *Data) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
 	if d.ProfileStates == nil {
 		d.ProfileStates = make(map[string]NodeStateLabel)
+	}
+	// if no profile is attached, use the default profile
+	if profilesStr == "" {
+		profilesStr = constants.DefaultProfileName
 	}
 	// cleanup unused states
 	toRemove := make([]string, 0)
@@ -279,29 +306,23 @@ func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[st
 	for _, remove := range toRemove {
 		delete(d.ProfileStates, remove)
 	}
-	// fetch old and add new states
-	result := make([]ProfileState, 0)
+	// initialize new states
 	profiles := getProfiles(profilesStr, availableProfiles)
 	for _, profile := range profiles {
-		if state, ok := d.ProfileStates[profile.Name]; ok {
-			result = append(result, ProfileState{
-				Profile: profile,
-				State:   state,
-			})
-		} else {
+		if _, ok := d.ProfileStates[profile.Name]; !ok {
 			d.ProfileStates[profile.Name] = Operational
-			result = append(result, ProfileState{
-				Profile: profile,
-				State:   Operational,
-			})
 		}
 	}
-	return result
 }
 
+// Removes previous state data for removed profile and initializes it for added profiles.
 func (d *Data) MaintainPreviousStates(profilesStr string, availableProfiles map[string]Profile) {
 	if d.PreviousStates == nil {
 		d.PreviousStates = make(map[string]NodeStateLabel)
+	}
+	// if no profile is attached, use the default profile
+	if profilesStr == "" {
+		profilesStr = constants.DefaultProfileName
 	}
 	// cleanup unused states
 	toRemove := make([]string, 0)

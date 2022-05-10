@@ -29,8 +29,6 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/metrics"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -129,6 +127,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 }
 
+// Ensures a new version of the specified resources arrives in the cache made by controller-runtime.
 func pollCacheUpdate(ctx context.Context, client client.Client, ref types.NamespacedName, targetVersion string) error {
 	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (done bool, err error) { //nolint:gomnd
 		var nextNode corev1.Node
@@ -147,83 +146,16 @@ func pollCacheUpdate(ctx context.Context, client client.Client, ref types.Namesp
 	})
 }
 
-// Implements the reconciliation logic.
 func reconcileInternal(params reconcileParameters) error {
-	node := params.node
-	log := params.log
-
-	// fetch the current node state
-	data, err := state.ParseData(node)
+	data, err := state.ParseData(params.node)
 	if err != nil {
 		return err
 	}
-	profilesStr, ok := node.Labels[constants.ProfileLabelKey]
-	if !ok {
-		profilesStr = constants.DefaultProfileName
+	err = HandleNode(params, &data)
+	if err != nil {
+		return err
 	}
-
-	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
-	data.MaintainPreviousStates(profilesStr, params.config.Profiles)
-	for _, ps := range profileStates {
-		err = metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
-		if err != nil {
-			params.log.Info("failed to touch shuffle metrics", "profile", ps.Profile.Name, "error", err)
-		}
-		// construct state
-		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
-		if err != nil {
-			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
-		}
-
-		// build plugin arguments
-		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: log,
-			Profile: ps.Profile.Name, Node: node, InMaintenance: anyInMaintenance(profileStates),
-			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder}
-
-		next, err := state.Apply(stateObj, node, &data, pluginParams)
-		if err != nil {
-			return fmt.Errorf("Failed to apply current state: %w", err)
-		}
-		// check if a transition happened
-		if ps.State != next {
-			data.LastTransition = time.Now().UTC()
-			data.ProfileStates[ps.Profile.Name] = next
-		}
-		// track the state of this reconciliation for the next run
-		data.PreviousStates[ps.Profile.Name] = stateObj.Label()
-	}
-
-	updateMaintenanceStateLabel(params.node, profileStates)
-	// update data annotation
-	return writeData(node, data)
-}
-
-func anyInMaintenance(profileStates []state.ProfileState) bool {
-	for _, ps := range profileStates {
-		if ps.State == state.InMaintenance {
-			return true
-		}
-	}
-	return false
-}
-
-func updateMaintenanceStateLabel(node *corev1.Node, profileStates []state.ProfileState) {
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
-	}
-	for _, ps := range profileStates {
-		if ps.State == state.InMaintenance {
-			node.Labels[constants.StateLabelKey] = string(ps.State)
-			return
-		}
-	}
-	for _, ps := range profileStates {
-		if ps.State == state.Required {
-			node.Labels[constants.StateLabelKey] = string(ps.State)
-			return
-		}
-	}
-	node.Labels[constants.StateLabelKey] = string(state.Operational)
+	return writeData(params.node, data)
 }
 
 func writeData(node *corev1.Node, data state.Data) error {
