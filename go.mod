@@ -3,7 +3,7 @@ module github.com/sapcc/maintenance-controller
 go 1.17
 
 require (
-	github.com/PaesslerAG/gval v1.1.2
+	github.com/PaesslerAG/gval v1.2.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.4
 	github.com/go-logr/logr v1.2.3
@@ -58,6 +58,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
