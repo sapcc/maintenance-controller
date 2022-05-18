@@ -3,15 +3,15 @@ module github.com/sapcc/maintenance-controller
 go 1.17
 
 require (
-	github.com/PaesslerAG/gval v1.1.2
+	github.com/PaesslerAG/gval v1.2.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/elastic/go-ucfg v0.8.4
+	github.com/elastic/go-ucfg v0.8.5
 	github.com/go-logr/logr v1.2.3
 	github.com/gophercloud/gophercloud v0.24.0
 	github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/client_golang v1.12.2
 	github.com/slack-go/slack v0.10.3
 	github.com/vmware/govmomi v0.28.0
 	go.uber.org/zap v1.21.0
@@ -58,6 +58,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
