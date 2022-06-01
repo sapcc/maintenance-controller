@@ -127,7 +127,7 @@ var _ = Describe("The ESX controller", func() {
 		Expect(err).To(Succeed())
 	})
 
-	It("labels previously unlabeled nodes", func() {
+	It("labels previously unlabeled nodes with maintenance state", func() {
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
@@ -144,6 +144,25 @@ var _ = Describe("The ESX controller", func() {
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
 			return val
 		}).Should(Equal(string(NoMaintenance)))
+	})
+
+	It("labels previously unlabeled nodes with esx version", func() {
+		Eventually(func(g Gomega) string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
+			g.Expect(err).To(Succeed())
+
+			val := node.Labels[constants.EsxVersionLabelKey]
+			return val
+		}).Should(Equal("6.5.0"))
+		Eventually(func(g Gomega) string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
+			g.Expect(err).To(Succeed())
+
+			val := node.Labels[constants.EsxVersionLabelKey]
+			return val
+		}).Should(Equal("6.5.0"))
 	})
 
 	It("labels all nodes on a single EXS host in case of changes to the maintenance state", func() {

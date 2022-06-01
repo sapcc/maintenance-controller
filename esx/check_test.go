@@ -103,3 +103,30 @@ var _ = Describe("CheckForMaintenance", func() {
 		Expect(result).To(Equal(InMaintenance))
 	})
 })
+
+var _ = Describe("FetchVersion", func() {
+
+	var vCenters *VCenters
+
+	BeforeEach(func() {
+		vCenters = &VCenters{
+			Template: "http://" + AvailabilityZoneReplacer,
+			Credentials: map[string]Credential{
+				vcServer.URL.Host: {
+					Username: "user",
+					Password: "pass",
+				},
+			},
+		}
+	})
+
+	It("should return the version", func() {
+		version, err := FetchVersion(context.Background(), CheckParameters{vCenters, HostInfo{
+			AvailabilityZone: vcServer.URL.Host,
+			Name:             HostSystemName,
+		}, logr.Discard()})
+		Expect(err).To(Succeed())
+		Expect(version).To(Equal("6.5.0"))
+	})
+
+})

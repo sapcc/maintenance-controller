@@ -51,7 +51,7 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	if err != nil {
 		return UnknownMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
 	}
-	host, err := fetchHost(ctx, client.Client, params.Host.Name)
+	host, err := fetchHost(ctx, client.Client, params.Host.Name, []string{"runtime", "recentTask"})
 	if err != nil {
 		return UnknownMaintenance, err
 	}
@@ -93,7 +93,19 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	return NoMaintenance, nil
 }
 
-func fetchHost(ctx context.Context, client *vim25.Client, hostname string) (mo.HostSystem, error) {
+func FetchVersion(ctx context.Context, params CheckParameters) (string, error) {
+	client, err := params.VCenters.Client(ctx, params.Host.AvailabilityZone)
+	if err != nil {
+		return "", err
+	}
+	host, err := fetchHost(ctx, client.Client, params.Host.Name, []string{"config.product"})
+	if err != nil {
+		return "", err
+	}
+	return host.Config.Product.Version, nil
+}
+
+func fetchHost(ctx context.Context, client *vim25.Client, hostname string, filter []string) (mo.HostSystem, error) {
 	mgr := view.NewManager(client)
 	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
 		[]string{"HostSystem"}, true)
@@ -101,7 +113,7 @@ func fetchHost(ctx context.Context, client *vim25.Client, hostname string) (mo.H
 		return mo.HostSystem{}, fmt.Errorf("Failed to create container view: %w", err)
 	}
 	var hss []mo.HostSystem
-	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, []string{"runtime", "recentTask"},
+	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, filter,
 		&hss, property.Filter{"name": hostname})
 	if err != nil {
 		return mo.HostSystem{}, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w",

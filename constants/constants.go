@@ -56,6 +56,9 @@ const (
 	// Label key that holds whether a node can rebootet if the hosting ESX is set into maintenance.
 	EsxRebootOkLabelKey string = "cloud.sap/esx-reboot-ok"
 
+	// Label key that holds the esx version.
+	EsxVersionLabelKey string = "cloud.sap/esx-version"
+
 	// Annotation key that holds whether this controller started rebooting the node.
 	EsxRebootInitiatedAnnotationKey string = "cloud.sap/esx-reboot-initiated"
 

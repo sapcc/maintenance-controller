@@ -100,6 +100,11 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 	}
 	for i := range esxList {
 		esx := &esxList[i]
+		err = r.FetchVersion(ctx, &conf.VCenters, esx)
+		if err != nil {
+			r.Log.Error(err, "Failed to update ESX version labels.",
+				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+		}
 		err = r.CheckMaintenance(ctx, &conf.VCenters, esx)
 		if err != nil {
 			r.Log.Error(err, "Failed to update ESX maintenance labels.",
@@ -126,11 +131,19 @@ func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx
 	if err != nil {
 		return err
 	}
-	err = r.ensureLabel(ctx, esx, constants.EsxMaintenanceLabelKey, string(status))
+	return r.ensureLabel(ctx, esx, constants.EsxMaintenanceLabelKey, string(status))
+}
+
+func (r *Runnable) FetchVersion(ctx context.Context, vCenters *VCenters, esx *Host) error {
+	version, err := FetchVersion(ctx, CheckParameters{
+		VCenters: vCenters,
+		Host:     esx.HostInfo,
+		Log:      r.Log,
+	})
 	if err != nil {
 		return err
 	}
-	return nil
+	return r.ensureLabel(ctx, esx, constants.EsxVersionLabelKey, version)
 }
 
 // Shuts down the nodes on the given ESX, if all nodes are with the RebootAllowed="true" label.
