@@ -15,6 +15,8 @@ It is assumed that the nodes names equal the names of the hosting virtual machin
 The availability zone within a cloud region is assumed to be the last character of the `failure-domain.beta.kubernetes.io/zone` label.
 The ESX hosts are to be tracked on relevant nodes using the `kubernetes.cloud.sap/host` label.
 
+The nodes are also label with `cloud.sap/esx-version` containing the underlying ESX version.
+
 ## Installation
 The ESX controller is bundled within the maintenance controller binary. It needs to be enabled using the `--enable-esx-maintenance` flag.
 

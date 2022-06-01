@@ -694,6 +694,64 @@ var _ = Describe("The nodecount plugin", func() {
 	})
 })
 
+var _ = Describe("The clusterSemver plugin", func() {
+	var maxnode *corev1.Node
+	var minnode *corev1.Node
+	var invalid *corev1.Node
+	var noversion *corev1.Node
+
+	BeforeEach(func() {
+		maxnode = &corev1.Node{}
+		maxnode.Name = "maxnode"
+		maxnode.Labels = map[string]string{"version": "2.3.1"}
+		Expect(k8sClient.Create(context.Background(), maxnode)).To(Succeed())
+		minnode = &corev1.Node{}
+		minnode.Name = "minnode"
+		minnode.Labels = map[string]string{"version": "1.34.7"}
+		Expect(k8sClient.Create(context.Background(), minnode)).To(Succeed())
+		invalid = &corev1.Node{}
+		invalid.Name = "invalid"
+		invalid.Labels = map[string]string{"version": "thiswillnotparse"}
+		Expect(k8sClient.Create(context.Background(), invalid)).To(Succeed())
+		noversion = &corev1.Node{}
+		noversion.Name = "noversion"
+		Expect(k8sClient.Create(context.Background(), noversion)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		Expect(k8sClient.Delete(context.Background(), maxnode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), minnode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), invalid)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), noversion)).To(Succeed())
+	})
+
+	It("returns false if for an up-to-date node", func() {
+		cs := impl.ClusterSemver{Key: "version"}
+		result, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: maxnode})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("passes for an outdated node", func() {
+		cs := impl.ClusterSemver{Key: "version"}
+		result, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: minnode})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("fails for checked node with invalid version label", func() {
+		cs := impl.ClusterSemver{Key: "version"}
+		_, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: invalid})
+		Expect(err).ToNot(Succeed())
+	})
+
+	It("fails for checked node without version label", func() {
+		cs := impl.ClusterSemver{Key: "version"}
+		_, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: noversion})
+		Expect(err).ToNot(Succeed())
+	})
+})
+
 var _ = Describe("The metrics server", func() {
 
 	var targetNode *corev1.Node

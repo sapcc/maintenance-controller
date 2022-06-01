@@ -160,13 +160,18 @@ config:
   key: the annotation key, required
   value: the expected annotation value, if empty only the key is checked, optional
 ```
-__hasLabel__ Checks if a node has a label with the given key. Optionally asserts the labels value.
+__hasLabel:__ Checks if a node has a label with the given key. Optionally asserts the labels value.
 ```yaml
 config:
   key: the annotation key, required
   value: the expected annotation value, if empty only the key is checked, optional
 ```
-__condition__ Checks if a node condition has the defined status.
+__clusterSemver:__ Checks if a label containing a semantic version is less than the most up-to-date value in the cluster. Requires the checked node to have the specified label.
+```yaml
+clusterSemver:
+  key: a valid label key, required
+```
+__condition:__ Checks if a node condition has the defined status.
 ```yaml
 config:
   type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable), required
