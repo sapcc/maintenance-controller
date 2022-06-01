@@ -152,6 +152,36 @@ var _ = Describe("The controller", func() {
 		Expect(data.ProfileStates["multi"]).To(Equal(state.InMaintenance))
 	})
 
+	// more or less a copy of "should follow profiles concurrently" to ensure we don't break
+	// stuff when using detailed logs
+	It("should follow profiles concurrently even with detailed logs", func() {
+		createNodeWithProfile("block--multi")
+		var node corev1.Node
+		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
+		Expect(err).To(Succeed())
+		unmodified := node.DeepCopy()
+		node.Labels[constants.LogDetailsLabelKey] = "true"
+		err = k8sClient.Patch(context.Background(), &node, client.MergeFrom(unmodified))
+		Expect(err).To(Succeed())
+
+		Eventually(func(g Gomega) string {
+			var node corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
+			g.Expect(err).To(Succeed())
+
+			val := node.Labels[constants.StateLabelKey]
+			return val
+		}).Should(Equal(string(state.InMaintenance)))
+
+		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
+		Expect(err).To(Succeed())
+		Expect(node.Labels).To(HaveKey("alter"))
+		data, err := state.ParseData(&node)
+		Expect(err).To(Succeed())
+		Expect(data.ProfileStates["block"]).To(Equal(state.Required))
+		Expect(data.ProfileStates["multi"]).To(Equal(state.InMaintenance))
+	})
+
 	It("should use a profile even if other specified profiles have not been configured", func() {
 		createNodeWithProfile("does-not-exist--test")
 

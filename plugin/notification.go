@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-ucfg"
+	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/common"
 )
 
@@ -87,10 +88,16 @@ type NotificationData struct {
 	Time  time.Time
 }
 
+// Used to log scheduling decisions.
+type SchedulingLogger struct {
+	Log        logr.Logger
+	LogDetails bool
+}
+
 // Interface notification schedulers need to implement.
 type Scheduler interface {
 	// Determines if a notification is required.
-	ShouldNotify(current NotificationData, last NotificationData) bool
+	ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool
 }
 
 // Notifies on state changes and after passing the interval since the
@@ -109,8 +116,18 @@ func newNotifyPeriodic(config *ucfg.Config) (*NotifyPeriodic, error) {
 	return &NotifyPeriodic{Interval: conf.Interval}, nil
 }
 
-func (np *NotifyPeriodic) ShouldNotify(current NotificationData, last NotificationData) bool {
-	return (current.Time.Sub(last.Time) >= np.Interval && last.State != "operational") || current.State != last.State
+func (np *NotifyPeriodic) ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool {
+	if current.State != last.State {
+		return true
+	} else if log.LogDetails {
+		log.Log.Info("NotifyPeriodic: no state change")
+	}
+	if current.Time.Sub(last.Time) >= np.Interval && last.State != "operational" {
+		return true
+	} else if log.LogDetails {
+		log.Log.Info("NotifyPeriodic: interval not passed or operational")
+	}
+	return false
 }
 
 // Notifies when the given instant passed on an allowed weekday.
@@ -147,7 +164,7 @@ func newNotifyScheduled(config *ucfg.Config) (*NotifyScheduled, error) {
 	return scheduled, nil
 }
 
-func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last NotificationData) bool {
+func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool {
 	// check that a notification can be triggered on the current weekday
 	containsWeekday := false
 	for _, weekday := range ns.Weekdays {
@@ -157,6 +174,9 @@ func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last Notificat
 		}
 	}
 	if !containsWeekday {
+		if log.LogDetails {
+			log.Log.Info("NotifyScheduled: weekday not contained", "weekday", current.Time.Weekday())
+		}
 		return false
 	}
 	// ensure the notification triggers after that the specified instant
@@ -164,8 +184,17 @@ func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last Notificat
 	compare := time.Date(ns.Instant.Year(), ns.Instant.Month(), ns.Instant.Day(), current.Time.Hour(),
 		current.Time.Minute(), current.Time.Second(), current.Time.Nanosecond(), time.UTC)
 	if compare.Before(ns.Instant) {
+		if log.LogDetails {
+			log.Log.Info("NotifyScheduled: current time is before specified instant")
+		}
 		return false
 	}
 	// ensure the notification triggers only once a day
-	return last.Time.Day() != current.Time.Day()
+	if last.Time.Day() == current.Time.Day() {
+		if log.LogDetails {
+			log.Log.Info("NotifyScheduled: already triggered today")
+		}
+		return false
+	}
+	return true
 }

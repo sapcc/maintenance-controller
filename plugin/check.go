@@ -68,6 +68,9 @@ func (chain *CheckChain) Execute(params Parameters) (bool, error) {
 		}
 		evalParams[check.Name] = result
 	}
+	if params.LogDetails {
+		params.Log.Info("results of check plugins", "node", params.Node.Name, "checks", evalParams)
+	}
 	// evaluate boolean expression
 	result, err := chain.Evaluable.EvalBool(params.Ctx, evalParams)
 	if err != nil {

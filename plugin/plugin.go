@@ -87,6 +87,7 @@ type Parameters struct {
 	State          string
 	Profile        string
 	InMaintenance  bool // if any profile is in-maintenance
+	LogDetails     bool // whether to log failing checks, notifications, ...
 	Client         client.Client
 	Ctx            context.Context
 	Log            logr.Logger

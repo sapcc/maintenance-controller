@@ -210,30 +210,37 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 // the notification chain again after a specified interval.
 func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.NotificationChain,
 	currentState NodeStateLabel, previousState NodeStateLabel) error {
-	for _, notifyPlugin := range chain.Plugins {
-		if notifyPlugin.Schedule == nil {
-			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyPlugin.Name)
+	for _, notifyInstance := range chain.Plugins {
+		if notifyInstance.Schedule == nil {
+			return fmt.Errorf("Notification plugin instance %s has no schedule assigned", notifyInstance.Name)
 		}
-		_, ok := data.LastNotificationTimes[notifyPlugin.Name]
+		_, ok := data.LastNotificationTimes[notifyInstance.Name]
 		if !ok {
-			data.LastNotificationTimes[notifyPlugin.Name] = time.Time{}
+			data.LastNotificationTimes[notifyInstance.Name] = time.Time{}
 		}
 		now := time.Now().UTC()
-		shouldNotify := notifyPlugin.Schedule.ShouldNotify(plugin.NotificationData{
+		shouldNotify := notifyInstance.Schedule.ShouldNotify(plugin.NotificationData{
 			State: string(currentState),
 			Time:  now,
 		}, plugin.NotificationData{
 			State: string(previousState),
-			Time:  data.LastNotificationTimes[notifyPlugin.Name],
+			Time:  data.LastNotificationTimes[notifyInstance.Name],
+		}, plugin.SchedulingLogger{
+			Log:        params.Log,
+			LogDetails: params.LogDetails,
 		})
 		if !shouldNotify {
+			if params.LogDetails {
+				params.Log.Info("Notification instance is not scheduled to run",
+					"node", params.Node.Name, "instance", notifyInstance.Name)
+			}
 			continue
 		}
-		if err := notifyPlugin.Plugin.Notify(params); err != nil {
+		if err := notifyInstance.Plugin.Notify(params); err != nil {
 			return err
 		}
-		params.Log.Info("Executed notification instance", "instance", notifyPlugin.Name)
-		data.LastNotificationTimes[notifyPlugin.Name] = now
+		params.Log.Info("Executed notification instance", "instance", notifyInstance.Name)
+		data.LastNotificationTimes[notifyInstance.Name] = now
 	}
 	return nil
 }

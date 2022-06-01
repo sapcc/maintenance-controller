@@ -40,6 +40,9 @@ const (
 	// ProfileLabelKey is the full label key, where the user can attach profile information to a node.
 	ProfileLabelKey string = "cloud.sap/maintenance-profile"
 
+	// LogDetailsLabelKey is the full label key, that defines if details of checks, notifications, ... should be logged.
+	LogDetailsLabelKey string = "cloud.sap/maintenance-log-details"
+
 	// DataAnnotationKey is the full annotation key, to which the controller serializes internal data.
 	DataAnnotationKey string = "cloud.sap/maintenance-data"
 

@@ -136,6 +136,11 @@ var _ = Describe("NotifyPeriodic", func() {
 
 var _ = Describe("NotifyScheduled", func() {
 
+	SchedLog := SchedulingLogger{
+		Log:        logr.Discard(),
+		LogDetails: true,
+	}
+
 	makeSchedule := func() *NotifyScheduled {
 		instant, err := time.Parse("15:04", "12:00")
 		Expect(err).To(Succeed())
@@ -166,7 +171,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  currentDate.Add(-25 * time.Hour),
-			})
+			}, SchedLog)
 			Expect(result).To(BeFalse())
 		})
 
@@ -178,7 +183,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  currentDate.Add(-25 * time.Hour),
-			})
+			}, SchedLog)
 			Expect(result).To(BeFalse())
 		})
 
@@ -194,7 +199,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  currentDate.Add(-25 * time.Hour),
-			})
+			}, SchedLog)
 			Expect(result).To(BeFalse())
 		})
 
@@ -206,7 +211,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  currentDate.Add(-25 * time.Hour),
-			})
+			}, SchedLog)
 			Expect(result).To(BeTrue())
 		})
 
@@ -218,7 +223,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  time.Time{},
-			})
+			}, SchedLog)
 			Expect(result).To(BeTrue())
 		})
 
@@ -230,7 +235,7 @@ var _ = Describe("NotifyScheduled", func() {
 			}, NotificationData{
 				State: "operational",
 				Time:  currentDate.Add(-1 * time.Hour),
-			})
+			}, SchedLog)
 			Expect(result).To(BeFalse())
 		})
 

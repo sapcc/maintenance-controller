@@ -77,10 +77,15 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
 		}
 
+		logDetails := false
+		if params.node.Labels[constants.LogDetailsLabelKey] == "true" {
+			logDetails = true
+		}
 		// build plugin arguments
 		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: params.log,
 			Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),
-			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder}
+			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder,
+			LogDetails: logDetails}
 
 		next, err := state.Apply(stateObj, params.node, data, pluginParams)
 		if err != nil {
