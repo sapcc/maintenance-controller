@@ -192,6 +192,26 @@ var _ = Describe("The maintenance controller", func() {
 		Expect(eventList.Items).To(HaveLen(3))
 	})
 
+	It("should remove the maintenance approval", func() {
+		Eventually(func(g Gomega) bool {
+			node := &corev1.Node{}
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
+			g.Expect(err).To(Succeed())
+			_, exists := node.Labels["cloud.sap/maintenance-approved"]
+			return exists
+		}).Should(BeFalse())
+	})
+
+	It("should remove the flatcar approval", func() {
+		Eventually(func(g Gomega) bool {
+			node := &corev1.Node{}
+			err := k8sClient.Get(context.Background(), maintainedKey, node)
+			g.Expect(err).To(Succeed())
+			_, exists := node.Labels["flatcar-linux-update.v1.flatcar-linux.net/reboot-ok"]
+			return exists
+		}).Should(BeFalse())
+	})
+
 	It("should recreate nodes with the kubernikus controller", func() {
 		By("fetch node names")
 		nodes := &v1.NodeList{}
