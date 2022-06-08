@@ -28,13 +28,14 @@ import (
 var _ = Describe("The ClusterSemver plugin", func() {
 
 	It("can parse its configuration", func() {
-		configStr := "key: alge"
+		configStr := "key: alge\nprofileScoped: yes"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base ClusterSemver
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*ClusterSemver).Key).To(Equal("alge"))
+		Expect(plugin.(*ClusterSemver).ProfileScoped).To(BeTrue())
 	})
 
 })

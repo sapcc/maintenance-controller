@@ -170,6 +170,7 @@ __clusterSemver:__ Checks if a label containing a semantic version is less than 
 ```yaml
 clusterSemver:
   key: a valid label key, required
+  profileScoped: do not check against the whole cluster, but against all nodes, which match the current profile, optional
 ```
 __condition:__ Checks if a node condition has the defined status.
 ```yaml

@@ -21,9 +21,11 @@ package impl
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,17 +36,19 @@ import (
 // than the clusters max value, which indicates
 // that an update may be needed.
 type ClusterSemver struct {
-	Key string
+	Key           string
+	ProfileScoped bool
 }
 
 func (cs *ClusterSemver) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
-		Key string `config:"key" validate:"required"`
+		Key           string `config:"key" validate:"required"`
+		ProfileScoped bool   `config:"profileScoped"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &ClusterSemver{Key: conf.Key}, nil
+	return &ClusterSemver{Key: conf.Key, ProfileScoped: conf.ProfileScoped}, nil
 }
 
 func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
@@ -62,6 +66,9 @@ func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
 		return false, err
 	}
 	nodes := nodeList.Items
+	if cs.ProfileScoped {
+		nodes = filterByProfile(nodes, params.Profile)
+	}
 	maxVersion := semver.MustParse("0.1.0")
 	for _, node := range nodes {
 		versionStr, ok := node.Labels[cs.Key]
@@ -77,6 +84,20 @@ func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
 		}
 	}
 	return ownVersion.LT(maxVersion), nil
+}
+
+func filterByProfile(nodes []v1.Node, profile string) []v1.Node {
+	filtered := make([]v1.Node, 0)
+	for _, node := range nodes {
+		nodeProfiles, ok := node.Labels[constants.ProfileLabelKey]
+		if !ok {
+			continue
+		}
+		if strings.Contains(nodeProfiles, profile) {
+			filtered = append(filtered, node)
+		}
+	}
+	return filtered
 }
 
 func (cs *ClusterSemver) AfterEval(chainResult bool, params plugin.Parameters) error {

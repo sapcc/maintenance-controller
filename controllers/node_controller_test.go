@@ -739,6 +739,18 @@ var _ = Describe("The clusterSemver plugin", func() {
 		Expect(result).To(BeTrue())
 	})
 
+	It("returns false for a cluster-wide outdated node if scoped to a profile with no nodes", func() {
+		cs := impl.ClusterSemver{Key: "version", ProfileScoped: true}
+		result, err := cs.Check(plugin.Parameters{
+			Client:  k8sClient,
+			Ctx:     context.Background(),
+			Node:    minnode,
+			Profile: "does-not-exist",
+		})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
 	It("fails for checked node with invalid version label", func() {
 		cs := impl.ClusterSemver{Key: "version"}
 		_, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: invalid})
