@@ -22,6 +22,11 @@ intervals:
   podDeletion:
     period: 20s
     timeout: 5m
+  # Defines how long and frequent to try to evict pods
+  podEviction:
+    period: 20s
+    timeout: 5m
+    force: false # If true and evictions do not succeed do normal DELETE calls
 ```
 Also OpenStack credentials have to provided to delete the virtual machine backing a Kubernikus node.
 These have to be placed in `./provider/cloudprovider.conf`.

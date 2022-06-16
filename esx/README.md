@@ -32,6 +32,11 @@ intervals:
   podDeletion:
     period: 5s # required
     timeout: 2m # required
+  # Defines how long and frequent to try to evict pods
+  podEviction:
+    period: 20s
+    timeout: 5m
+    force: false # If true and evictions do not succeed do normal DELETE calls
   # Defines how long to wait after a node has been drained
   # As node shutdowns are performed in a loop it helps staggering them.
   stagger: 20s # optional
