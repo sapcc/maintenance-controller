@@ -175,9 +175,10 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 					Timeout: conf.Intervals.PodDeletion.Timeout,
 				},
 				Eviction: common.WaitParameters{
-					Period:  conf.Intervals.PodDeletion.Period,
-					Timeout: conf.Intervals.PodDeletion.Timeout,
+					Period:  conf.Intervals.PodEviction.Period,
+					Timeout: conf.Intervals.PodEviction.Timeout,
 				},
+				ForceEviction: conf.Intervals.PodEviction.Force,
 			},
 		)
 		if err != nil {

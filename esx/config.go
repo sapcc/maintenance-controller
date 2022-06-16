@@ -42,6 +42,11 @@ type Config struct {
 			Period  time.Duration
 			Timeout time.Duration
 		} `config:"podDeletion" validate:"required"`
+		PodEviction struct {
+			Period  time.Duration `config:"period" validate:"required"`
+			Timeout time.Duration `config:"timeout" validate:"required"`
+			Force   bool          `config:"force"`
+		} `config:"podEviction" validate:"required"`
 		Stagger time.Duration `config:"stagger"`
 	} `config:"intervals" validate:"required"`
 	VCenters VCenters `config:"vCenters" validate:"required"`

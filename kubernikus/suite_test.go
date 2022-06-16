@@ -58,6 +58,9 @@ intervals:
   podDeletion:
     period: 2s
     timeout: 30s
+  podEviction:
+    period: 2s
+    timeout: 30s
 `
 
 var cfg *rest.Config

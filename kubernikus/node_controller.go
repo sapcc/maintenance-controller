@@ -50,6 +50,11 @@ type Config struct {
 			Period  time.Duration `config:"period" validate:"required"`
 			Timeout time.Duration `config:"timeout" validate:"required"`
 		} `config:"podDeletion" validate:"required"`
+		PodEviction struct {
+			Period  time.Duration `config:"period" validate:"required"`
+			Timeout time.Duration `config:"timeout" validate:"required"`
+			Force   bool          `config:"force"`
+		} `config:"podEviction" validate:"required"`
 	}
 }
 
@@ -119,9 +124,10 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					Timeout: conf.Intervals.PodDeletion.Timeout,
 				},
 				Eviction: common.WaitParameters{
-					Period:  conf.Intervals.PodDeletion.Period,
-					Timeout: conf.Intervals.PodDeletion.Timeout,
+					Period:  conf.Intervals.PodEviction.Period,
+					Timeout: conf.Intervals.PodEviction.Timeout,
 				},
+				ForceEviction: conf.Intervals.PodEviction.Force,
 			},
 		)
 		if err != nil {
