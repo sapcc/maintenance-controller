@@ -171,6 +171,7 @@ var _ = BeforeSuite(func() {
 
 	controller := Runnable{
 		Client: k8sManager.GetClient(),
+		Conf:   k8sManager.GetConfig(),
 		Log:    ctrl.Log.WithName("controllers").WithName("esx"),
 	}
 	err = k8sManager.Add(&controller)

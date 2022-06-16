@@ -201,6 +201,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		setupLog.Info("ESX integration is enabled")
 		controller := esx.Runnable{
 			Client: mgr.GetClient(),
+			Conf:   mgr.GetConfig(),
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
 		}
 		if err := mgr.Add(&controller); err != nil {

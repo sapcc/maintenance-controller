@@ -30,6 +30,8 @@ import (
 	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -40,7 +42,8 @@ import (
 
 type Runnable struct {
 	client.Client
-	Log logr.Logger
+	Log  logr.Logger
+	Conf *rest.Config
 }
 
 func (r *Runnable) NeedLeaderElection() bool {
@@ -72,9 +75,7 @@ func (r *Runnable) Start(ctx context.Context) error {
 	}
 	wait.JitterUntilWithContext(
 		ctx,
-		func(ctx context.Context) {
-			r.Reconcile(ctx)
-		},
+		r.Reconcile,
 		conf.Intervals.Check.Period,
 		conf.Intervals.Check.Jitter,
 		false,
@@ -165,11 +166,20 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
-		err = common.EnsureDrain(ctx, node, r.Log, common.WaitParameters{
-			Client:  r.Client,
-			Period:  conf.Intervals.PodDeletion.Period,
-			Timeout: conf.Intervals.PodDeletion.Timeout,
-		})
+		err = common.EnsureDrain(ctx, node, r.Log,
+			common.DrainParameters{
+				Client:    r.Client,
+				Clientset: kubernetes.NewForConfigOrDie(r.Conf),
+				AwaitDeletion: common.WaitParameters{
+					Period:  conf.Intervals.PodDeletion.Period,
+					Timeout: conf.Intervals.PodDeletion.Timeout,
+				},
+				Eviction: common.WaitParameters{
+					Period:  conf.Intervals.PodDeletion.Period,
+					Timeout: conf.Intervals.PodDeletion.Timeout,
+				},
+			},
+		)
 		if err != nil {
 			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue

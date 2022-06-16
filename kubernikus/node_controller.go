@@ -110,11 +110,20 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// delete if requested
 	shouldDelete, ok := node.Labels[constants.DeleteNodeLabelKey]
 	if ok && shouldDelete == constants.TrueStr {
-		err = r.deleteNode(ctx, node, common.WaitParameters{
-			Client:  r.Client,
-			Period:  conf.Intervals.PodDeletion.Period,
-			Timeout: conf.Intervals.PodDeletion.Timeout,
-		})
+		err = r.deleteNode(ctx, node,
+			common.DrainParameters{
+				Client:    r.Client,
+				Clientset: kubernetes.NewForConfigOrDie(r.Conf),
+				AwaitDeletion: common.WaitParameters{
+					Period:  conf.Intervals.PodDeletion.Period,
+					Timeout: conf.Intervals.PodDeletion.Timeout,
+				},
+				Eviction: common.WaitParameters{
+					Period:  conf.Intervals.PodDeletion.Period,
+					Timeout: conf.Intervals.PodDeletion.Timeout,
+				},
+			},
+		)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -162,19 +171,10 @@ func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to create API Server client: %w", err)
 	}
-	rsp, err := client.ServerVersion()
-	if err != nil {
-		return semver.Version{}, fmt.Errorf("failed to do request for API Server version: %w", err)
-	}
-	gitVersion := rsp.GitVersion[1:]
-	version, err := semver.Parse(gitVersion)
-	if err != nil {
-		return semver.Version{}, fmt.Errorf("API Server version %s is not semver compatible: %w", gitVersion, err)
-	}
-	return version, nil
+	return common.GetAPIServerVersion(client)
 }
 
-func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.WaitParameters) error {
+func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.DrainParameters) error {
 	r.Log.Info("Cordoning, draining and deleting node", "node", node.Name)
 	err := common.EnsureSchedulable(ctx, r.Client, node, false)
 	// In case of error just retry, cordoning is ensured again

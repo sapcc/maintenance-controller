@@ -112,11 +112,11 @@ var _ = Describe("GetPodsForDeletion", func() {
 			Expect(k8sClient.Delete(context.Background(), &podList.Items[i],
 				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
 		}
-		err := common.WaitForPodDeletions(context.Background(), podList.Items, common.WaitParameters{
-			Client:  k8sClient,
-			Period:  1 * time.Second,
-			Timeout: 4 * time.Second,
-		})
+		err := common.WaitForPodDeletions(context.Background(), k8sClient, podList.Items,
+			common.WaitParameters{
+				Period:  1 * time.Second,
+				Timeout: 4 * time.Second,
+			})
 		Expect(err).To(Succeed())
 	})
 
