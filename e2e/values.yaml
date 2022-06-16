@@ -23,6 +23,9 @@ kubernikus:
       podDeletion:
         period: 20s
         timeout: 5m
+      podEviction:
+        period: 20s
+        timeout: 5m
 config: |
   intervals:
     requeue: 10s
