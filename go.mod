@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/PaesslerAG/gval v1.2.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/elastic/go-ucfg v0.8.5
+	github.com/elastic/go-ucfg v0.8.6
 	github.com/go-logr/logr v1.2.3
 	github.com/gophercloud/gophercloud v0.25.0
 	github.com/gophercloud/utils v0.0.0-20220627134740-f82c2a154887
