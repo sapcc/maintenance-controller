@@ -43,6 +43,10 @@ config: |
         config:
           key: cloud.sap/maintenance-approved
           value: "true"
+      - type: kubernikusCount
+        name: check_kubernikus
+        config:
+          cluster: "maintenance-con-e2e"
       trigger:
       - type: alterAnnotation
         name: reboot-ok
@@ -67,7 +71,7 @@ config: |
         next: maintenance-required
     maintenance-required:
       transitions:
-      - check: check_approval
+      - check: check_approval && check_kubernikus
         trigger: remove_approval && reboot-ok
         next: in-maintenance
     in-maintenance:
