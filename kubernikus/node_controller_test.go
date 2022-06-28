@@ -25,6 +25,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -118,7 +119,7 @@ var _ = Describe("The kubernikus controller", func() {
 	It("loads the openstack config", func() {
 		// still need to initialize a node, so the cleanup works
 		initNode("v1.19.2")
-		conf, err := loadOpenStackConfig()
+		conf, err := common.LoadOpenStackConfig()
 		Expect(err).To(Succeed())
 		Expect(conf.AuthURL).To(Equal("https://identity-3.qa-de-1.cloud.sap/v3/"))
 		Expect(conf.Password).To(Equal("pw"))

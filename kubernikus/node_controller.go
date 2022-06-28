@@ -33,7 +33,6 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
-	"gopkg.in/ini.v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,15 +55,6 @@ type Config struct {
 			Force   bool          `config:"force"`
 		} `config:"podEviction" validate:"required"`
 	}
-}
-
-type OpenStackConfig struct {
-	Region     string
-	AuthURL    string
-	Username   string
-	Password   string
-	Domainname string
-	ProjectID  string
 }
 
 func (r *NodeReconciler) loadConfig() (Config, error) {
@@ -200,9 +190,9 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params c
 }
 
 func deleteVM(ctx context.Context, nodeName string) error {
-	osConf, err := loadOpenStackConfig()
+	osConf, err := common.LoadOpenStackConfig()
 	if err != nil {
-		return fmt.Errorf("failed to parese cloudprovider.conf: %w", err)
+		return fmt.Errorf("failed to parse cloudprovider.conf: %w", err)
 	}
 	opts := &clientconfig.ClientOpts{
 		AuthInfo: &clientconfig.AuthInfo{
@@ -247,31 +237,6 @@ func deleteVM(ctx context.Context, nodeName string) error {
 		return fmt.Errorf("failed to delete VM: %w body: %v", result.ExtractErr(), result.Body)
 	}
 	return nil
-}
-
-func loadOpenStackConfig() (OpenStackConfig, error) {
-	osConf := struct {
-		Global struct {
-			AuthURL    string `ini:"auth-url"`
-			Username   string `ini:"username"`
-			Password   string `ini:"password"`
-			Region     string `ini:"region"`
-			Domainname string `ini:"domain-name"`
-			TenantID   string `ini:"tenant-id"`
-		} `ini:"Global"`
-	}{}
-	err := ini.MapTo(&osConf, constants.CloudProviderConfigFilePath)
-	if err != nil {
-		return OpenStackConfig{}, fmt.Errorf("failed to parese cloudprovider.conf: %w", err)
-	}
-	return OpenStackConfig{
-		Region:     osConf.Global.Region,
-		AuthURL:    osConf.Global.AuthURL,
-		Username:   osConf.Global.Username,
-		Password:   osConf.Global.Password,
-		Domainname: osConf.Global.Domainname,
-		ProjectID:  osConf.Global.TenantID,
-	}, nil
 }
 
 // SetupWithManager attaches the controller to the given manager.

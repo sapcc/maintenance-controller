@@ -163,6 +163,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["condition"] = &impl.Condition{}
 	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
 	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
+	registry.CheckPlugins["kubernikusCount"] = &impl.KubernikusCount{}
 	registry.CheckPlugins["maxMaintenance"] = &impl.MaxMaintenance{}
 	registry.CheckPlugins["nodeCount"] = &impl.NodeCount{}
 	registry.CheckPlugins["stagger"] = &impl.Stagger{}

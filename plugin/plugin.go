@@ -212,7 +212,7 @@ func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
 	subConfig := config.Config
 	basePlugin, ok := r.CheckPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {
@@ -230,7 +230,7 @@ func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error
 	subConfig := config.Config
 	basePlugin, ok := r.NotificationPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {
@@ -264,7 +264,7 @@ func (r *Registry) loadTriggerInstance(config InstanceDescriptor) error {
 	subConfig := config.Config
 	basePlugin, ok := r.TriggerPlugins[config.Type]
 	if !ok {
-		return fmt.Errorf("the requested plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", config.Type)
 	}
 	plugin, err := basePlugin.New(subConfig)
 	if err != nil {
