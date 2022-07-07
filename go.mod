@@ -13,15 +13,15 @@ require (
 	github.com/onsi/gomega v1.18.1
 	github.com/prometheus/client_golang v1.12.2
 	github.com/slack-go/slack v0.11.0
-	github.com/vmware/govmomi v0.28.0
+	github.com/vmware/govmomi v0.29.0
 	go.uber.org/zap v1.21.0
 	gopkg.in/ini.v1 v1.66.6
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v0.24.2
 	k8s.io/klog/v2 v2.70.0
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	sigs.k8s.io/controller-runtime v0.12.2
+	k8s.io/utils v0.0.0-20220706174534-f6158b442e7c
+	sigs.k8s.io/controller-runtime v0.12.3
 )
 
 require (
