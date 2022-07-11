@@ -23,19 +23,22 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/constants"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("The MaxMaintenance plugin", func() {
 
 	It("can parse its configuration", func() {
-		configStr := "max: 296"
+		configStr := "max: 296\nprofile: kappa"
 		config, err := yaml.NewConfig([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base MaxMaintenance
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*MaxMaintenance).MaxNodes).To(Equal(296))
+		Expect(plugin.(*MaxMaintenance).Profile).To(Equal("kappa"))
 	})
 
 	It("passes if the returned nodes are less the max value", func() {
@@ -53,6 +56,23 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 			Items: []corev1.Node{{}, {}},
 		}
 		plugin := MaxMaintenance{MaxNodes: 2}
+		result, err := plugin.checkInternal(&nodes)
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("filters out not matching profiles", func() {
+		nodes := corev1.NodeList{
+			Items: []corev1.Node{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Labels: map[string]string{constants.ProfileLabelKey: "profile"},
+					},
+				},
+				{},
+			},
+		}
+		plugin := MaxMaintenance{MaxNodes: 1, Profile: "profile"}
 		result, err := plugin.checkInternal(&nodes)
 		Expect(err).To(Succeed())
 		Expect(result).To(BeFalse())

@@ -20,6 +20,8 @@
 package impl
 
 import (
+	"strings"
+
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -32,17 +34,19 @@ import (
 // of nodes with the in-maintenance state does not exceed the specified amount.
 type MaxMaintenance struct {
 	MaxNodes int
+	Profile  string
 }
 
 // New creates a new MaxMaintenance instance with the given config.
 func (m *MaxMaintenance) New(config *ucfg.Config) (plugin.Checker, error) {
 	conf := struct {
-		Max int `config:"max" validate:"required"`
+		Max     int    `config:"max" validate:"required"`
+		Profile string `config:"profile"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &MaxMaintenance{MaxNodes: conf.Max}, nil
+	return &MaxMaintenance{MaxNodes: conf.Max, Profile: conf.Profile}, nil
 }
 
 // Check asserts that no more then the specified amount of nodes is in the in-maintenance state.
@@ -58,7 +62,14 @@ func (m *MaxMaintenance) Check(params plugin.Parameters) (bool, error) {
 }
 
 func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
-	if len(nodes.Items) >= m.MaxNodes {
+	inMaintenance := 0
+	for _, node := range nodes.Items {
+		profiles, ok := node.Labels[constants.ProfileLabelKey]
+		if m.Profile == "" || (ok && strings.Contains(profiles, m.Profile)) {
+			inMaintenance++
+		}
+	}
+	if inMaintenance >= m.MaxNodes {
 		return false, nil
 	}
 	return true, nil
