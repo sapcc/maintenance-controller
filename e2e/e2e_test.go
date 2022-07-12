@@ -245,6 +245,19 @@ var _ = Describe("The maintenance controller", func() {
 			}
 			return nodeNames
 		}, 5*time.Minute).ShouldNot(Equal(nodeNames))
+		By("assert that all nodes become ready")
+		Eventually(func(g Gomega) bool {
+			nodes := &v1.NodeList{}
+			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
+			for _, node := range nodes.Items {
+				for _, condition := range node.Status.Conditions {
+					if condition.Type == v1.NodeReady && condition.Status != v1.ConditionTrue {
+						return false
+					}
+				}
+			}
+			return true
+		}, 5*time.Minute).Should(BeTrue())
 	})
 
 })
