@@ -178,10 +178,16 @@ config:
   type: the node conditions type (usually one of Ready, MemoryPressure, DiskPressure, PIDPressure or NetworkUnavailable), required
   status: the expected condition status (usually one of True, False or Unknown), required
 ```
+__kubernikusCount:__ Checks that the node count on the Kubernetes API is greater or equal to the nodes specified on the Kubernikus API.
+```yaml
+config:
+  cluster: Kubernikus cluster name, required
+```
 __maxMaintenance:__ Checks that less than the specified amount of nodes are in the in-maintenance state. Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
 ```yaml
 config:
   max: the limit of nodes that are in-maintenance, required
+  profile: if set only consider nodes which do have the specified profile, optional
 ```
 __stagger__: Checks that a certain duration has passed since a previous node passed. This is implemented with `coordination.k8s.io/Lease`s, which needs to be manually removed when the maintenance controller is removed from a cluster.
 ```yaml
