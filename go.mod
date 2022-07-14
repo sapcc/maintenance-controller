@@ -16,11 +16,11 @@ require (
 	github.com/vmware/govmomi v0.29.0
 	go.uber.org/zap v1.21.0
 	gopkg.in/ini.v1 v1.66.6
-	k8s.io/api v0.24.2
-	k8s.io/apimachinery v0.24.2
-	k8s.io/client-go v0.24.2
+	k8s.io/api v0.24.3
+	k8s.io/apimachinery v0.24.3
+	k8s.io/client-go v0.24.3
 	k8s.io/klog/v2 v2.70.0
-	k8s.io/utils v0.0.0-20220706174534-f6158b442e7c
+	k8s.io/utils v0.0.0-20220713171938-56c0de1e6f5e
 	sigs.k8s.io/controller-runtime v0.12.3
 )
 
