@@ -19,7 +19,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           # always uses the latest patch version.
-          version: v1.45
+          version: v1.47
           args: "--timeout 5m"
   test:
     # This job runs on Linux
