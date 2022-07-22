@@ -52,7 +52,8 @@ var _ = Describe("The slack webhook plugin", func() {
 	It("should send a message", func() {
 		// construct a http server, that accepts the slack request
 		server := http.Server{
-			Addr: "localhost:25566",
+			Addr:        "localhost:25566",
+			ReadTimeout: 60 * time.Second,
 		}
 		requestChan := make(chan string, 1)
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

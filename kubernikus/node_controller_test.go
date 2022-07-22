@@ -80,7 +80,7 @@ var _ = Describe("The kubernikus controller", func() {
 	})
 
 	It("marks an up-to-date node as not needing an update", func() {
-		initNode("v1.19.2")
+		initNode("v1.24.2")
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())

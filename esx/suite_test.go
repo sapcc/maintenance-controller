@@ -83,6 +83,7 @@ var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
 var vCenter *simulator.Model
 var vcServer *simulator.Server
+var stopController context.CancelFunc
 
 func TestESX(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -203,12 +204,15 @@ var _ = BeforeSuite(func() {
 
 	go func() {
 		defer GinkgoRecover()
-		err = k8sManager.Start(SetupSignalHandler())
+		stopCtx, cancel := context.WithCancel(SetupSignalHandler())
+		stopController = cancel
+		err = k8sManager.Start(stopCtx)
 		Expect(err).ToNot(HaveOccurred())
 	}()
 })
 
 var _ = AfterSuite(func() {
+	stopController()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())

@@ -70,7 +70,7 @@ jobs:
 
       - name: Run tests and generate coverage
         run: |
-          make test
+          ENVTEST_K8S_VERSION=1.24.2 make test
           go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload coverage results to coveralls

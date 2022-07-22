@@ -121,6 +121,7 @@ var cfg *rest.Config
 var k8sClient client.Client
 var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
+var stopController context.CancelFunc
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -176,7 +177,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
-		err = k8sManager.Start(ctrl.SetupSignalHandler())
+		stopCtx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+		stopController = cancel
+		err = k8sManager.Start(stopCtx)
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
@@ -191,6 +194,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
+	stopController()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
