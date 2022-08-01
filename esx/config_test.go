@@ -24,6 +24,18 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Config", func() {
+
+	It("alarms as set should contain all alarms", func() {
+		config := Config{
+			Alarms: []string{"bread", "butter"},
+		}
+		Expect(config.AlarmsAsSet()).To(HaveKey("bread"))
+		Expect(config.AlarmsAsSet()).To(HaveKey("butter"))
+	})
+
+})
+
 var _ = Describe("VCenters", func() {
 
 	It("should create valid vCenter URLs", func() {

@@ -106,7 +106,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 			r.Log.Error(err, "Failed to update ESX version labels.",
 				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 		}
-		err = r.CheckMaintenance(ctx, &conf.VCenters, esx)
+		err = r.CheckMaintenance(ctx, &conf, esx)
 		if err != nil {
 			r.Log.Error(err, "Failed to update ESX maintenance labels.",
 				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
@@ -123,9 +123,24 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 }
 
 // Checks the maintenance mode of the given ESX and attaches the according Maintenance label.
-func (r *Runnable) CheckMaintenance(ctx context.Context, vCenters *VCenters, esx *Host) error {
+func (r *Runnable) CheckMaintenance(ctx context.Context, conf *Config, esx *Host) error {
+	hostAlarms, err := CheckAlarms(ctx, CheckParameters{
+		VCenters: &conf.VCenters,
+		Host:     esx.HostInfo,
+		Log:      r.Log,
+	})
+	if err != nil {
+		return err
+	}
+	configAlarms := conf.AlarmsAsSet()
+	for _, oneAlarm := range hostAlarms {
+		_, ok := configAlarms[oneAlarm]
+		if ok {
+			return r.ensureLabel(ctx, esx, constants.EsxMaintenanceLabelKey, string(AlarmMaintenance))
+		}
+	}
 	status, err := CheckForMaintenance(ctx, CheckParameters{
-		VCenters: vCenters,
+		VCenters: &conf.VCenters,
 		Host:     esx.HostInfo,
 		Log:      r.Log,
 	})

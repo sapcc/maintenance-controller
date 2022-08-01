@@ -49,7 +49,16 @@ type Config struct {
 		} `config:"podEviction" validate:"required"`
 		Stagger time.Duration `config:"stagger"`
 	} `config:"intervals" validate:"required"`
+	Alarms   []string
 	VCenters VCenters `config:"vCenters" validate:"required"`
+}
+
+func (c *Config) AlarmsAsSet() map[string]struct{} {
+	alarms := make(map[string]struct{})
+	for _, alarm := range c.Alarms {
+		alarms[alarm] = struct{}{}
+	}
+	return alarms
 }
 
 type Credential struct {

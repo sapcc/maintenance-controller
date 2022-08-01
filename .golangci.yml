@@ -44,3 +44,6 @@ issues:
     - path: _test\.go
       linters:
         - forcetypeassert
+    - linters:
+        - lll
+      source: "^//.*https://.*" # Exclude links from line length check

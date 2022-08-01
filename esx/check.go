@@ -37,6 +37,8 @@ const NoMaintenance Maintenance = "false"
 
 const InMaintenance Maintenance = "true"
 
+const AlarmMaintenance Maintenance = "alarm"
+
 const UnknownMaintenance Maintenance = "unknown"
 
 type CheckParameters struct {
@@ -123,4 +125,34 @@ func fetchHost(ctx context.Context, client *vim25.Client, hostname string, filte
 		return mo.HostSystem{}, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
 	}
 	return hss[0], nil
+}
+
+// Returns list of active alarm names as described here:
+// https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.monitoring.doc/GUID-82933270-1D72-4CF3-A1AF-E5A1343F62DE.html
+func CheckAlarms(ctx context.Context, params CheckParameters) ([]string, error) {
+	client, err := params.VCenters.Client(ctx, params.Host.AvailabilityZone)
+	if err != nil {
+		return nil, err
+	}
+	host, err := fetchHost(ctx, client.Client, params.Host.Name, []string{"triggeredAlarmState"})
+	if err != nil {
+		return nil, err
+	}
+	alarmRefs := make([]types.ManagedObjectReference, 0)
+	for _, triggered := range host.TriggeredAlarmState {
+		alarmRefs = append(alarmRefs, triggered.Alarm)
+	}
+	if len(alarmRefs) == 0 {
+		return []string{}, nil
+	}
+	alarms := make([]mo.Alarm, 0)
+	err = client.Retrieve(ctx, alarmRefs, []string{"info"}, &alarms)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0)
+	for _, alarm := range alarms {
+		names = append(names, alarm.Info.Name)
+	}
+	return names, nil
 }
