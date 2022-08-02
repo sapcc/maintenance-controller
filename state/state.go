@@ -45,6 +45,16 @@ const InMaintenance NodeStateLabel = "in-maintenance"
 // profileSeparator is used to split the maintenance profile label string into multple profile names.
 const profileSeparator string = "--"
 
+// Returns whether profile is contained in the profile label value.
+func ContainsProfile(allProfiles, profile string) bool {
+	for _, oneProfile := range strings.Split(allProfiles, profileSeparator) {
+		if profile == oneProfile {
+			return true
+		}
+	}
+	return false
+}
+
 // Returns whether s as NodeStateLabel if it is valid.
 func ValidateLabel(s string) (NodeStateLabel, error) {
 	switch s {
@@ -303,7 +313,7 @@ func (d *Data) MaintainProfileStates(profilesStr string, availableProfiles map[s
 	// cleanup unused states
 	toRemove := make([]string, 0)
 	for profileName := range d.ProfileStates {
-		if !strings.Contains(profilesStr, profileName) {
+		if !ContainsProfile(profilesStr, profileName) {
 			toRemove = append(toRemove, profileName)
 		}
 	}
@@ -331,7 +341,7 @@ func (d *Data) MaintainPreviousStates(profilesStr string, availableProfiles map[
 	// cleanup unused states
 	toRemove := make([]string, 0)
 	for profileName := range d.PreviousStates {
-		if !strings.Contains(profilesStr, profileName) {
+		if !ContainsProfile(profilesStr, profileName) {
 			toRemove = append(toRemove, profileName)
 		}
 	}

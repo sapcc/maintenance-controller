@@ -21,12 +21,12 @@ package impl
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -93,7 +93,7 @@ func filterByProfile(nodes []v1.Node, profile string) []v1.Node {
 		if !ok {
 			continue
 		}
-		if strings.Contains(nodeProfiles, profile) {
+		if state.ContainsProfile(nodeProfiles, profile) {
 			filtered = append(filtered, node)
 		}
 	}

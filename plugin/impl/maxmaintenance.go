@@ -20,8 +20,6 @@
 package impl
 
 import (
-	"strings"
-
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -65,7 +63,7 @@ func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
 	inMaintenance := 0
 	for _, node := range nodes.Items {
 		profiles, ok := node.Labels[constants.ProfileLabelKey]
-		if m.Profile == "" || (ok && strings.Contains(profiles, m.Profile)) {
+		if m.Profile == "" || (ok && state.ContainsProfile(profiles, m.Profile)) {
 			inMaintenance++
 		}
 	}
