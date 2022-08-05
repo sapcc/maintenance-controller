@@ -54,6 +54,21 @@ var _ = Describe("ShouldShutdown", func() {
 		Expect(result).To(BeTrue())
 	})
 
+	It("should pass if all nodes have an ESX alarm and are allowed to reboot", func() {
+		nodes := make([]corev1.Node, 2)
+		nodes[0].Labels = make(map[string]string)
+		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(AlarmMaintenance)
+		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
+		nodes[1].Labels = make(map[string]string)
+		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(AlarmMaintenance)
+		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
+		esx := Host{
+			Nodes: nodes,
+		}
+		result := ShouldShutdown(&esx)
+		Expect(result).To(BeTrue())
+	})
+
 	It("should not pass if at least one node does not require maintenance", func() {
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)

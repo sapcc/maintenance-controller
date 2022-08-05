@@ -36,12 +36,16 @@ import (
 func ShouldShutdown(esx *Host) bool {
 	var initCount int
 	for _, node := range esx.Nodes {
-		if node.Labels[constants.EsxMaintenanceLabelKey] == string(InMaintenance) &&
-			node.Labels[constants.EsxRebootOkLabelKey] == constants.TrueStr {
+		state := Maintenance(node.Labels[constants.EsxMaintenanceLabelKey])
+		if ShutdownAllowed(state) && node.Labels[constants.EsxRebootOkLabelKey] == constants.TrueStr {
 			initCount++
 		}
 	}
 	return initCount == len(esx.Nodes)
+}
+
+func ShutdownAllowed(state Maintenance) bool {
+	return state == InMaintenance || state == AlarmMaintenance
 }
 
 func ensureVMOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
