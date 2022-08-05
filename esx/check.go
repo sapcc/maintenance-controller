@@ -104,6 +104,9 @@ func FetchVersion(ctx context.Context, params CheckParameters) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if host.Config == nil {
+		return "", fmt.Errorf("host config information returned by ESX %s is incomplete", params.Host.Name)
+	}
 	return host.Config.Product.Version, nil
 }
 
