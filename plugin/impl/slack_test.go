@@ -22,7 +22,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -58,7 +58,7 @@ var _ = Describe("The slack webhook plugin", func() {
 		}
 		requestChan := make(chan string, 1)
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			requestBytes, err := ioutil.ReadAll(r.Body)
+			requestBytes, err := io.ReadAll(r.Body)
 			Expect(err).To(Succeed())
 			requestChan <- string(requestBytes)
 			_, err = w.Write([]byte("ok"))

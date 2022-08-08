@@ -22,7 +22,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -833,7 +833,7 @@ var _ = Describe("The metrics server", func() {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
 			defer res.Body.Close()
-			data, err := ioutil.ReadAll(res.Body)
+			data, err := io.ReadAll(res.Body)
 			g.Expect(err).To(Succeed())
 			return string(data)
 		}).Should(SatisfyAll(

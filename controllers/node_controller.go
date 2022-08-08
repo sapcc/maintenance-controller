@@ -129,9 +129,9 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 // Ensures a new version of the specified resources arrives in the cache made by controller-runtime.
 func pollCacheUpdate(ctx context.Context, client client.Client, ref types.NamespacedName, targetVersion string) error {
-	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (done bool, err error) { //nolint:gomnd
+	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:gomnd
 		var nextNode corev1.Node
-		if err = client.Get(ctx, ref, &nextNode); err != nil {
+		if err := client.Get(ctx, ref, &nextNode); err != nil {
 			return false, err
 		}
 		nextVersion, err := strconv.Atoi(nextNode.ResourceVersion)

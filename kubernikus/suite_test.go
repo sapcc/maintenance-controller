@@ -21,7 +21,6 @@ package kubernikus
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -135,9 +134,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(Succeed())
 	err = os.MkdirAll("./provider", 0700)
 	Expect(err).To(Succeed())
-	err = ioutil.WriteFile(constants.CloudProviderConfigFilePath, []byte(cloudprovider), 0600)
+	err = os.WriteFile(constants.CloudProviderConfigFilePath, []byte(cloudprovider), 0600)
 	Expect(err).To(Succeed())
-	err = ioutil.WriteFile(constants.KubernikusConfigFilePath, []byte(config), 0600)
+	err = os.WriteFile(constants.KubernikusConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 })
 

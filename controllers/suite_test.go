@@ -21,7 +21,6 @@ package controllers
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -189,7 +188,7 @@ var _ = BeforeSuite(func() {
 
 	err = os.MkdirAll("./config", 0700)
 	Expect(err).To(Succeed())
-	err = ioutil.WriteFile(constants.MaintenanceConfigFilePath, []byte(config), 0600)
+	err = os.WriteFile(constants.MaintenanceConfigFilePath, []byte(config), 0600)
 	Expect(err).To(Succeed())
 })
 

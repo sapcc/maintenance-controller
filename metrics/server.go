@@ -72,7 +72,7 @@ func (ps *PromServer) Start(ctx context.Context) error {
 	<-ctx.Done()
 	last := ps.counter
 	ps.Log.Info("Awaiting an other metrics scrape", "timeout", ps.WaitTimeout)
-	_ = wait.PollImmediate(1*time.Second, ps.WaitTimeout, func() (done bool, err error) {
+	_ = wait.PollImmediate(1*time.Second, ps.WaitTimeout, func() (bool, error) {
 		return ps.counter > last, nil
 	})
 	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gomnd

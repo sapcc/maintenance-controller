@@ -33,9 +33,21 @@ linters:
   - noctx
   - predeclared
   - tagliatelle
-  - wastedassign
   - revive
   - ifshort
+  - asasalint
+  - decorder
+  - errchkjson
+  - errname
+  - execinquery
+  - grouper
+  - maintidx
+  - nilnil
+  - nonamedreturns
+  - nosnakecase
+  - nosprintfhostport
+  - tenv
+  - usestdlibvars
   disable-all: false
   fast: false
 issues:

@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -83,7 +83,7 @@ func (sw *SlackWebhook) Notify(params plugin.Parameters) error {
 		return err
 	}
 	defer rsp.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return err
 	}

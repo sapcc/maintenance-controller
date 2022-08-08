@@ -109,7 +109,8 @@ func recordToSink(sink record.EventSink, event *v1.Event,
 // was successfully recorded or discarded, false if it should be retried.
 // If updateExistingEvent is false, it creates a new event, otherwise it updates
 // existing event.
-// nolint:cyclop
+//
+//nolint:cyclop
 func recordEvent(sink record.EventSink, event *v1.Event, patch []byte,
 	updateExistingEvent bool, eventCorrelator *record.EventCorrelator) bool {
 	var newEvent *v1.Event
@@ -131,7 +132,7 @@ func recordEvent(sink record.EventSink, event *v1.Event, patch []byte,
 
 	// If we can't contact the server, then hold everything while we keep trying.
 	// Otherwise, something about the event is malformed and we should abandon it.
-	switch err.(type) { // nolint: errorlint
+	switch err.(type) { //nolint: errorlint
 	case *restclient.RequestConstructionError:
 		// We will construct the request the same next time, so don't keep trying.
 		klog.Errorf("Unable to construct event '%#v': '%v' (will not retry!)", event, err)
