@@ -309,3 +309,27 @@ var _ = Describe("The ESX controller", func() {
 	})
 
 })
+
+var _ = Describe("nodeGracePeriod", func() {
+
+	It("returns 0 if node is in alarm maintenance", func() {
+		node := &corev1.Node{}
+		node.Labels = map[string]string{constants.EsxMaintenanceLabelKey: string(AlarmMaintenance)}
+		gracePeriod := nodeGracePeriod(node)
+		Expect(gracePeriod).To(HaveValue(BeEquivalentTo(0)))
+	})
+
+	It("returns nil if node is in normal maintenance", func() {
+		node := &corev1.Node{}
+		node.Labels = map[string]string{constants.EsxMaintenanceLabelKey: string(InMaintenance)}
+		gracePeriod := nodeGracePeriod(node)
+		Expect(gracePeriod).To(BeNil())
+	})
+
+	It("returns nil if node maintenance is unknown", func() {
+		node := &corev1.Node{}
+		gracePeriod := nodeGracePeriod(node)
+		Expect(gracePeriod).To(BeNil())
+	})
+
+})

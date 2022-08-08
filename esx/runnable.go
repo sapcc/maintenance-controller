@@ -193,7 +193,8 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 					Period:  conf.Intervals.PodEviction.Period,
 					Timeout: conf.Intervals.PodEviction.Timeout,
 				},
-				ForceEviction: conf.Intervals.PodEviction.Force,
+				ForceEviction:      conf.Intervals.PodEviction.Force,
+				GracePeriodSeconds: nodeGracePeriod(node),
 			},
 		)
 		if err != nil {
@@ -208,6 +209,16 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 		}
 	}
 	return nil
+}
+
+func nodeGracePeriod(node *v1.Node) *int64 {
+	maintenance, ok := node.Labels[constants.EsxMaintenanceLabelKey]
+	if !ok || maintenance != string(AlarmMaintenance) {
+		return nil
+	}
+	// use force delete when ESX is in alarm state
+	var period int64
+	return &period
 }
 
 // Starts the nodes on the given ESX, if this controller shut them down

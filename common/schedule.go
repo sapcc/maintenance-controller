@@ -80,7 +80,8 @@ type DrainParameters struct {
 	// when set to true and eviction creation fails
 	// within the eviction timeout, call a direct delete
 	// on pods afterwards.
-	ForceEviction bool
+	ForceEviction      bool
+	GracePeriodSeconds *int64
 }
 
 // Drains Pods from the given node, if required.
@@ -98,13 +99,13 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 	}
 	if version == none {
 		log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
-		err = deletePods(ctx, params.Client, deletable)
+		err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
 	} else {
 		log.Info("Going to evict pods from node.", "count", len(deletable), "node", node.Name)
-		err = evictPods(ctx, params.Clientset, deletable, version, params.Eviction)
+		err = evictPods(ctx, params.Clientset, deletable, version, params.Eviction, params.GracePeriodSeconds)
 		if err != nil && params.ForceEviction {
 			log.Info("Eviction failed, going to delete pods", "err", err)
-			err = deletePods(ctx, params.Client, deletable)
+			err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
 		}
 	}
 	if err != nil {
@@ -149,11 +150,11 @@ func GetPodsForDrain(ctx context.Context, k8sClient client.Client, nodeName stri
 	return filtered, nil
 }
 
-func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod) error {
+func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod, gracePeriodSeconds *int64) error {
 	var sumErr error
 	for i := range pods {
 		pod := pods[i]
-		err := k8sClient.Delete(ctx, &pod)
+		err := k8sClient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: gracePeriodSeconds})
 		if err != nil && !errors.IsNotFound(err) {
 			sumErr = fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, sumErr)
 		}
@@ -162,14 +163,14 @@ func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod)
 }
 
 func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
-	version evictionVersion, params WaitParameters) error {
+	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
 	if len(pods) == 0 {
 		return nil
 	}
 	waiters := make([]WaitFunc, 0)
 	for _, pod := range pods {
 		waiters = append(waiters, func() error {
-			return evictPod(ctx, ki, pod, version, params)
+			return evictPod(ctx, ki, pod, version, params, gracePeriodSeconds)
 		})
 	}
 	return waitParallel(waiters)
@@ -181,19 +182,21 @@ type WaitParameters struct {
 }
 
 func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
-	version evictionVersion, params WaitParameters) error {
+	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
 	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) {
 		var err error
 		if version == v1beta1 {
 			eviction := policyv1beta1.Eviction{}
 			eviction.Name = pod.Name
 			eviction.Namespace = pod.Namespace
+			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
 			err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
 		}
 		if version == v1 {
 			eviction := policyv1.Eviction{}
 			eviction.Name = pod.Name
 			eviction.Namespace = pod.Namespace
+			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
 			err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
 		}
 		if err != nil {

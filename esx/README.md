@@ -12,7 +12,8 @@ The `cloud.sap/esx-reboot-initiated` annotation is managed by the controller bas
 Using the `cloud.sap/esx-in-maintenance` label together with the `cloud.sap/esx-reboot-ok` label enables ESX maintenances to be managed flexibly with the "main" maintenance controller.
 
 Certain alarms can be specified in the configuration file.
-If an ESX host has a triggered alarm with a name that matches the provided names in the configuration file, the `cloud.sap/esx-in-maintenance` label will be set to `alarm`
+If an ESX host has a triggered alarm with a name that matches the provided names in the configuration file, the `cloud.sap/esx-in-maintenance` label will be set to `alarm`.
+Draining nodes, which ESX maintenance state is `alarm`, will use deletions with a grace period of `0` (effectively force deleting these pods).
 
 It is assumed that the nodes names equal the names of the hosting virtual machines.
 The availability zone within a cloud region is assumed to be the last character of the `failure-domain.beta.kubernetes.io/zone` label.
