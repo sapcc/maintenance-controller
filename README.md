@@ -163,8 +163,14 @@ config:
 __hasLabel:__ Checks if a node has a label with the given key. Optionally asserts the labels value.
 ```yaml
 config:
-  key: the annotation key, required
-  value: the expected annotation value, if empty only the key is checked, optional
+  key: the label key, required
+  value: the expected label value, if empty only the key is checked, optional
+```
+__anyLabel__: Checks that at least one node in the cluster has a label with the given key. Optionally asserts that the label must match a certain value.
+```yaml
+config:
+  key: the label key, required
+  value: the expected label value, if empty only the key is checked, optional
 ```
 __clusterSemver:__ Checks if a label containing a semantic version is less than the most up-to-date value in the cluster. Requires the checked node to have the specified label.
 ```yaml

@@ -87,6 +87,22 @@ var _ = Describe("The HasLabel plugin", func() {
 
 })
 
+var _ = Describe("The AnyLabel plugin", func() {
+
+	It("can parse its config", func() {
+		configStr := "key: key\nvalue: test"
+		config, err := yaml.NewConfig([]byte(configStr))
+		Expect(err).To(Succeed())
+
+		var base AnyLabel
+		plugin, err := base.New(config)
+		Expect(err).To(Succeed())
+		Expect(plugin.(*AnyLabel).Key).To(Equal("key"))
+		Expect(plugin.(*AnyLabel).Value).To(Equal("test"))
+	})
+
+})
+
 var _ = Describe("The AlterLabel plugin", func() {
 
 	It("can parse its config", func() {

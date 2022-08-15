@@ -22,6 +22,7 @@ package impl
 import (
 	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/plugin"
+	v1 "k8s.io/api/core/v1"
 )
 
 // HasLabel is a check plugin that checks whether a node has a label or a label with a certain value.
@@ -55,6 +56,44 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 }
 
 func (h *HasLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
+	return nil
+}
+
+type AnyLabel struct {
+	Key   string
+	Value string
+}
+
+func (a *AnyLabel) New(config *ucfg.Config) (plugin.Checker, error) {
+	conf := struct {
+		Key   string `config:"key" validate:"required"`
+		Value string `config:"value"`
+	}{}
+	if err := config.Unpack(&conf); err != nil {
+		return nil, err
+	}
+	return &AnyLabel{Key: conf.Key, Value: conf.Value}, nil
+}
+
+func (a *AnyLabel) Check(params plugin.Parameters) (bool, error) {
+	var nodes v1.NodeList
+	err := params.Client.List(params.Ctx, &nodes)
+	if err != nil {
+		return false, err
+	}
+	for _, node := range nodes.Items {
+		val, ok := node.Labels[a.Key]
+		if !ok {
+			continue
+		}
+		if a.Value == "" || a.Value == val {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (a *AnyLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
 	return nil
 }
 

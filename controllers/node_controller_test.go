@@ -843,3 +843,53 @@ var _ = Describe("The metrics server", func() {
 	})
 
 })
+
+var _ = Describe("The AnyLabel plugin", func() {
+
+	var firstNode *corev1.Node
+	var secondNode *corev1.Node
+
+	BeforeEach(func() {
+		firstNode = &corev1.Node{}
+		firstNode.Name = "onenode"
+		firstNode.Labels = map[string]string{"label": "gopher"}
+		Expect(k8sClient.Create(context.Background(), firstNode)).To(Succeed())
+		secondNode = &corev1.Node{}
+		secondNode.Name = "twonode"
+		Expect(k8sClient.Create(context.Background(), secondNode)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		Expect(k8sClient.Delete(context.Background(), firstNode)).To(Succeed())
+		Expect(k8sClient.Delete(context.Background(), secondNode)).To(Succeed())
+	})
+
+	It("should pass if label=gopher is configured", func() {
+		anyLabel := impl.AnyLabel{Key: "label", Value: "gopher"}
+		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("should pass if label='' is configured", func() {
+		anyLabel := impl.AnyLabel{Key: "label", Value: ""}
+		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeTrue())
+	})
+
+	It("should block if label=something", func() {
+		anyLabel := impl.AnyLabel{Key: "label", Value: "something"}
+		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+	It("should block if zone=''", func() {
+		anyLabel := impl.AnyLabel{Key: "zone", Value: ""}
+		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
+		Expect(err).To(Succeed())
+		Expect(result).To(BeFalse())
+	})
+
+})

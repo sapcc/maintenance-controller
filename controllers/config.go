@@ -159,6 +159,7 @@ func loadPluginChains(config StateDescriptor, registry *plugin.Registry) (state.
 // addPluginsToRegistry adds known plugins to the registry.
 func addPluginsToRegistry(registry *plugin.Registry) {
 	registry.CheckPlugins["affinity"] = &impl.Affinity{}
+	registry.CheckPlugins["anyLabel"] = &impl.AnyLabel{}
 	registry.CheckPlugins["clusterSemver"] = &impl.ClusterSemver{}
 	registry.CheckPlugins["condition"] = &impl.Condition{}
 	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
