@@ -767,8 +767,12 @@ var _ = Describe("The clusterSemver plugin", func() {
 var _ = Describe("The metrics server", func() {
 
 	var targetNode *corev1.Node
-	var pod *corev1.Pod
+	var dsPod *corev1.Pod
+	var rsPod *corev1.Pod
+	var ssPod *corev1.Pod
 	var daemonSet *appsv1.DaemonSet
+	var replicaSet *appsv1.ReplicaSet
+	var statefulSet *appsv1.StatefulSet
 	var stopServer context.CancelFunc
 
 	BeforeEach(func() {
@@ -791,12 +795,12 @@ var _ = Describe("The metrics server", func() {
 		Expect(k8sClient.Create(context.Background(), daemonSet)).To(Succeed())
 		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(daemonSet), daemonSet)).To(Succeed())
 
-		pod = &corev1.Pod{}
-		pod.Name = "a-happy-pod"
-		pod.Namespace = metav1.NamespaceDefault
-		pod.Spec.NodeName = targetNodeName
-		pod.Spec.Containers = daemonSet.Spec.Template.Spec.Containers
-		pod.OwnerReferences = []metav1.OwnerReference{
+		dsPod = &corev1.Pod{}
+		dsPod.Name = "a-happy-pod"
+		dsPod.Namespace = metav1.NamespaceDefault
+		dsPod.Spec.NodeName = targetNodeName
+		dsPod.Spec.Containers = daemonSet.Spec.Template.Spec.Containers
+		dsPod.OwnerReferences = []metav1.OwnerReference{
 			{
 				Kind:       "DaemonSet",
 				Name:       "ds",
@@ -804,7 +808,68 @@ var _ = Describe("The metrics server", func() {
 				UID:        daemonSet.UID,
 			},
 		}
-		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+		Expect(k8sClient.Create(context.Background(), dsPod)).To(Succeed())
+
+		replicaSet = &appsv1.ReplicaSet{}
+		replicaSet.Name = "rs"
+		replicaSet.Namespace = metav1.NamespaceDefault
+		replicas := int32(1)
+		replicaSet.Spec.Replicas = &replicas
+		replicaSet.Spec.Template.Labels = map[string]string{"selector": "val2"}
+		replicaSet.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"selector": "val2"}}
+		replicaSet.Spec.Template.Spec.Containers = []corev1.Container{
+			{
+				Name:  "container",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), replicaSet)).To(Succeed())
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(replicaSet), replicaSet)).To(Succeed())
+
+		rsPod = &corev1.Pod{}
+		rsPod.Name = "another-happy-pod"
+		rsPod.Namespace = metav1.NamespaceDefault
+		rsPod.Spec.NodeName = targetNodeName
+		rsPod.Spec.Containers = replicaSet.Spec.Template.Spec.Containers
+		rsPod.OwnerReferences = []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       "rs",
+				APIVersion: "apps/v1",
+				UID:        replicaSet.UID,
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), rsPod)).To(Succeed())
+
+		statefulSet = &appsv1.StatefulSet{}
+		statefulSet.Name = "ss"
+		statefulSet.Namespace = metav1.NamespaceDefault
+		statefulSet.Spec.Replicas = &replicas
+		statefulSet.Spec.Template.Labels = map[string]string{"selector": "val3"}
+		statefulSet.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{"selector": "val3"}}
+		statefulSet.Spec.Template.Spec.Containers = []corev1.Container{
+			{
+				Name:  "container",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), statefulSet)).To(Succeed())
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(statefulSet), statefulSet)).To(Succeed())
+
+		ssPod = &corev1.Pod{}
+		ssPod.Name = "stateful-happy-pod"
+		ssPod.Namespace = metav1.NamespaceDefault
+		ssPod.Spec.NodeName = targetNodeName
+		ssPod.Spec.Containers = statefulSet.Spec.Template.Spec.Containers
+		ssPod.OwnerReferences = []metav1.OwnerReference{
+			{
+				Kind:       "StatefulSet",
+				Name:       "ss",
+				APIVersion: "apps/v1",
+				UID:        statefulSet.UID,
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), ssPod)).To(Succeed())
 
 		metricsServer := metrics.PromServer{
 			Address:     ":15423",
@@ -822,13 +887,21 @@ var _ = Describe("The metrics server", func() {
 		stopServer()
 		err := k8sClient.Delete(context.Background(), daemonSet)
 		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), pod, client.GracePeriodSeconds(0))
+		err = k8sClient.Delete(context.Background(), dsPod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), replicaSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), rsPod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), statefulSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), ssPod, client.GracePeriodSeconds(0))
 		Expect(err).To(Succeed())
 		err = k8sClient.Delete(context.Background(), targetNode)
 		Expect(err).To(Succeed())
 	})
 
-	It("should create shuffle metrics", func() {
+	It("should create DaemonSet shuffle metrics", func() {
 		Eventually(func(g Gomega) string {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
@@ -836,9 +909,38 @@ var _ = Describe("The metrics server", func() {
 			data, err := io.ReadAll(res.Body)
 			g.Expect(err).To(Succeed())
 			return string(data)
-		}).Should(SatisfyAll(
-			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"}"),
-			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"}"),
+		}, 10*time.Second).Should(SatisfyAll(
+			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"} 1"),
+			// need to check for +Inf here as we cannot set daemonset.status.numberready to anything but 0
+			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"} +Inf"),
+		))
+	})
+
+	It("should create ReplicaSet shuffle metrics", func() {
+		Eventually(func(g Gomega) string {
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return string(data)
+		}, 10*time.Second).Should(SatisfyAll(
+			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"replica_set_rs\",profile=\"multi\"} 1"),
+			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"replica_set_rs\",profile=\"multi\"} 1"),
+		))
+	})
+
+	It("should create StatefulSet shuffle metrics", func() {
+		Eventually(func(g Gomega) string {
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return string(data)
+		}, 10*time.Second).Should(SatisfyAll(
+			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"stateful_set_ss\",profile=\"multi\"} 1"),
+			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"stateful_set_ss\",profile=\"multi\"} 1"),
 		))
 	})
 

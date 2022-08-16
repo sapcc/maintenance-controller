@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 var _ = Describe("The nodecount plugin", func() {
@@ -35,6 +36,11 @@ var _ = Describe("The nodecount plugin", func() {
 		plugin, err := base.New(config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*NodeCount).Count).To(Equal(154))
+	})
+
+	It("does not fail in AfterEval", func() {
+		var count NodeCount
+		Expect(count.AfterEval(false, plugin.Parameters{})).To(Succeed())
 	})
 
 })
