@@ -29,19 +29,24 @@ import (
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	vctypes "github.com/vmware/govmomi/vim25/types"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Checks, if all Nodes on an ESX need maintenance and are allowed to be shutdown.
-// If so the RebootInitated Annotation is set on the affected Nodes.
 func ShouldShutdown(esx *Host) bool {
 	var initCount int
-	for _, node := range esx.Nodes {
-		state := Maintenance(node.Labels[constants.EsxMaintenanceLabelKey])
-		if ShutdownAllowed(state) && node.Labels[constants.EsxRebootOkLabelKey] == constants.TrueStr {
+	for i := range esx.Nodes {
+		node := &esx.Nodes[i]
+		if ShouldShutdownNode(node) {
 			initCount++
 		}
 	}
 	return initCount == len(esx.Nodes)
+}
+
+func ShouldShutdownNode(node *v1.Node) bool {
+	state := Maintenance(node.Labels[constants.EsxMaintenanceLabelKey])
+	return ShutdownAllowed(state) && node.Labels[constants.EsxRebootOkLabelKey] == constants.TrueStr
 }
 
 func ShutdownAllowed(state Maintenance) bool {

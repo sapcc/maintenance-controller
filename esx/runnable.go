@@ -22,7 +22,6 @@ package esx
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
@@ -162,21 +161,19 @@ func (r *Runnable) FetchVersion(ctx context.Context, vCenters *VCenters, esx *Ho
 	return r.ensureLabel(ctx, esx, constants.EsxVersionLabelKey, version)
 }
 
-// Shuts down the nodes on the given ESX, if all nodes are with the RebootAllowed="true" label.
+// Shuts down nodes on the given ESX, if the ESX has a maintenance and a node is labelled accordingly.
 func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
-	if ShouldShutdown(esx) {
-		err := r.ensureAnnotation(ctx, esx, constants.EsxRebootInitiatedAnnotationKey, constants.TrueStr)
-		if err != nil {
-			return err
-		}
-	}
 	for i := range esx.Nodes {
 		node := &esx.Nodes[i]
-		init, ok := node.Annotations[constants.EsxRebootInitiatedAnnotationKey]
-		if !ok || init != constants.TrueStr {
+		if !ShouldShutdownNode(node) {
 			continue
 		}
-		err := common.EnsureSchedulable(ctx, r.Client, node, false)
+		err := r.ensureAnnotation(ctx, node, constants.EsxRebootInitiatedAnnotationKey, constants.TrueStr)
+		if err != nil {
+			r.Log.Error(err, "failed to annotate node", "node", node.Name)
+			continue
+		}
+		err = common.EnsureSchedulable(ctx, r.Client, node, false)
 		if err != nil {
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
@@ -201,7 +198,6 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue
 		}
-		time.Sleep(conf.Intervals.Stagger)
 		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
 		err = ensureVMOff(ctx, vCenters, esx.HostInfo, node.Name)
 		if err != nil {
@@ -320,22 +316,19 @@ func (r *Runnable) ensureLabel(ctx context.Context, esx *Host, key string, value
 	return nil
 }
 
-// Updates the given annotation on all nodes belonging to the given ESX host.
-func (r *Runnable) ensureAnnotation(ctx context.Context, esx *Host, key string, value string) error {
-	for i := range esx.Nodes {
-		oneNode := &esx.Nodes[i]
-		if oneNode.Annotations == nil {
-			oneNode.Annotations = make(map[string]string)
-		}
-		current, ok := oneNode.Annotations[key]
-		// If a nodes somehow already has the correct annotation skip patching
-		if !ok || value != current {
-			cloned := oneNode.DeepCopy()
-			oneNode.Annotations[key] = value
-			err := r.Patch(ctx, oneNode, client.MergeFrom(cloned))
-			if err != nil {
-				return fmt.Errorf("Failed to patch Annotation for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
-			}
+// Updates the given label on the given node.
+func (r *Runnable) ensureAnnotation(ctx context.Context, node *v1.Node, key, value string) error {
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+	current, ok := node.Annotations[key]
+	// If a nodes somehow already has the correct annotation skip patching
+	if !ok || value != current {
+		cloned := node.DeepCopy()
+		node.Annotations[key] = value
+		err := r.Patch(ctx, node, client.MergeFrom(cloned))
+		if err != nil {
+			return fmt.Errorf("Failed to patch Annotation for node %v: %w", node.Name, err)
 		}
 	}
 	return nil

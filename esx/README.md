@@ -41,9 +41,6 @@ intervals:
     period: 20s
     timeout: 5m
     force: false # If true and evictions do not succeed do normal DELETE calls
-  # Defines how long to wait after a node has been drained
-  # As node shutdowns are performed in a loop it helps staggering them.
-  stagger: 20s # optional
 alarms:
   - "Host memory usage" # according to https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.monitoring.doc/GUID-82933270-1D72-4CF3-A1AF-E5A1343F62DE.html
 vCenters:

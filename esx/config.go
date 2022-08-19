@@ -47,7 +47,6 @@ type Config struct {
 			Timeout time.Duration `config:"timeout" validate:"required"`
 			Force   bool          `config:"force"`
 		} `config:"podEviction" validate:"required"`
-		Stagger time.Duration `config:"stagger"`
 	} `config:"intervals" validate:"required"`
 	Alarms   []string
 	VCenters VCenters `config:"vCenters" validate:"required"`
