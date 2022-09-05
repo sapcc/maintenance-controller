@@ -41,14 +41,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Cache kubebuilder binaries
-        id: cache-kubebuilder
-        uses: actions/cache@v3
-        with:
-          path: kubebuilder/bin
-          # Use SHA-256 hash of the .kubebuilder-version file as the key.
-          key: ${{ runner.os }}-kubebuilder-${{ hashFiles('.github/.kubebuilder-version') }}
-
       - name: Cache testbin binaries
         id: cache-testbin
         uses: actions/cache@v3
@@ -57,16 +49,6 @@ jobs:
           # Use SHA-256 hash of the Makefile file as the key.
           # Swapping testbinary versions usally requrie to change the Makefile
           key: ${{ runner.os }}-kubebuilder-${{ hashFiles('Makefile') }}
-
-      # This will only run if the cache was not found.
-      - name: Download kubebuilder binaries
-        if: steps.cache-kubebuilder.outputs.cache-hit != 'true'
-        run: |
-          mkdir kubebuilder
-          version="$(cat .github/.kubebuilder-version)"
-          cd kubebuilder
-          curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_linux_amd64
-          cd ..
 
       - name: Run tests and generate coverage
         run: |
