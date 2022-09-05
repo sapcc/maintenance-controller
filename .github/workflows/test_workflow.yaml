@@ -65,7 +65,7 @@ jobs:
           mkdir kubebuilder
           version="$(cat .github/.kubebuilder-version)"
           cd kubebuilder
-          curl -L https://go.kubebuilder.io/dl/${version}/linux/amd64
+          curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_linux_amd64
           cd ..
 
       - name: Run tests and generate coverage
