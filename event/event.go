@@ -177,7 +177,11 @@ func (e *eventBroadcasterImpl) StartStructuredLogging(verbosity klog.Level) watc
 // StartEventWatcher starts sending events received from this EventBroadcaster to the given event handler function.
 // The return value can be ignored or used to stop recording, if desired.
 func (e *eventBroadcasterImpl) StartEventWatcher(eventHandler func(*v1.Event)) watch.Interface {
-	watcher := e.Watch()
+	watcher, err := e.Watch()
+	if err != nil {
+		klog.Errorf("failed to create watch on events in eventBroadcasterImpl: %s", err)
+		return nil
+	}
 	go func() {
 		defer utilruntime.HandleCrash()
 		for watchEvent := range watcher.ResultChan() {
