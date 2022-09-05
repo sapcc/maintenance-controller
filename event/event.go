@@ -233,7 +233,10 @@ func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations m
 	go func() {
 		// NOTE: events should be a non-blocking operation
 		defer utilruntime.HandleCrash()
-		recorder.Action(watch.Added, event)
+		err = recorder.Action(watch.Added, event)
+		if err != nil {
+			klog.Errorf("error for recorder.Action in eventBroadcasterImpl: %s", err)
+		}
 	}()
 }
 
