@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-ucfg/yaml"
@@ -778,7 +779,7 @@ var _ = Describe("The metrics server", func() {
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
 		targetNode.Name = targetNodeName
-		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi", "transition": constants.TrueStr}
+		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi"}
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
 		daemonSet = &appsv1.DaemonSet{}
@@ -871,6 +872,11 @@ var _ = Describe("The metrics server", func() {
 		}
 		Expect(k8sClient.Create(context.Background(), ssPod)).To(Succeed())
 
+		// Trigger the maintenance after resource that should be recorded have been created
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		targetNode.Labels["transition"] = constants.TrueStr
+		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+
 		metricsServer := metrics.PromServer{
 			Address:     ":15423",
 			WaitTimeout: 1 * time.Second,
@@ -901,47 +907,64 @@ var _ = Describe("The metrics server", func() {
 		Expect(err).To(Succeed())
 	})
 
+	parseMetric := func(all, metric string) string {
+		splitted := strings.Split(all, "\n")
+		for _, line := range splitted {
+			if strings.HasPrefix(line, metric) {
+				return strings.Split(line, " ")[1]
+			}
+		}
+		return ""
+	}
+
+	parseMetrics := func(all string, metrics []string) []string {
+		result := make([]string, 0)
+		for _, metric := range metrics {
+			result = append(result, parseMetric(all, metric))
+		}
+		return result
+	}
+
 	It("should create DaemonSet shuffle metrics", func() {
-		Eventually(func(g Gomega) string {
+		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
 			defer res.Body.Close()
 			data, err := io.ReadAll(res.Body)
 			g.Expect(err).To(Succeed())
-			return string(data)
-		}, 10*time.Second).Should(SatisfyAll(
-			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"} 1"),
-			// need to check for +Inf here as we cannot set daemonset.status.numberready to anything but 0
-			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"} +Inf"),
-		))
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"}",
+				"maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"}",
+			})
+		}).Should(Equal([]string{"1", "+Inf"}))
 	})
 
 	It("should create ReplicaSet shuffle metrics", func() {
-		Eventually(func(g Gomega) string {
+		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
 			defer res.Body.Close()
 			data, err := io.ReadAll(res.Body)
 			g.Expect(err).To(Succeed())
-			return string(data)
-		}, 10*time.Second).Should(SatisfyAll(
-			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"replica_set_rs\",profile=\"multi\"} 1"),
-			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"replica_set_rs\",profile=\"multi\"} 1"),
-		))
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_pod_shuffle_count{owner=\"replica_set_rs\",profile=\"multi\"}",
+				"maintenance_controller_pod_shuffles_per_replica{owner=\"replica_set_rs\",profile=\"multi\"}",
+			})
+		}).Should(Equal([]string{"1", "1"}))
 	})
 
 	It("should create StatefulSet shuffle metrics", func() {
-		Eventually(func(g Gomega) string {
+		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
 			defer res.Body.Close()
 			data, err := io.ReadAll(res.Body)
 			g.Expect(err).To(Succeed())
-			return string(data)
-		}, 10*time.Second).Should(SatisfyAll(
-			ContainSubstring("maintenance_controller_pod_shuffle_count{owner=\"stateful_set_ss\",profile=\"multi\"} 1"),
-			ContainSubstring("maintenance_controller_pod_shuffles_per_replica{owner=\"stateful_set_ss\",profile=\"multi\"} 1"),
-		))
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_pod_shuffle_count{owner=\"stateful_set_ss\",profile=\"multi\"}",
+				"maintenance_controller_pod_shuffles_per_replica{owner=\"stateful_set_ss\",profile=\"multi\"}",
+			})
+		}).Should(Equal([]string{"1", "1"}))
 	})
 
 })
