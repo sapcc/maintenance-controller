@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
@@ -775,6 +775,7 @@ var _ = Describe("The metrics server", func() {
 	var replicaSet *appsv1.ReplicaSet
 	var statefulSet *appsv1.StatefulSet
 	var stopServer context.CancelFunc
+	var metricsServer metrics.PromServer
 
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
@@ -782,6 +783,46 @@ var _ = Describe("The metrics server", func() {
 		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi"}
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
+		metricsServer = metrics.PromServer{
+			Address:     ":15423",
+			WaitTimeout: 50 * time.Millisecond,
+			Log:         logr.Discard(),
+		}
+		withCancel, cancel := context.WithCancel(context.Background())
+		stopServer = cancel
+		go func() {
+			defer GinkgoRecover()
+			err := metricsServer.Start(withCancel)
+			Expect(err).To(Succeed())
+		}()
+	})
+
+	AfterEach(func() {
+		stopServer()
+		err := k8sClient.Delete(context.Background(), targetNode)
+		Expect(err).To(Succeed())
+		Eventually(metricsServer.Done(), 2).Should(BeClosed())
+	})
+
+	parseMetric := func(all, metric string) string {
+		splitted := strings.Split(all, "\n")
+		for _, line := range splitted {
+			if strings.HasPrefix(line, metric) {
+				return strings.Split(line, " ")[1]
+			}
+		}
+		return ""
+	}
+
+	parseMetrics := func(all string, metrics []string) []string {
+		result := make([]string, 0)
+		for _, metric := range metrics {
+			result = append(result, parseMetric(all, metric))
+		}
+		return result
+	}
+
+	It("should create DaemonSet shuffle metrics", func() {
 		daemonSet = &appsv1.DaemonSet{}
 		daemonSet.Name = "ds"
 		daemonSet.Namespace = metav1.NamespaceDefault
@@ -811,6 +852,30 @@ var _ = Describe("The metrics server", func() {
 		}
 		Expect(k8sClient.Create(context.Background(), dsPod)).To(Succeed())
 
+		// Trigger the maintenance after resource that should be recorded have been created
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		targetNode.Labels["transition"] = constants.TrueStr
+		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+		Eventually(func(g Gomega) []string {
+			time.Sleep(2 * time.Second)
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"}",
+				"maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"}",
+			})
+		}).Should(Equal([]string{"1", "+Inf"}))
+
+		err := k8sClient.Delete(context.Background(), daemonSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), dsPod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
+	})
+
+	It("should create ReplicaSet shuffle metrics", func() {
 		replicaSet = &appsv1.ReplicaSet{}
 		replicaSet.Name = "rs"
 		replicaSet.Namespace = metav1.NamespaceDefault
@@ -842,6 +907,30 @@ var _ = Describe("The metrics server", func() {
 		}
 		Expect(k8sClient.Create(context.Background(), rsPod)).To(Succeed())
 
+		// Trigger the maintenance after resource that should be recorded have been created
+		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		targetNode.Labels["transition"] = constants.TrueStr
+		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+
+		Eventually(func(g Gomega) []string {
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_pod_shuffle_count{owner=\"replica_set_rs\",profile=\"multi\"}",
+				"maintenance_controller_pod_shuffles_per_replica{owner=\"replica_set_rs\",profile=\"multi\"}",
+			})
+		}).Should(Equal([]string{"1", "1"}))
+		err := k8sClient.Delete(context.Background(), replicaSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), rsPod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
+	})
+
+	It("should create StatefulSet shuffle metrics", func() {
+		replicas := int32(1)
 		statefulSet = &appsv1.StatefulSet{}
 		statefulSet.Name = "ss"
 		statefulSet.Namespace = metav1.NamespaceDefault
@@ -877,83 +966,6 @@ var _ = Describe("The metrics server", func() {
 		targetNode.Labels["transition"] = constants.TrueStr
 		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
 
-		metricsServer := metrics.PromServer{
-			Address:     ":15423",
-			WaitTimeout: 1 * time.Second,
-			Log:         logr.Discard(),
-		}
-		withCancel, cancel := context.WithCancel(context.Background())
-		stopServer = cancel
-		go func() {
-			_ = metricsServer.Start(withCancel)
-		}()
-	})
-
-	AfterEach(func() {
-		stopServer()
-		err := k8sClient.Delete(context.Background(), daemonSet)
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), dsPod, client.GracePeriodSeconds(0))
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), replicaSet)
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), rsPod, client.GracePeriodSeconds(0))
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), statefulSet)
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), ssPod, client.GracePeriodSeconds(0))
-		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), targetNode)
-		Expect(err).To(Succeed())
-	})
-
-	parseMetric := func(all, metric string) string {
-		splitted := strings.Split(all, "\n")
-		for _, line := range splitted {
-			if strings.HasPrefix(line, metric) {
-				return strings.Split(line, " ")[1]
-			}
-		}
-		return ""
-	}
-
-	parseMetrics := func(all string, metrics []string) []string {
-		result := make([]string, 0)
-		for _, metric := range metrics {
-			result = append(result, parseMetric(all, metric))
-		}
-		return result
-	}
-
-	It("should create DaemonSet shuffle metrics", func() {
-		Eventually(func(g Gomega) []string {
-			res, err := http.Get("http://localhost:15423/metrics")
-			g.Expect(err).To(Succeed())
-			defer res.Body.Close()
-			data, err := io.ReadAll(res.Body)
-			g.Expect(err).To(Succeed())
-			return parseMetrics(string(data), []string{
-				"maintenance_controller_pod_shuffle_count{owner=\"daemon_set_ds\",profile=\"multi\"}",
-				"maintenance_controller_pod_shuffles_per_replica{owner=\"daemon_set_ds\",profile=\"multi\"}",
-			})
-		}).Should(Equal([]string{"1", "+Inf"}))
-	})
-
-	It("should create ReplicaSet shuffle metrics", func() {
-		Eventually(func(g Gomega) []string {
-			res, err := http.Get("http://localhost:15423/metrics")
-			g.Expect(err).To(Succeed())
-			defer res.Body.Close()
-			data, err := io.ReadAll(res.Body)
-			g.Expect(err).To(Succeed())
-			return parseMetrics(string(data), []string{
-				"maintenance_controller_pod_shuffle_count{owner=\"replica_set_rs\",profile=\"multi\"}",
-				"maintenance_controller_pod_shuffles_per_replica{owner=\"replica_set_rs\",profile=\"multi\"}",
-			})
-		}).Should(Equal([]string{"1", "1"}))
-	})
-
-	It("should create StatefulSet shuffle metrics", func() {
 		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
 			g.Expect(err).To(Succeed())
@@ -965,6 +977,10 @@ var _ = Describe("The metrics server", func() {
 				"maintenance_controller_pod_shuffles_per_replica{owner=\"stateful_set_ss\",profile=\"multi\"}",
 			})
 		}).Should(Equal([]string{"1", "1"}))
+		err := k8sClient.Delete(context.Background(), statefulSet)
+		Expect(err).To(Succeed())
+		err = k8sClient.Delete(context.Background(), ssPod, client.GracePeriodSeconds(0))
+		Expect(err).To(Succeed())
 	})
 
 })

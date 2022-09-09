@@ -23,8 +23,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-logr/logr"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
@@ -212,7 +211,7 @@ var _ = Describe("ensureVmOff", func() {
 			NodeName: "firstvm",
 			Period:   1 * time.Second,
 			Timeout:  1 * time.Minute,
-			Log:      logr.Discard(),
+			Log:      GinkgoLogr,
 		})
 		Expect(err).To(Succeed())
 

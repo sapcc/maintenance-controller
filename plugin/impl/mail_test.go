@@ -24,7 +24,7 @@ import (
 	"net"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
@@ -63,7 +63,8 @@ var _ = Describe("The mail plugin", func() {
 		Expect(header).To(Equal("From: From\r\nTo: To1,To2\r\nSubject: Sub\r\n\r\n"))
 	})
 
-	It("should send an email", func(done Done) {
+	It("should send an email", func() {
+		done := make(chan interface{})
 		messageArrived := make(chan bool, 1)
 		defer close(messageArrived)
 		// the goroutine simulates an smtp server
@@ -116,6 +117,7 @@ var _ = Describe("The mail plugin", func() {
 				}
 			}
 			Expect(err).To(HaveOccurred())
+			close(done)
 		}()
 		time.Sleep(20 * time.Millisecond)
 		instance := Mail{
@@ -128,7 +130,7 @@ var _ = Describe("The mail plugin", func() {
 		err := instance.Notify(plugin.Parameters{})
 		Expect(err).To(Succeed())
 		Expect(<-messageArrived).To(BeTrue())
-		close(done)
-	}, 1)
+		Eventually(done, 1).Should(BeClosed())
+	})
 
 })

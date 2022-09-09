@@ -39,13 +39,20 @@ type PromServer struct {
 	WaitTimeout time.Duration
 	Log         logr.Logger
 	counter     int
+	shutdown    chan struct{}
 }
 
 func (ps *PromServer) NeedLeaderElection() bool {
 	return false
 }
 
+// returns a channel that is closed, when the server properly terminates.
+func (ps *PromServer) Done() chan struct{} {
+	return ps.shutdown
+}
+
 func (ps *PromServer) Start(ctx context.Context) error {
+	ps.shutdown = make(chan struct{})
 	listener, err := net.Listen("tcp", ps.Address)
 	if err != nil {
 		return err
@@ -76,7 +83,10 @@ func (ps *PromServer) Start(ctx context.Context) error {
 		return ps.counter > last, nil
 	})
 	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gomnd
-	err = server.Shutdown(timeout)
-	cancel()
-	return err
+	defer cancel()
+	if err := server.Shutdown(timeout); err != nil {
+		return err
+	}
+	close(ps.shutdown)
+	return nil
 }
