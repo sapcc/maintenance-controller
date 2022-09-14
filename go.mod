@@ -12,14 +12,14 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/prometheus/client_golang v1.13.0
-	github.com/slack-go/slack v0.11.2
+	github.com/slack-go/slack v0.11.3
 	github.com/vmware/govmomi v0.29.0
 	go.uber.org/zap v1.23.0
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.25.0
 	k8s.io/apimachinery v0.25.0
 	k8s.io/client-go v0.25.0
-	k8s.io/klog/v2 v2.80.0
+	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73
 	sigs.k8s.io/controller-runtime v0.13.0
 )
