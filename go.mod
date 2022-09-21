@@ -3,22 +3,22 @@ module github.com/sapcc/maintenance-controller
 go 1.19
 
 require (
-	github.com/PaesslerAG/gval v1.2.0
+	github.com/PaesslerAG/gval v1.2.1
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.6
 	github.com/go-logr/logr v1.2.3
 	github.com/gophercloud/gophercloud v1.0.0
 	github.com/gophercloud/utils v0.0.0-20220704184730-55bdbbaec4ba
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.19.0
+	github.com/onsi/gomega v1.20.1
 	github.com/prometheus/client_golang v1.13.0
 	github.com/slack-go/slack v0.11.3
 	github.com/vmware/govmomi v0.29.0
 	go.uber.org/zap v1.23.0
 	gopkg.in/ini.v1 v1.67.0
-	k8s.io/api v0.25.0
-	k8s.io/apimachinery v0.25.0
-	k8s.io/client-go v0.25.0
+	k8s.io/api v0.25.1
+	k8s.io/apimachinery v0.25.1
+	k8s.io/client-go v0.25.1
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73
 	sigs.k8s.io/controller-runtime v0.13.0
