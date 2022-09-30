@@ -44,7 +44,6 @@ linters:
   - maintidx
   - nilnil
   - nonamedreturns
-  - nosnakecase
   - nosprintfhostport
   - tenv
   - usestdlibvars
