@@ -86,7 +86,7 @@ func main() {
 		"Maximum delay between SIGTERM and actual shutdown to scrape metrics one last time.")
 	opts := zap.Options{
 		Development: true,
-		TimeEncoder: zapcore.RFC3339TimeEncoder,
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
