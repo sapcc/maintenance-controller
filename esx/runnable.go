@@ -23,7 +23,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
@@ -50,7 +49,7 @@ func (r *Runnable) NeedLeaderElection() bool {
 }
 
 func (r *Runnable) loadConfig() (Config, error) {
-	yamlConf, err := yaml.NewConfigWithFile(constants.EsxConfigFilePath)
+	yamlConf, err := common.NewConfigFromYAMLFile(constants.EsxConfigFilePath)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed

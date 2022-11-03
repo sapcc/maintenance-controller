@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/slack-go/slack"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -47,7 +47,7 @@ type SlackWebhook struct {
 }
 
 // New creates a new Slack instance with the given config.
-func (sw *SlackWebhook) New(config *ucfg.Config) (plugin.Notifier, error) {
+func (sw *SlackWebhook) New(config *common.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Hook    string `config:"hook" validate:"required"`
 		Channel string `config:"channel" validate:"required"`
@@ -107,7 +107,7 @@ type SlackThread struct {
 }
 
 // New creates a new Slack instance with the given config.
-func (st *SlackThread) New(config *ucfg.Config) (plugin.Notifier, error) {
+func (st *SlackThread) New(config *common.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Token          string        `config:"token" validate:"required"`
 		Channel        string        `config:"channel" validate:"required"`

@@ -20,10 +20,10 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,11 +33,11 @@ var _ = Describe("The HasAnnotation plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base HasAnnotation
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*HasAnnotation).Key).To(Equal("key"))
 		Expect(plugin.(*HasAnnotation).Value).To(Equal("value"))
@@ -91,11 +91,11 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value\nremove: true"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base AlterAnnotation
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*AlterAnnotation).Key).To(Equal("key"))
 		Expect(plugin.(*AlterAnnotation).Value).To(Equal("value"))

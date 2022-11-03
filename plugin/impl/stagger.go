@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -44,7 +44,7 @@ type Stagger struct {
 }
 
 // New creates a new Stagger instance with the given config.
-func (s *Stagger) New(config *ucfg.Config) (plugin.Checker, error) {
+func (s *Stagger) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration       time.Duration `config:"duration" validate:"required"`
 		LeaseName      string        `config:"leaseName" validate:"required"`

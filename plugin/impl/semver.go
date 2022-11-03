@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
@@ -40,7 +40,7 @@ type ClusterSemver struct {
 	ProfileScoped bool
 }
 
-func (cs *ClusterSemver) New(config *ucfg.Config) (plugin.Checker, error) {
+func (cs *ClusterSemver) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key           string `config:"key" validate:"required"`
 		ProfileScoped bool   `config:"profileScoped"`

@@ -17,30 +17,29 @@
 *
 *******************************************************************************/
 
-package impl
+package common
 
 import (
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-var _ = Describe("The nodecount plugin", func() {
+var _ = Describe("ucfg.Config wrapper", func() {
 
-	It("can parse its configuration", func() {
-		configStr := "count: 154"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+	It("expands env vars", func() {
+		os.Setenv("MAINTENANCE_CONTROLLER_TEST", "stone")
+		defer os.Unsetenv("MAINTENANCE_CONTROLLER_TEST")
+		yaml := "key: ${MAINTENANCE_CONTROLLER_TEST}"
+		config, err := NewConfigFromYAML([]byte(yaml))
 		Expect(err).To(Succeed())
-		var base NodeCount
-		plugin, err := base.New(&config)
+		data := struct {
+			Key string
+		}{Key: ""}
+		err = config.Unpack(&data)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
-	})
-
-	It("does not fail in AfterEval", func() {
-		var count NodeCount
-		Expect(count.AfterEval(false, plugin.Parameters{})).To(Succeed())
+		Expect(data.Key).To(Equal("stone"))
 	})
 
 })

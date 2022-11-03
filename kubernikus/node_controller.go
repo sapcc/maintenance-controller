@@ -25,7 +25,6 @@ import (
 	"time"
 
 	semver "github.com/blang/semver/v4"
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
@@ -58,7 +57,7 @@ type Config struct {
 }
 
 func (r *NodeReconciler) loadConfig() (Config, error) {
-	yamlConf, err := yaml.NewConfigWithFile(constants.KubernikusConfigFilePath)
+	yamlConf, err := common.NewConfigFromYAMLFile(constants.KubernikusConfigFilePath)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		return Config{}, err

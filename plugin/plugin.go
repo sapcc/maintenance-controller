@@ -28,6 +28,7 @@ import (
 	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/maintenance-controller/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -214,7 +215,8 @@ func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
 	if !ok {
 		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", config.Type)
 	}
-	plugin, err := basePlugin.New(subConfig)
+	commonConf := common.Config(*subConfig)
+	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err
 	}
@@ -232,19 +234,24 @@ func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error
 	if !ok {
 		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", config.Type)
 	}
-	plugin, err := basePlugin.New(subConfig)
+	commonConf := common.Config(*subConfig)
+	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err
 	}
 	var schedule Scheduler
+	if config.Schedule.Config == nil {
+		return fmt.Errorf("a notification instance does not have a schedule assigned")
+	}
+	scheduleConf := common.Config(*config.Schedule.Config)
 	switch strings.ToLower(config.Schedule.Type) {
 	case "periodic":
-		schedule, err = newNotifyPeriodic(config.Schedule.Config)
+		schedule, err = newNotifyPeriodic(&scheduleConf)
 		if err != nil {
 			return err
 		}
 	case "scheduled":
-		schedule, err = newNotifyScheduled(config.Schedule.Config)
+		schedule, err = newNotifyScheduled(&scheduleConf)
 		if err != nil {
 			return err
 		}
@@ -266,7 +273,8 @@ func (r *Registry) loadTriggerInstance(config InstanceDescriptor) error {
 	if !ok {
 		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", config.Type)
 	}
-	plugin, err := basePlugin.New(subConfig)
+	commonConf := common.Config(*subConfig)
+	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err
 	}

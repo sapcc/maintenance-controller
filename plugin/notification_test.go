@@ -23,11 +23,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/elastic/go-ucfg"
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 type successfulNotification struct {
@@ -39,7 +38,7 @@ func (n *successfulNotification) Notify(params Parameters) error {
 	return nil
 }
 
-func (n *successfulNotification) New(config *ucfg.Config) (Notifier, error) {
+func (n *successfulNotification) New(config *common.Config) (Notifier, error) {
 	return &successfulNotification{}, nil
 }
 
@@ -52,7 +51,7 @@ func (n *failingNotification) Notify(params Parameters) error {
 	return errors.New("this notification is expected to fail")
 }
 
-func (n *failingNotification) New(config *ucfg.Config) (Notifier, error) {
+func (n *failingNotification) New(config *common.Config) (Notifier, error) {
 	return &failingNotification{}, nil
 }
 
@@ -125,9 +124,9 @@ var _ = Describe("NotifyPeriodic", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "interval: 5m"
-		conf, err := yaml.NewConfig([]byte(configStr))
+		conf, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
-		np, err := newNotifyPeriodic(conf)
+		np, err := newNotifyPeriodic(&conf)
 		Expect(err).To(Succeed())
 		Expect(np.Interval).To(Equal(5 * time.Minute))
 	})
@@ -152,9 +151,9 @@ var _ = Describe("NotifyScheduled", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "instant: \"15:23\"\nweekdays: [\"fri\", \"sat\"]\n"
-		conf, err := yaml.NewConfig([]byte(configStr))
+		conf, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
-		ns, err := newNotifyScheduled(conf)
+		ns, err := newNotifyScheduled(&conf)
 		Expect(err).To(Succeed())
 		Expect(ns.Instant.Hour()).To(Equal(15))
 		Expect(ns.Instant.Minute()).To(Equal(23))

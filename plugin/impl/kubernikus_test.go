@@ -20,19 +20,19 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 var _ = Describe("The KubernikusCount plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "cluster: aCluster"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base KubernikusCount
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*KubernikusCount).Cluster).To(Equal("aCluster"))
 	})

@@ -27,10 +27,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -241,9 +241,9 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should parse the count profile", func() {
-		config, err := yaml.NewConfig([]byte(config))
+		config, err := common.NewConfigFromYAML([]byte(config))
 		Expect(err).To(Succeed())
-		conf, err := LoadConfig(config)
+		conf, err := LoadConfig(&config)
 		Expect(err).To(Succeed())
 		Expect(conf.Profiles).To(HaveKey("count"))
 		profile := conf.Profiles["count"]

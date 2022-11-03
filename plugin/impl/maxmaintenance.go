@@ -20,7 +20,7 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
@@ -36,7 +36,7 @@ type MaxMaintenance struct {
 }
 
 // New creates a new MaxMaintenance instance with the given config.
-func (m *MaxMaintenance) New(config *ucfg.Config) (plugin.Checker, error) {
+func (m *MaxMaintenance) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Max     int    `config:"max" validate:"required"`
 		Profile string `config:"profile"`

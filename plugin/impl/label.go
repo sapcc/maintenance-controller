@@ -20,7 +20,7 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -32,7 +32,7 @@ type HasLabel struct {
 }
 
 // New creates a new HasLabel instance with the given config.
-func (h *HasLabel) New(config *ucfg.Config) (plugin.Checker, error) {
+func (h *HasLabel) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
@@ -64,7 +64,7 @@ type AnyLabel struct {
 	Value string
 }
 
-func (a *AnyLabel) New(config *ucfg.Config) (plugin.Checker, error) {
+func (a *AnyLabel) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
@@ -105,7 +105,7 @@ type AlterLabel struct {
 }
 
 // New creates a new AlterLabel instance with the given config.
-func (a *AlterLabel) New(config *ucfg.Config) (plugin.Trigger, error) {
+func (a *AlterLabel) New(config *common.Config) (plugin.Trigger, error) {
 	conf := struct {
 		Key    string `config:"key" validate:"required"`
 		Value  string `config:"value"`

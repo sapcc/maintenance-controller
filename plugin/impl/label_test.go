@@ -20,10 +20,10 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,11 +33,11 @@ var _ = Describe("The HasLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base HasLabel
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*HasLabel).Key).To(Equal("key"))
 		Expect(plugin.(*HasLabel).Value).To(Equal("value"))
@@ -91,11 +91,11 @@ var _ = Describe("The AnyLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: test"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base AnyLabel
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*AnyLabel).Key).To(Equal("key"))
 		Expect(plugin.(*AnyLabel).Value).To(Equal("test"))
@@ -107,11 +107,11 @@ var _ = Describe("The AlterLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value\nremove: true"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base AlterLabel
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*AlterLabel).Key).To(Equal("key"))
 		Expect(plugin.(*AlterLabel).Value).To(Equal("value"))

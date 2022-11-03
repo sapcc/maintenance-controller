@@ -20,19 +20,19 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 var _ = Describe("The ClusterSemver plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "key: alge\nprofileScoped: yes"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base ClusterSemver
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*ClusterSemver).Key).To(Equal("alge"))
 		Expect(plugin.(*ClusterSemver).ProfileScoped).To(BeTrue())

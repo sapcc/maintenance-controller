@@ -24,9 +24,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -35,10 +35,10 @@ var _ = Describe("The mail plugin", func() {
 	It("should parse its config", func() {
 		configStr := "auth: true\naddress: addr\nfrom: from\nidentity: ident\nmessage: msg\n"
 		configStr += "password: pw\nto: to\nuser: user\nsubject: sub"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Mail
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		mail, ok := plugin.(*Mail)
 		Expect(ok).To(BeTrue())

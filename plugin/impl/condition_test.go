@@ -20,10 +20,10 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -32,11 +32,11 @@ var _ = Describe("The Condition plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "type: Ready\nstatus: \"True\""
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base Condition
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Condition).Type).To(Equal("Ready"))
 		Expect(plugin.(*Condition).Status).To(Equal("True"))

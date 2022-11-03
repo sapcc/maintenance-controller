@@ -22,10 +22,10 @@ package plugin
 import (
 	"errors"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 type successfulTrigger struct {
@@ -37,7 +37,7 @@ func (n *successfulTrigger) Trigger(params Parameters) error {
 	return nil
 }
 
-func (n *successfulTrigger) New(config *ucfg.Config) (Trigger, error) {
+func (n *successfulTrigger) New(config *common.Config) (Trigger, error) {
 	return &successfulTrigger{}, nil
 }
 
@@ -50,7 +50,7 @@ func (n *failingTrigger) Trigger(params Parameters) error {
 	return errors.New("this notification is expected to fail")
 }
 
-func (n *failingTrigger) New(config *ucfg.Config) (Trigger, error) {
+func (n *failingTrigger) New(config *common.Config) (Trigger, error) {
 	return &failingTrigger{}, nil
 }
 

@@ -22,7 +22,7 @@ package impl
 import (
 	"fmt"
 
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
@@ -35,7 +35,7 @@ import (
 type Affinity struct{}
 
 // New creates a new Slack instance with the given config.
-func (a *Affinity) New(config *ucfg.Config) (plugin.Checker, error) {
+func (a *Affinity) New(config *common.Config) (plugin.Checker, error) {
 	return &Affinity{}, nil
 }
 

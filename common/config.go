@@ -17,30 +17,37 @@
 *
 *******************************************************************************/
 
-package impl
+package common
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/elastic/go-ucfg"
+	"github.com/elastic/go-ucfg/yaml"
 )
 
-var _ = Describe("The nodecount plugin", func() {
+var configOpts = []ucfg.Option{ucfg.ResolveEnv, ucfg.VarExp}
 
-	It("can parse its configuration", func() {
-		configStr := "count: 154"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
-		Expect(err).To(Succeed())
-		var base NodeCount
-		plugin, err := base.New(&config)
-		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
-	})
+type Config ucfg.Config
 
-	It("does not fail in AfterEval", func() {
-		var count NodeCount
-		Expect(count.AfterEval(false, plugin.Parameters{})).To(Succeed())
-	})
+func (c *Config) ucfg() *ucfg.Config {
+	return (*ucfg.Config)(c)
+}
 
-})
+func (c *Config) Unpack(to interface{}) error {
+	return c.ucfg().Unpack(to, configOpts...)
+}
+
+func NewConfigFromYAMLFile(path string) (Config, error) {
+	yamlConf, err := yaml.NewConfigWithFile(path, configOpts...)
+	if err != nil {
+		return Config{}, err
+	}
+	return Config(*yamlConf), nil
+}
+
+func NewConfigFromYAML(data []byte) (Config, error) {
+	yamlConf, err := yaml.NewConfig(data, configOpts...)
+	if err != nil {
+		return Config{}, err
+	}
+	return Config(*yamlConf), nil
+}

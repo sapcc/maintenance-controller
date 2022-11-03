@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -47,7 +46,7 @@ type kluster struct {
 	}
 }
 
-func (kc *KubernikusCount) New(config *ucfg.Config) (plugin.Checker, error) {
+func (kc *KubernikusCount) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Cluster string `config:"cluster" validate:"required"`
 	}{}

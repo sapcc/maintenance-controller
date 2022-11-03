@@ -22,9 +22,9 @@ package impl
 import (
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -33,9 +33,9 @@ var _ = Describe("The wait plugin", func() {
 	It("can parse its config", func() {
 		base := Wait{}
 		configStr := "duration: 0h12m"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Wait).Duration.Minutes()).To(Equal(12.0))
 	})
@@ -65,9 +65,9 @@ var _ = Describe("The waitExclude plugin", func() {
 	It("can parse its config", func() {
 		base := WaitExclude{}
 		configStr := "duration: 17m\nexclude: [\"tue\"]"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*WaitExclude).Duration).To(Equal(17 * time.Minute))
 		Expect(plugin.(*WaitExclude).Exclude).To(ContainElement(time.Tuesday))

@@ -20,7 +20,7 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
 )
@@ -30,7 +30,7 @@ type NodeCount struct {
 }
 
 // New creates a new Count instance with the given config.
-func (n *NodeCount) New(config *ucfg.Config) (plugin.Checker, error) {
+func (n *NodeCount) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Count int `config:"count" validate:"required"`
 	}{}

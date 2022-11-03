@@ -22,7 +22,6 @@ package impl
 import (
 	"time"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -33,7 +32,7 @@ type Wait struct {
 	Duration time.Duration
 }
 
-func (w *Wait) New(config *ucfg.Config) (plugin.Checker, error) {
+func (w *Wait) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration string `config:"duration" validate:"required"`
 	}{}
@@ -63,7 +62,7 @@ type WaitExclude struct {
 	Exclude  []time.Weekday
 }
 
-func (we *WaitExclude) New(config *ucfg.Config) (plugin.Checker, error) {
+func (we *WaitExclude) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration string   `config:"duration" validate:"required"`
 		Exclude  []string `config:"exclude" validate:"required"`

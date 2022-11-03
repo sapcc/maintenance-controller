@@ -23,9 +23,9 @@ import (
 	"errors"
 
 	"github.com/PaesslerAG/gval"
-	"github.com/elastic/go-ucfg"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 type trueCheck struct {
@@ -37,7 +37,7 @@ func (c *trueCheck) Check(params Parameters) (bool, error) {
 	return true, nil
 }
 
-func (c *trueCheck) New(config *ucfg.Config) (Checker, error) {
+func (c *trueCheck) New(config *common.Config) (Checker, error) {
 	return &trueCheck{}, nil
 }
 
@@ -54,7 +54,7 @@ func (c *falseCheck) Check(params Parameters) (bool, error) {
 	return false, nil
 }
 
-func (c *falseCheck) New(config *ucfg.Config) (Checker, error) {
+func (c *falseCheck) New(config *common.Config) (Checker, error) {
 	return &falseCheck{}, nil
 }
 
@@ -71,7 +71,7 @@ func (c *errorCheck) Check(params Parameters) (bool, error) {
 	return false, errors.New("this check is expected to fail")
 }
 
-func (c *errorCheck) New(config *ucfg.Config) (Checker, error) {
+func (c *errorCheck) New(config *common.Config) (Checker, error) {
 	return &errorCheck{}, nil
 }
 

@@ -22,7 +22,7 @@ package controllers
 import (
 	"time"
 
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
@@ -67,7 +67,7 @@ type Config struct {
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
-func LoadConfig(config *ucfg.Config) (*Config, error) {
+func LoadConfig(config *common.Config) (*Config, error) {
 	var global ConfigDescriptor
 	err := config.Unpack(&global)
 	if err != nil {

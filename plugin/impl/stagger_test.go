@@ -22,19 +22,19 @@ package impl
 import (
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 var _ = Describe("The Stagger plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "duration: 1m\nleaseName: mc-lease\nleaseNamespace: default"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Stagger
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Stagger).Duration).To(Equal(1 * time.Minute))
 		Expect(plugin.(*Stagger).Parallel).To(Equal(1))

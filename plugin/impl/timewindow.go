@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -41,7 +40,7 @@ type TimeWindow struct {
 }
 
 // New creates a new TimeWindow instance with the given config.
-func (tw *TimeWindow) New(config *ucfg.Config) (plugin.Checker, error) {
+func (tw *TimeWindow) New(config *common.Config) (plugin.Checker, error) {
 	conf := struct {
 		Start    string
 		End      string

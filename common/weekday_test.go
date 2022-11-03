@@ -29,7 +29,7 @@ import (
 
 func TestCommon(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Plugin Suite")
+	RunSpecs(t, "Common Suite")
 }
 
 var _ = Describe("WeekdayFromString", func() {

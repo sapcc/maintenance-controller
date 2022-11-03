@@ -20,9 +20,9 @@
 package impl
 
 import (
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,10 +32,10 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "max: 296\nprofile: kappa"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base MaxMaintenance
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*MaxMaintenance).MaxNodes).To(Equal(296))
 		Expect(plugin.(*MaxMaintenance).Profile).To(Equal("kappa"))

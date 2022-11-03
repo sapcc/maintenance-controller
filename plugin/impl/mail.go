@@ -23,7 +23,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/elastic/go-ucfg"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -41,7 +41,7 @@ type Mail struct {
 }
 
 // New creates a new Mail instance with the given config.
-func (m *Mail) New(config *ucfg.Config) (plugin.Notifier, error) {
+func (m *Mail) New(config *common.Config) (plugin.Notifier, error) {
 	conf := struct {
 		Auth     bool     `config:"auth" validate:"required"`
 		Message  string   `config:"message" validate:"required"`

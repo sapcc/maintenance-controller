@@ -73,8 +73,9 @@ Optionally, a trigger chain can be configured to perform actions, when a node mo
 
 ### Format
 There is a global configuration, which defines some general options, plugin instances and maintenance profiles.
-The global configuration should be named ```./config/maintenance.yaml``` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
+The global configuration should be named `./config/maintenance.yaml` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
 A secret is recommend as some plugins may need authentication data.
+Environment variables can be interpolated in value positions using `${ENV_VAR}`.
 The basic structure looks like the following:
 ```yaml
 intervals:

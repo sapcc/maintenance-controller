@@ -22,19 +22,19 @@ package impl
 import (
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 var _ = Describe("The Timewindow plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "weekdays: [mon]\nstart: \"11:00\"\nend: \"19:30\"\nexclude: [\"Feb 3\"]"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base TimeWindow
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		start := plugin.(*TimeWindow).Start
 		end := plugin.(*TimeWindow).End
@@ -54,19 +54,19 @@ var _ = Describe("The Timewindow plugin", func() {
 
 	It("should fail creation if no weekdays are provided", func() {
 		configStr := "start: \"11:00\"\nend: \"19:30\""
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base TimeWindow
-		_, err = base.New(config)
+		_, err = base.New(&config)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should fail creation if no start is after end", func() {
 		configStr := "weekdays: [mon]\nstart: \"18:00\"\nend: \"17:30\""
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base TimeWindow
-		_, err = base.New(config)
+		_, err = base.New(&config)
 		Expect(err).To(HaveOccurred())
 	})
 

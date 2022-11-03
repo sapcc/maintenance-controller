@@ -26,9 +26,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	corev1 "k8s.io/api/core/v1"
@@ -39,10 +39,10 @@ var _ = Describe("The slack webhook plugin", func() {
 
 	It("should parse its config", func() {
 		configStr := "hook: http://example.com\nchannel: thechannel\nmessage: msg"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackWebhook
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*SlackWebhook).Hook).To(Equal("http://example.com"))
 		Expect(plugin.(*SlackWebhook).Channel).To(Equal("thechannel"))
@@ -110,10 +110,10 @@ var _ = Describe("The slack thread plugin", func() {
 			"leaseName: lease\n" +
 			"leaseNamespace: default\n" +
 			"period: 1m\n"
-		config, err := yaml.NewConfig([]byte(configStr))
+		config, err := common.NewConfigFromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackThread
-		plugin, err := base.New(config)
+		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*SlackThread).Token).To(Equal("token"))
 		Expect(plugin.(*SlackThread).Channel).To(Equal("thechannel"))

@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/PaesslerAG/gval"
-	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
@@ -54,7 +54,7 @@ func (n *mockTrigger) Trigger(params plugin.Parameters) error {
 	return nil
 }
 
-func (n *mockTrigger) New(config *ucfg.Config) (plugin.Trigger, error) {
+func (n *mockTrigger) New(config *common.Config) (plugin.Trigger, error) {
 	return &mockTrigger{}, nil
 }
 
@@ -83,7 +83,7 @@ func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
 	return nil
 }
 
-func (n *mockNotificaiton) New(config *ucfg.Config) (plugin.Notifier, error) {
+func (n *mockNotificaiton) New(config *common.Config) (plugin.Notifier, error) {
 	return &mockNotificaiton{}, nil
 }
 
@@ -120,7 +120,7 @@ func (c *mockCheck) Check(params plugin.Parameters) (bool, error) {
 	return c.Result, nil
 }
 
-func (c *mockCheck) New(config *ucfg.Config) (plugin.Checker, error) {
+func (c *mockCheck) New(config *common.Config) (plugin.Checker, error) {
 	return &mockCheck{}, nil
 }
 
