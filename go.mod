@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.2
 	github.com/prometheus/client_golang v1.13.0
-	github.com/slack-go/slack v0.11.3
+	github.com/slack-go/slack v0.11.4
 	github.com/vmware/govmomi v0.29.0
 	go.uber.org/zap v1.23.0
 	gopkg.in/ini.v1 v1.67.0
