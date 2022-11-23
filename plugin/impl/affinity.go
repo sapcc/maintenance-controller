@@ -22,10 +22,10 @@ package impl
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -35,7 +35,7 @@ import (
 type Affinity struct{}
 
 // New creates a new Slack instance with the given config.
-func (a *Affinity) New(config *common.Config) (plugin.Checker, error) {
+func (a *Affinity) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Affinity{}, nil
 }
 

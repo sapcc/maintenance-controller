@@ -22,14 +22,14 @@ package impl
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The ClusterSemver plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "key: alge\nprofileScoped: yes"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base ClusterSemver
 		plugin, err := base.New(&config)

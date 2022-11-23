@@ -26,6 +26,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 const timeFormat = "15:04"
@@ -40,7 +41,7 @@ type TimeWindow struct {
 }
 
 // New creates a new TimeWindow instance with the given config.
-func (tw *TimeWindow) New(config *common.Config) (plugin.Checker, error) {
+func (tw *TimeWindow) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Start    string
 		End      string

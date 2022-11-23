@@ -22,7 +22,7 @@ package plugin
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 // Trigger is the interface that trigger plugins need to implement.
@@ -31,7 +31,7 @@ import (
 // the actual usable configured instances.
 type Trigger interface {
 	Trigger(params Parameters) error
-	New(config *common.Config) (Trigger, error)
+	New(config *ucfgwrap.Config) (Trigger, error)
 }
 
 // TriggerInstance represents a configured and named instance of a trigger plugin.

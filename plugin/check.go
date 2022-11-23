@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/PaesslerAG/gval"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 // Checker is the interface that check plugins need to implement.
@@ -32,7 +32,7 @@ import (
 // to create the actual usable configured instances.
 type Checker interface {
 	Check(params Parameters) (bool, error)
-	New(config *common.Config) (Checker, error)
+	New(config *ucfgwrap.Config) (Checker, error)
 	// AfterEval is invoked once after evaluation the CheckChain this instance is part of.
 	AfterEval(chainResult bool, params Parameters) error
 }

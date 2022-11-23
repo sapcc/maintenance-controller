@@ -26,8 +26,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The mail plugin", func() {
@@ -35,7 +35,7 @@ var _ = Describe("The mail plugin", func() {
 	It("should parse its config", func() {
 		configStr := "auth: true\naddress: addr\nfrom: from\nidentity: ident\nmessage: msg\n"
 		configStr += "password: pw\nto: to\nuser: user\nsubject: sub"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Mail
 		plugin, err := base.New(&config)

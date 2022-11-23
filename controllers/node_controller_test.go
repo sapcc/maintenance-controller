@@ -30,12 +30,12 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slacktest"
 	appsv1 "k8s.io/api/apps/v1"
@@ -241,7 +241,7 @@ var _ = Describe("The controller", func() {
 	})
 
 	It("should parse the count profile", func() {
-		config, err := common.NewConfigFromYAML([]byte(config))
+		config, err := ucfgwrap.FromYAML([]byte(config))
 		Expect(err).To(Succeed())
 		conf, err := LoadConfig(&config)
 		Expect(err).To(Succeed())

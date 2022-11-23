@@ -28,6 +28,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 // Notifier is the interface that notification plugins need to implement.
@@ -36,7 +37,7 @@ import (
 // the actual usable configured instances.
 type Notifier interface {
 	Notify(params Parameters) error
-	New(config *common.Config) (Notifier, error)
+	New(config *ucfgwrap.Config) (Notifier, error)
 }
 
 // NotificationInstance represents a configured and named instance of a notification plugin.
@@ -105,7 +106,7 @@ type NotifyPeriodic struct {
 	Interval time.Duration
 }
 
-func newNotifyPeriodic(config *common.Config) (*NotifyPeriodic, error) {
+func newNotifyPeriodic(config *ucfgwrap.Config) (*NotifyPeriodic, error) {
 	conf := struct {
 		Interval time.Duration
 	}{Interval: time.Hour}
@@ -135,7 +136,7 @@ type NotifyScheduled struct {
 	Weekdays []time.Weekday
 }
 
-func newNotifyScheduled(config *common.Config) (*NotifyScheduled, error) {
+func newNotifyScheduled(config *ucfgwrap.Config) (*NotifyScheduled, error) {
 	conf := struct {
 		Instant  string
 		Weekdays []string

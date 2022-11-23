@@ -24,6 +24,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 const day = 24 * time.Hour
@@ -32,7 +33,7 @@ type Wait struct {
 	Duration time.Duration
 }
 
-func (w *Wait) New(config *common.Config) (plugin.Checker, error) {
+func (w *Wait) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration string `config:"duration" validate:"required"`
 	}{}
@@ -62,7 +63,7 @@ type WaitExclude struct {
 	Exclude  []time.Weekday
 }
 
-func (we *WaitExclude) New(config *common.Config) (plugin.Checker, error) {
+func (we *WaitExclude) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Duration string   `config:"duration" validate:"required"`
 		Exclude  []string `config:"exclude" validate:"required"`

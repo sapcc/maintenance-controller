@@ -28,7 +28,7 @@ import (
 	"github.com/PaesslerAG/gval"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -186,21 +186,21 @@ func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 
 // LoadInstances parses the given config and constructs plugin instances accordingly.
 // These instances are put into the respective instances map within the registry.
-func (r *Registry) LoadInstances(config *InstancesDescriptor) error {
-	for _, instance := range config.Check {
-		err := r.loadCheckInstance(instance)
+func (r *Registry) LoadInstances(config *ucfgwrap.Config, descriptor *InstancesDescriptor) error {
+	for _, instance := range descriptor.Check {
+		err := r.loadCheckInstance(config, instance)
 		if err != nil {
 			return err
 		}
 	}
-	for _, instance := range config.Notify {
-		err := r.loadNotificationInstance(instance)
+	for _, instance := range descriptor.Notify {
+		err := r.loadNotificationInstance(config, instance)
 		if err != nil {
 			return err
 		}
 	}
-	for _, instance := range config.Trigger {
-		err := r.loadTriggerInstance(instance)
+	for _, instance := range descriptor.Trigger {
+		err := r.loadTriggerInstance(config, instance)
 		if err != nil {
 			return err
 		}
@@ -208,14 +208,14 @@ func (r *Registry) LoadInstances(config *InstancesDescriptor) error {
 	return nil
 }
 
-func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
-	instanceName := config.Name
-	subConfig := config.Config
-	basePlugin, ok := r.CheckPlugins[config.Type]
+func (r *Registry) loadCheckInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
+	instanceName := descriptor.Name
+	subConfig := descriptor.Config
+	basePlugin, ok := r.CheckPlugins[descriptor.Type]
 	if !ok {
-		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := common.Config(*subConfig)
+	commonConf := config.Wrap(subConfig)
 	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err
@@ -227,24 +227,24 @@ func (r *Registry) loadCheckInstance(config InstanceDescriptor) error {
 	return nil
 }
 
-func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error {
-	instanceName := config.Name
-	subConfig := config.Config
-	basePlugin, ok := r.NotificationPlugins[config.Type]
+func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor NotificationDescriptor) error {
+	instanceName := descriptor.Name
+	subConfig := descriptor.Config
+	basePlugin, ok := r.NotificationPlugins[descriptor.Type]
 	if !ok {
-		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := common.Config(*subConfig)
+	commonConf := config.Wrap(subConfig)
 	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err
 	}
 	var schedule Scheduler
-	if config.Schedule.Config == nil {
+	if descriptor.Schedule.Config == nil {
 		return fmt.Errorf("a notification instance does not have a schedule assigned")
 	}
-	scheduleConf := common.Config(*config.Schedule.Config)
-	switch strings.ToLower(config.Schedule.Type) {
+	scheduleConf := config.Wrap(descriptor.Schedule.Config)
+	switch strings.ToLower(descriptor.Schedule.Type) {
 	case "periodic":
 		schedule, err = newNotifyPeriodic(&scheduleConf)
 		if err != nil {
@@ -256,7 +256,7 @@ func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error
 			return err
 		}
 	default:
-		return fmt.Errorf("notification scheduler with name %s is unknown", config.Schedule.Type)
+		return fmt.Errorf("notification scheduler with name %s is unknown", descriptor.Schedule.Type)
 	}
 	r.NotificationInstances[instanceName] = NotificationInstance{
 		Name:     instanceName,
@@ -266,14 +266,14 @@ func (r *Registry) loadNotificationInstance(config NotificationDescriptor) error
 	return nil
 }
 
-func (r *Registry) loadTriggerInstance(config InstanceDescriptor) error {
-	instanceName := config.Name
-	subConfig := config.Config
-	basePlugin, ok := r.TriggerPlugins[config.Type]
+func (r *Registry) loadTriggerInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
+	instanceName := descriptor.Name
+	subConfig := descriptor.Config
+	basePlugin, ok := r.TriggerPlugins[descriptor.Type]
 	if !ok {
-		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", config.Type)
+		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := common.Config(*subConfig)
+	commonConf := config.Wrap(subConfig)
 	plugin, err := basePlugin.New(&commonConf)
 	if err != nil {
 		return err

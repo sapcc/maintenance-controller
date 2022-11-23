@@ -23,8 +23,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -32,7 +32,7 @@ var _ = Describe("The Condition plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "type: Ready\nstatus: \"True\""
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base Condition

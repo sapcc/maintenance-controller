@@ -22,8 +22,8 @@ package impl
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +32,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "max: 296\nprofile: kappa"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base MaxMaintenance
 		plugin, err := base.New(&config)

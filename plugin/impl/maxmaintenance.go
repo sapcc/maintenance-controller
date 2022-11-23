@@ -20,10 +20,10 @@
 package impl
 
 import (
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,7 +36,7 @@ type MaxMaintenance struct {
 }
 
 // New creates a new MaxMaintenance instance with the given config.
-func (m *MaxMaintenance) New(config *common.Config) (plugin.Checker, error) {
+func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Max     int    `config:"max" validate:"required"`
 		Profile string `config:"profile"`

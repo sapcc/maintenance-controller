@@ -26,10 +26,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -66,7 +67,7 @@ type reconcileParameters struct {
 // Reconcile reconciles the given request.
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// load the configuration
-	conf, err := common.NewConfigFromYAMLFile(constants.MaintenanceConfigFilePath)
+	conf, err := ucfgwrap.FromYAMLFile(constants.MaintenanceConfigFilePath, ucfg.VarExp, ucfg.ResolveEnv)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed

@@ -24,14 +24,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The Stagger plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "duration: 1m\nleaseName: mc-lease\nleaseNamespace: default"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base Stagger
 		plugin, err := base.New(&config)

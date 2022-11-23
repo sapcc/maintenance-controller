@@ -29,6 +29,7 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -46,7 +47,7 @@ type kluster struct {
 	}
 }
 
-func (kc *KubernikusCount) New(config *common.Config) (plugin.Checker, error) {
+func (kc *KubernikusCount) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Cluster string `config:"cluster" validate:"required"`
 	}{}

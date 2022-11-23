@@ -20,8 +20,8 @@
 package impl
 
 import (
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 // HasAnnotation is a check plugin that checks whether a node has an annotation or an annotation with a certain value.
@@ -31,7 +31,7 @@ type HasAnnotation struct {
 }
 
 // New creates a new HasAnnotation instance with the given config.
-func (h *HasAnnotation) New(config *common.Config) (plugin.Checker, error) {
+func (h *HasAnnotation) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key   string `config:"key" validate:"required"`
 		Value string `config:"value"`
@@ -67,7 +67,7 @@ type AlterAnnotation struct {
 }
 
 // New creates a new AlterAnnotation instance with the given config.
-func (a *AlterAnnotation) New(config *common.Config) (plugin.Trigger, error) {
+func (a *AlterAnnotation) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 	conf := struct {
 		Key    string `config:"key" validate:"required"`
 		Value  string `config:"value"`

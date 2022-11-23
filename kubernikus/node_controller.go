@@ -25,6 +25,7 @@ import (
 	"time"
 
 	semver "github.com/blang/semver/v4"
+	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
@@ -32,6 +33,7 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,7 +59,7 @@ type Config struct {
 }
 
 func (r *NodeReconciler) loadConfig() (Config, error) {
-	yamlConf, err := common.NewConfigFromYAMLFile(constants.KubernikusConfigFilePath)
+	yamlConf, err := ucfgwrap.FromYAMLFile(constants.KubernikusConfigFilePath, ucfg.VarExp, ucfg.ResolveEnv)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		return Config{}, err

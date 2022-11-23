@@ -23,8 +23,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,7 +33,7 @@ var _ = Describe("The HasLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base HasLabel
@@ -91,7 +91,7 @@ var _ = Describe("The AnyLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: test"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base AnyLabel
@@ -107,7 +107,7 @@ var _ = Describe("The AlterLabel plugin", func() {
 
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value\nremove: true"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 
 		var base AlterLabel

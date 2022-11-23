@@ -22,11 +22,11 @@ package controllers
 import (
 	"time"
 
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 )
 
 type ProfileDescriptor struct {
@@ -67,7 +67,7 @@ type Config struct {
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
-func LoadConfig(config *common.Config) (*Config, error) {
+func LoadConfig(config *ucfgwrap.Config) (*Config, error) {
 	var global ConfigDescriptor
 	err := config.Unpack(&global)
 	if err != nil {
@@ -75,7 +75,7 @@ func LoadConfig(config *common.Config) (*Config, error) {
 	}
 	registry := plugin.NewRegistry()
 	addPluginsToRegistry(&registry)
-	err = registry.LoadInstances(&global.Instances)
+	err = registry.LoadInstances(config, &global.Instances)
 	if err != nil {
 		return nil, err
 	}

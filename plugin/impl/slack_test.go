@@ -28,9 +28,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,7 +39,7 @@ var _ = Describe("The slack webhook plugin", func() {
 
 	It("should parse its config", func() {
 		configStr := "hook: http://example.com\nchannel: thechannel\nmessage: msg"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackWebhook
 		plugin, err := base.New(&config)
@@ -110,7 +110,7 @@ var _ = Describe("The slack thread plugin", func() {
 			"leaseName: lease\n" +
 			"leaseNamespace: default\n" +
 			"period: 1m\n"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base SlackThread
 		plugin, err := base.New(&config)

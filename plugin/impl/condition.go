@@ -20,8 +20,8 @@
 package impl
 
 import (
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -33,7 +33,7 @@ type Condition struct {
 }
 
 // New creates a new Condition instance with the given config.
-func (c *Condition) New(config *common.Config) (plugin.Checker, error) {
+func (c *Condition) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Type   string `config:"type" validate:"required"`
 		Status string `config:"status" validate:"required"`

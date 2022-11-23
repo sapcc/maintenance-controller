@@ -22,15 +22,15 @@ package impl
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The nodecount plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "count: 154"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base NodeCount
 		plugin, err := base.New(&config)

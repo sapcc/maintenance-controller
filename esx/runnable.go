@@ -23,9 +23,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -49,7 +51,7 @@ func (r *Runnable) NeedLeaderElection() bool {
 }
 
 func (r *Runnable) loadConfig() (Config, error) {
-	yamlConf, err := common.NewConfigFromYAMLFile(constants.EsxConfigFilePath)
+	yamlConf, err := ucfgwrap.FromYAMLFile(constants.EsxConfigFilePath, ucfg.VarExp, ucfg.ResolveEnv)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
 		// the controller is missconfigured, no need to requeue before the configuration is fixed

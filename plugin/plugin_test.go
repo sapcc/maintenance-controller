@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/go-ucfg/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/ucfgwrap"
 )
 
 func TestPlugins(t *testing.T) {
@@ -51,6 +52,14 @@ var _ = Describe("CheckError", func() {
 })
 
 var _ = Describe("Registry", func() {
+
+	var emptyConfig *ucfgwrap.Config
+
+	BeforeEach(func() {
+		cfg, err := ucfgwrap.FromJSON([]byte("{}"))
+		Expect(err).To(Succeed())
+		emptyConfig = &cfg
+	})
 
 	Context("is uninitialized", func() {
 
@@ -82,7 +91,7 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(Succeed())
 				var descriptor InstancesDescriptor
 				Expect(config.Unpack(&descriptor)).To(Succeed())
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.CheckInstances).To(HaveLen(1))
 				instance := registry.CheckInstances["test"]
@@ -107,7 +116,7 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(Succeed())
 				var descriptor InstancesDescriptor
 				Expect(config.Unpack(&descriptor)).To(Succeed())
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.NotificationInstances).To(HaveLen(1))
 				instance := registry.NotificationInstances["test"]
@@ -133,7 +142,7 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(Succeed())
 				var descriptor InstancesDescriptor
 				Expect(config.Unpack(&descriptor)).To(Succeed())
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.NotificationInstances).To(HaveLen(1))
 				instance := registry.NotificationInstances["test"]
@@ -154,7 +163,7 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(Succeed())
 				var descriptor InstancesDescriptor
 				Expect(config.Unpack(&descriptor)).To(Succeed())
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).To(Succeed())
 				Expect(registry.TriggerInstances).To(HaveLen(1))
 				instance := registry.TriggerInstances["test"]
@@ -174,7 +183,7 @@ var _ = Describe("Registry", func() {
 				if err != nil {
 					return
 				}
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).To(HaveOccurred())
 			}
 
@@ -327,7 +336,7 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(Succeed())
 				var descriptor InstancesDescriptor
 				Expect(config.Unpack(&descriptor)).To(Succeed())
-				err = registry.LoadInstances(&descriptor)
+				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).ToNot(Succeed())
 			})
 

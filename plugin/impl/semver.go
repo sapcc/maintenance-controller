@@ -23,10 +23,10 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
+	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -40,7 +40,7 @@ type ClusterSemver struct {
 	ProfileScoped bool
 }
 
-func (cs *ClusterSemver) New(config *common.Config) (plugin.Checker, error) {
+func (cs *ClusterSemver) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Key           string `config:"key" validate:"required"`
 		ProfileScoped bool   `config:"profileScoped"`

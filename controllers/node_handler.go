@@ -89,7 +89,7 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 
 		next, err := state.Apply(stateObj, params.node, data, pluginParams)
 		if err != nil {
-			return fmt.Errorf("Failed to apply current state: %w", err)
+			return fmt.Errorf("failed to apply current state: %w", err)
 		}
 		// check if a transition happened
 		if ps.State != next {

@@ -24,8 +24,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The wait plugin", func() {
@@ -33,7 +33,7 @@ var _ = Describe("The wait plugin", func() {
 	It("can parse its config", func() {
 		base := Wait{}
 		configStr := "duration: 0h12m"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
@@ -65,7 +65,7 @@ var _ = Describe("The waitExclude plugin", func() {
 	It("can parse its config", func() {
 		base := WaitExclude{}
 		configStr := "duration: 17m\nexclude: [\"tue\"]"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())

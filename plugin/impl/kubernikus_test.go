@@ -22,14 +22,14 @@ package impl
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 var _ = Describe("The KubernikusCount plugin", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "cluster: aCluster"
-		config, err := common.NewConfigFromYAML([]byte(configStr))
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base KubernikusCount
 		plugin, err := base.New(&config)

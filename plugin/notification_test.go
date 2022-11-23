@@ -26,7 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/ucfgwrap"
 )
 
 type successfulNotification struct {
@@ -38,7 +38,7 @@ func (n *successfulNotification) Notify(params Parameters) error {
 	return nil
 }
 
-func (n *successfulNotification) New(config *common.Config) (Notifier, error) {
+func (n *successfulNotification) New(config *ucfgwrap.Config) (Notifier, error) {
 	return &successfulNotification{}, nil
 }
 
@@ -51,7 +51,7 @@ func (n *failingNotification) Notify(params Parameters) error {
 	return errors.New("this notification is expected to fail")
 }
 
-func (n *failingNotification) New(config *common.Config) (Notifier, error) {
+func (n *failingNotification) New(config *ucfgwrap.Config) (Notifier, error) {
 	return &failingNotification{}, nil
 }
 
@@ -124,7 +124,7 @@ var _ = Describe("NotifyPeriodic", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "interval: 5m"
-		conf, err := common.NewConfigFromYAML([]byte(configStr))
+		conf, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		np, err := newNotifyPeriodic(&conf)
 		Expect(err).To(Succeed())
@@ -151,7 +151,7 @@ var _ = Describe("NotifyScheduled", func() {
 
 	It("can parse its configuration", func() {
 		configStr := "instant: \"15:23\"\nweekdays: [\"fri\", \"sat\"]\n"
-		conf, err := common.NewConfigFromYAML([]byte(configStr))
+		conf, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		ns, err := newNotifyScheduled(&conf)
 		Expect(err).To(Succeed())
