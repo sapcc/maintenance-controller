@@ -25,9 +25,6 @@ import (
 
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
-	"github.com/vmware/govmomi/property"
-	"github.com/vmware/govmomi/view"
-	"github.com/vmware/govmomi/vim25/mo"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	v1 "k8s.io/api/core/v1"
 )
@@ -49,34 +46,23 @@ func ShouldStart(node *v1.Node) bool {
 func ensureVMOn(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
 	client, err := vCenters.Client(ctx, info.AvailabilityZone)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to vCenter: %w", err)
+		return fmt.Errorf("failed to connect to vCenter: %w", err)
 	}
-	mgr := view.NewManager(client.Client)
-	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
-		[]string{"VirtualMachine"}, true)
+	movm, err := RetrieveVM(ctx, client, nodeName)
 	if err != nil {
-		return fmt.Errorf("Failed to create container view: %w", err)
+		return fmt.Errorf("failed to retrieve vm %s: %w", nodeName, err)
 	}
-	var vms []mo.VirtualMachine
-	err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"summary.runtime"},
-		&vms, property.Filter{"name": nodeName})
-	if err != nil {
-		return fmt.Errorf("Failed to retrieve VM %v", nodeName)
-	}
-	if len(vms) != 1 {
-		return fmt.Errorf("Expected to retrieve 1 VM from vCenter, but got %v", len(vms))
-	}
-	if vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn {
+	if movm.Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn {
 		return nil
 	}
-	vm := object.NewVirtualMachine(client.Client, vms[0].Self)
+	vm := object.NewVirtualMachine(client.Client, movm.Self)
 	task, err := vm.PowerOn(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to create poweron task for VM %v", nodeName)
+		return fmt.Errorf("failed to create poweron task for VM %v", nodeName)
 	}
 	taskResult, err := task.WaitForResult(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to await poweron task for VM %v", nodeName)
+		return fmt.Errorf("failed to await poweron task for VM %v", nodeName)
 	}
 	if taskResult.State != vctypes.TaskInfoStateSuccess {
 		return fmt.Errorf("VM %v poweron task was not successful", nodeName)

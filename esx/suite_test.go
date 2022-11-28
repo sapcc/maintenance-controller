@@ -69,6 +69,9 @@ intervals:
   podEviction:
     period: 1s
     timeout: 4s
+  vmShutdown:
+    period: 1s
+    timeout: 4s
 vCenters:
   templateUrl: http://loc$AZlhost:{{ .Port }}
   credentials:

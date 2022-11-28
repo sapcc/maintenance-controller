@@ -200,7 +200,14 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 			continue
 		}
 		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
-		err = ensureVMOff(ctx, vCenters, esx.HostInfo, node.Name)
+		err = EnsureVMOff(ctx, ShutdownParams{
+			VCenters: vCenters,
+			Info:     esx.HostInfo,
+			NodeName: node.Name,
+			Period:   conf.Intervals.VMShutdown.Period,
+			Timeout:  conf.Intervals.VMShutdown.Timeout,
+			Log:      r.Log,
+		})
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown node.", "node", node.Name)
 		}
@@ -310,7 +317,7 @@ func (r *Runnable) ensureLabel(ctx context.Context, esx *Host, key string, value
 			oneNode.Labels[key] = value
 			err := r.Patch(ctx, oneNode, client.MergeFrom(cloned))
 			if err != nil {
-				return fmt.Errorf("Failed to patch Label for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
+				return fmt.Errorf("failed to patch Label for node %v status on host %v: %w", oneNode.Name, esx.Name, err)
 			}
 		}
 	}
@@ -329,7 +336,7 @@ func (r *Runnable) ensureAnnotation(ctx context.Context, node *v1.Node, key, val
 		node.Annotations[key] = value
 		err := r.Patch(ctx, node, client.MergeFrom(cloned))
 		if err != nil {
-			return fmt.Errorf("Failed to patch Annotation for node %v: %w", node.Name, err)
+			return fmt.Errorf("failed to patch Annotation for node %v: %w", node.Name, err)
 		}
 	}
 	return nil

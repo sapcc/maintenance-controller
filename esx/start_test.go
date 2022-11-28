@@ -21,7 +21,9 @@ package esx
 
 import (
 	"context"
+	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
@@ -72,7 +74,14 @@ var _ = Describe("ensureVmOn", func() {
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}
-		err := ensureVMOff(context.Background(), vCenters, hostInfo, "firstvm")
+		err := EnsureVMOff(context.Background(), ShutdownParams{
+			VCenters: vCenters,
+			Info:     hostInfo,
+			NodeName: "firstvm",
+			Period:   1 * time.Second,
+			Timeout:  1 * time.Minute,
+			Log:      logr.Discard(),
+		})
 		Expect(err).To(Succeed())
 		err = ensureVMOn(context.Background(), vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())

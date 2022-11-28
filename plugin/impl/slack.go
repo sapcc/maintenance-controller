@@ -152,11 +152,11 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	if k8serrors.IsNotFound(err) {
 		parentTS, err := st.startThread(&params, api)
 		if err != nil {
-			return fmt.Errorf("Failed to create slack thread: %w", err)
+			return fmt.Errorf("failed to create slack thread: %w", err)
 		}
 		err = st.createLease(&params, parentTS)
 		if err != nil {
-			return fmt.Errorf("Failed to create slack thread lease %s: %w", st.LeaseName, err)
+			return fmt.Errorf("failed to create slack thread lease %s: %w", st.LeaseName, err)
 		}
 		return nil
 	} else if err != nil {
@@ -166,22 +166,22 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 		// post into thread
 		if lease.Spec.HolderIdentity == nil {
-			return fmt.Errorf("Slack Thread leases has no holder")
+			return fmt.Errorf("slack thread leases has no holder")
 		}
 		err := st.replyMessage(&params, api, *lease.Spec.HolderIdentity)
 		if err != nil {
-			return fmt.Errorf("Failed to reply to slack thread: %w", err)
+			return fmt.Errorf("failed to reply to slack thread: %w", err)
 		}
 		return nil
 	}
 	parentTS, err := st.startThread(&params, api)
 	if err != nil {
-		return fmt.Errorf("Failed to create slack thread: %w", err)
+		return fmt.Errorf("failed to create slack thread: %w", err)
 	}
 	// update Lease
 	err = st.updateLease(&params, parentTS, &lease)
 	if err != nil {
-		return fmt.Errorf("Failed to update slack thread lease %s: %w", st.LeaseName, err)
+		return fmt.Errorf("failed to update slack thread lease %s: %w", st.LeaseName, err)
 	}
 	return nil
 }
@@ -189,11 +189,11 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 func (st *SlackThread) startThread(params *plugin.Parameters, api *slack.Client) (string, error) {
 	parentTS, err := st.postTitle(params, api)
 	if err != nil {
-		return "", fmt.Errorf("Failed to post message to slack: %w", err)
+		return "", fmt.Errorf("failed to post message to slack: %w", err)
 	}
 	err = st.replyMessage(params, api, parentTS)
 	if err != nil {
-		return "", fmt.Errorf("Failed to reply to slack thread: %w", err)
+		return "", fmt.Errorf("failed to reply to slack thread: %w", err)
 	}
 	return parentTS, nil
 }

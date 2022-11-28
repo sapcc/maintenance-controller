@@ -21,15 +21,18 @@ package esx
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
-	"github.com/vmware/govmomi/property"
-	"github.com/vmware/govmomi/view"
-	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/soap"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // Checks, if all Nodes on an ESX need maintenance and are allowed to be shutdown.
@@ -53,40 +56,85 @@ func ShutdownAllowed(state Maintenance) bool {
 	return state == InMaintenance || state == AlarmMaintenance
 }
 
-func ensureVMOff(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName string) error {
-	client, err := vCenters.Client(ctx, info.AvailabilityZone)
+type ShutdownParams struct {
+	VCenters *VCenters
+	Info     HostInfo
+	NodeName string
+	Period   time.Duration
+	Timeout  time.Duration
+	Log      logr.Logger
+}
+
+func EnsureVMOff(ctx context.Context, params ShutdownParams) error {
+	client, err := params.VCenters.Client(ctx, params.Info.AvailabilityZone)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to vCenter: %w", err)
+		return fmt.Errorf("failed to connect to vCenter: %w", err)
 	}
-	mgr := view.NewManager(client.Client)
-	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
-		[]string{"VirtualMachine"}, true)
+	movm, err := RetrieveVM(ctx, client, params.NodeName)
 	if err != nil {
-		return fmt.Errorf("Failed to create container view: %w", err)
+		return fmt.Errorf("failed to retrieve vm %s: %w", params.NodeName, err)
 	}
-	var vms []mo.VirtualMachine
-	err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"summary.runtime"},
-		&vms, property.Filter{"name": nodeName})
-	if err != nil {
-		return fmt.Errorf("Failed to retrieve VM %v", nodeName)
-	}
-	if len(vms) != 1 {
-		return fmt.Errorf("Expected to retrieve 1 VM from vCenter, but got %v", len(vms))
-	}
-	if vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff {
+	if movm.Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff {
 		return nil
 	}
-	vm := object.NewVirtualMachine(client.Client, vms[0].Self)
+
+	vm := object.NewVirtualMachine(client.Client, movm.Self)
+	return shutdownVM(ctx, params.Log, client, params.NodeName, vm)
+}
+
+func shutdownVM(ctx context.Context, log logr.Logger, client *govmomi.Client, nodeName string, vm *object.VirtualMachine) error {
+	log = log.WithValues("node", nodeName)
+	err := vm.ShutdownGuest(ctx)
+	if err == nil {
+		err = pollPowerOff(ctx, client, nodeName)
+		if err == nil {
+			// no error => so VM is turned off
+			log.Info("graceful VM shutdown succeeded")
+			return nil
+		}
+		if !errors.Is(err, wait.ErrWaitTimeout) {
+			// not a timeout error => bubble up
+			return fmt.Errorf("failed to wait for guest OS shutdown: %w", err)
+		}
+		// timeout error force power off
+		log.Info("graceful shutdown timed out, will unplug the VM")
+	} else if !isToolsUnavailable(err) {
+		return fmt.Errorf("failed to shutdown guest OS for vm %s: %w", nodeName, err)
+	}
+	log.Info("unplugging VM")
+	// no guest tools, continue with force power off
 	task, err := vm.PowerOff(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to create poweroff task for VM %v", nodeName)
+		return fmt.Errorf("failed to create poweroff task for VM %v", nodeName)
 	}
 	taskResult, err := task.WaitForResult(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to await poweroff task for VM %v", nodeName)
+		return fmt.Errorf("failed to await poweroff task for VM %v", nodeName)
 	}
 	if taskResult.State != vctypes.TaskInfoStateSuccess {
 		return fmt.Errorf("VM %v poweroff task was not successful", nodeName)
 	}
 	return nil
+}
+
+func pollPowerOff(ctx context.Context, client *govmomi.Client, nodeName string) error {
+	return wait.PollWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (bool, error) {
+		vm, err := RetrieveVM(ctx, client, nodeName)
+		if err != nil {
+			return false, err
+		}
+		return vm.Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff, nil
+	})
+}
+
+func isToolsUnavailable(err error) bool {
+	// kindly copied from govmomi
+	if soap.IsSoapFault(err) {
+		soapFault := soap.ToSoapFault(err)
+		if _, ok := soapFault.VimFault().(vctypes.ToolsUnavailable); ok {
+			return ok
+		}
+	}
+
+	return false
 }

@@ -47,6 +47,10 @@ type Config struct {
 			Timeout time.Duration `config:"timeout" validate:"required"`
 			Force   bool          `config:"force"`
 		} `config:"podEviction" validate:"required"`
+		VMShutdown struct {
+			Period  time.Duration `config:"period" validate:"required"`
+			Timeout time.Duration `config:"timeout" validate:"required"`
+		} `config:"vmShutdown" validate:"required"`
 	} `config:"intervals" validate:"required"`
 	Alarms   []string
 	VCenters VCenters `config:"vCenters" validate:"required"`
@@ -86,7 +90,7 @@ func (vc *VCenters) URL(availabilityZone string) (*url.URL, error) {
 	}
 	cred, ok := vc.Credentials[availabilityZone]
 	if !ok {
-		return nil, fmt.Errorf("No vCenter credentials have been provided for availability zone %v", availabilityZone)
+		return nil, fmt.Errorf("no vCenter credentials have been provided for availability zone %v", availabilityZone)
 	}
 	vCenterURL.User = url.UserPassword(cred.Username, cred.Password)
 	return vCenterURL, nil
@@ -112,11 +116,11 @@ func (vc *VCenters) Client(ctx context.Context, availabilityZone string) (*govmo
 func (vc *VCenters) makeClient(ctx context.Context, availabilityZone string) (*govmomi.Client, error) {
 	url, err := vc.URL(availabilityZone)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to render vCenter URL: %w", err)
+		return nil, fmt.Errorf("failed to render vCenter URL: %w", err)
 	}
 	client, err := govmomi.NewClient(ctx, url, vc.Insecure)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create vCenter client: %w", err)
+		return nil, fmt.Errorf("failed to create vCenter client: %w", err)
 	}
 	return client, nil
 }

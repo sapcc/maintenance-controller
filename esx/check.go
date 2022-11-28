@@ -51,7 +51,7 @@ type CheckParameters struct {
 func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenance, error) {
 	client, err := params.VCenters.Client(ctx, params.Host.AvailabilityZone)
 	if err != nil {
-		return UnknownMaintenance, fmt.Errorf("Failed to check for esx host maintenance state: %w", err)
+		return UnknownMaintenance, fmt.Errorf("failed to check for esx host maintenance state: %w", err)
 	}
 	host, err := fetchHost(ctx, client.Client, params.Host.Name, []string{"runtime", "recentTask"})
 	if err != nil {
@@ -77,7 +77,7 @@ func CheckForMaintenance(ctx context.Context, params CheckParameters) (Maintenan
 	var tasks []mo.Task
 	err = client.Retrieve(ctx, taskRefs, []string{"info"}, &tasks)
 	if err != nil {
-		return UnknownMaintenance, fmt.Errorf("Failed to fetch recent task information for esx host %v: %w",
+		return UnknownMaintenance, fmt.Errorf("failed to fetch recent task information for esx host %v: %w",
 			params.Host.Name, err)
 	}
 	for _, task := range tasks {
@@ -115,17 +115,17 @@ func fetchHost(ctx context.Context, client *vim25.Client, hostname string, filte
 	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
 		[]string{"HostSystem"}, true)
 	if err != nil {
-		return mo.HostSystem{}, fmt.Errorf("Failed to create container view: %w", err)
+		return mo.HostSystem{}, fmt.Errorf("failed to create container view: %w", err)
 	}
 	var hss []mo.HostSystem
 	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, filter,
 		&hss, property.Filter{"name": hostname})
 	if err != nil {
-		return mo.HostSystem{}, fmt.Errorf("Failed to fetch runtime information for esx host %v: %w",
+		return mo.HostSystem{}, fmt.Errorf("failed to fetch runtime information for esx host %v: %w",
 			hostname, err)
 	}
 	if len(hss) != 1 {
-		return mo.HostSystem{}, fmt.Errorf("Expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
+		return mo.HostSystem{}, fmt.Errorf("expected to retrieve 1 esx host from vCenter, but got %v", len(hss))
 	}
 	return hss[0], nil
 }

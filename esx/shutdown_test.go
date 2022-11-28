@@ -23,6 +23,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/common"
@@ -202,10 +203,17 @@ var _ = Describe("ensureVmOff", func() {
 	})
 
 	It("should shutdown a VM", func() {
-		err := ensureVMOff(context.Background(), vCenters, HostInfo{
-			AvailabilityZone: vcServer.URL.Host,
-			Name:             HostSystemName,
-		}, "firstvm")
+		err := EnsureVMOff(context.Background(), ShutdownParams{
+			VCenters: vCenters,
+			Info: HostInfo{
+				AvailabilityZone: vcServer.URL.Host,
+				Name:             HostSystemName,
+			},
+			NodeName: "firstvm",
+			Period:   1 * time.Second,
+			Timeout:  1 * time.Minute,
+			Log:      logr.Discard(),
+		})
 		Expect(err).To(Succeed())
 
 		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
