@@ -79,14 +79,19 @@ func EnsureVMOff(ctx context.Context, params ShutdownParams) error {
 	}
 
 	vm := object.NewVirtualMachine(client.Client, movm.Self)
-	return shutdownVM(ctx, params.Log, client, params.NodeName, vm)
+	return shutdownVM(ctx, params.Log, vm, PollPowerOffParams{
+		client:   client,
+		nodeName: params.NodeName,
+		period:   params.Period,
+		timeout:  params.Timeout,
+	})
 }
 
-func shutdownVM(ctx context.Context, log logr.Logger, client *govmomi.Client, nodeName string, vm *object.VirtualMachine) error {
-	log = log.WithValues("node", nodeName)
+func shutdownVM(ctx context.Context, log logr.Logger, vm *object.VirtualMachine, params PollPowerOffParams) error {
+	log = log.WithValues("node", params.nodeName)
 	err := vm.ShutdownGuest(ctx)
 	if err == nil {
-		err = pollPowerOff(ctx, client, nodeName)
+		err = pollPowerOff(ctx, params)
 		if err == nil {
 			// no error => so VM is turned off
 			log.Info("graceful VM shutdown succeeded")
@@ -99,27 +104,34 @@ func shutdownVM(ctx context.Context, log logr.Logger, client *govmomi.Client, no
 		// timeout error force power off
 		log.Info("graceful shutdown timed out, will unplug the VM")
 	} else if !isToolsUnavailable(err) {
-		return fmt.Errorf("failed to shutdown guest OS for vm %s: %w", nodeName, err)
+		return fmt.Errorf("failed to shutdown guest OS for vm %s: %w", params.nodeName, err)
 	}
 	log.Info("unplugging VM")
 	// no guest tools, continue with force power off
 	task, err := vm.PowerOff(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create poweroff task for VM %v", nodeName)
+		return fmt.Errorf("failed to create poweroff task for VM %v", params.nodeName)
 	}
 	taskResult, err := task.WaitForResult(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to await poweroff task for VM %v", nodeName)
+		return fmt.Errorf("failed to await poweroff task for VM %v", params.nodeName)
 	}
 	if taskResult.State != vctypes.TaskInfoStateSuccess {
-		return fmt.Errorf("VM %v poweroff task was not successful", nodeName)
+		return fmt.Errorf("VM %v poweroff task was not successful", params.nodeName)
 	}
 	return nil
 }
 
-func pollPowerOff(ctx context.Context, client *govmomi.Client, nodeName string) error {
-	return wait.PollWithContext(ctx, 1*time.Second, 5*time.Minute, func(ctx context.Context) (bool, error) {
-		vm, err := RetrieveVM(ctx, client, nodeName)
+type PollPowerOffParams struct {
+	client   *govmomi.Client
+	nodeName string
+	period   time.Duration
+	timeout  time.Duration
+}
+
+func pollPowerOff(ctx context.Context, params PollPowerOffParams) error {
+	return wait.PollWithContext(ctx, params.period, params.timeout, func(ctx context.Context) (bool, error) {
+		vm, err := RetrieveVM(ctx, params.client, params.nodeName)
 		if err != nil {
 			return false, err
 		}
