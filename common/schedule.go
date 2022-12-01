@@ -66,7 +66,7 @@ func EnsureSchedulable(ctx context.Context, k8sClient client.Client, node *corev
 	node.Spec.Unschedulable = !schedulable
 	err := k8sClient.Patch(ctx, node, client.MergeFrom(cloned))
 	if err != nil {
-		return fmt.Errorf("Failed to set node %v as (un-)schedulable: %w", node.Name, err)
+		return fmt.Errorf("failed to set node %v as (un-)schedulable: %w", node.Name, err)
 	}
 	return nil
 }
@@ -112,7 +112,7 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		return fmt.Errorf("failed to delete/evict at least one pod: %w", err)
 	}
 	log.Info("Awaiting pod deletion.", "period", params.AwaitDeletion.Period,
-		"timeout", params.AwaitDeletion.Timeout)
+		"timeout", params.AwaitDeletion.Timeout, "count", len(deletable), "node", node.Name)
 	err = WaitForPodDeletions(ctx, params.Client, deletable, params.AwaitDeletion)
 	if err != nil {
 		return fmt.Errorf("failed to await pod deletions: %w", err)
@@ -152,6 +152,7 @@ func GetPodsForDrain(ctx context.Context, k8sClient client.Client, nodeName stri
 
 func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod, gracePeriodSeconds *int64) error {
 	var sumErr error
+	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
 		err := k8sClient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: gracePeriodSeconds})
@@ -168,7 +169,9 @@ func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
 		return nil
 	}
 	waiters := make([]WaitFunc, 0)
-	for _, pod := range pods {
+	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
+	for i := range pods {
+		pod := pods[i]
 		waiters = append(waiters, func() error {
 			return evictPod(ctx, ki, pod, version, params, gracePeriodSeconds)
 		})
@@ -212,7 +215,9 @@ func WaitForPodDeletions(ctx context.Context, client client.Client, pods []corev
 		return nil
 	}
 	waiters := make([]WaitFunc, 0)
-	for _, pod := range pods {
+	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
+	for i := range pods {
+		pod := pods[i]
 		waiters = append(waiters, func() error {
 			return waitForPodDeletion(ctx, client, pod, params)
 		})
