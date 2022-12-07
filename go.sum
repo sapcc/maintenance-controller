@@ -243,6 +243,8 @@ github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5m
 github.com/googleapis/gax-go/v2 v2.1.0/go.mod h1:Q3nei7sK6ybPYH7twZdmQpAd1MKb7pfu6SK+H1/DsU0=
 github.com/gophercloud/gophercloud v1.1.0 h1:xlsBMeBi0KJ56RBW6GJ2laJJKbtlpObj5HwQzggYAsA=
 github.com/gophercloud/gophercloud v1.1.0/go.mod h1:aAVqcocTSXh2vYFZ1JTvx4EQmfgzxRcNupUfxZbBNDM=
+github.com/gophercloud/gophercloud v1.1.1 h1:MuGyqbSxiuVBqkPZ3+Nhbytk1xZxhmfCB2Rg1cJWFWM=
+github.com/gophercloud/gophercloud v1.1.1/go.mod h1:aAVqcocTSXh2vYFZ1JTvx4EQmfgzxRcNupUfxZbBNDM=
 github.com/gophercloud/utils v0.0.0-20221128194715-5caf33c866da h1:50QooRtRu+HVucCMrBO6RzmoxFClnQvFDTijBkIivwQ=
 github.com/gophercloud/utils v0.0.0-20221128194715-5caf33c866da/go.mod h1:gY7sdkpsI1IjTD9krr+XXywtsfhcrPx1Nu2DFLGZWWg=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
