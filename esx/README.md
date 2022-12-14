@@ -36,6 +36,11 @@ intervals:
   podDeletion:
     period: 5s # required
     timeout: 2m # required
+  # Defines how long to wait for a VM to shut down gracefully.
+  # If a VM does not terminate within timeout it will be "unplugged the hard way"
+  vmShutdown:
+    period: 5s # required
+    timeout: 2m # required
   # Defines how long and frequent to try to evict pods
   podEviction:
     period: 20s
