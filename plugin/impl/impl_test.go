@@ -28,5 +28,5 @@ import (
 
 func TestPluginImplementations(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Plugin Suite")
+	RunSpecs(t, "Plugin Implementation Suite")
 }

@@ -36,9 +36,9 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-func TestPlugins(t *testing.T) {
+func TestState(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Plugin Suite")
+	RunSpecs(t, "State Suite")
 }
 
 type mockTrigger struct {
