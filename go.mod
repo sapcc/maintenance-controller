@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.24.2
 	github.com/prometheus/client_golang v1.14.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
-	github.com/slack-go/slack v0.12.0
+	github.com/slack-go/slack v0.12.1
 	github.com/vmware/govmomi v0.30.0
 	go.uber.org/zap v1.24.0
 	gopkg.in/ini.v1 v1.67.0
