@@ -1,5 +1,5 @@
 # Maintenance Controller
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/sapcc/maintenance-controller/Build%20and%20run%20tests)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/sapcc/maintenance-controller/test_workflow.yaml?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/sapcc/maintenance-controller/badge.svg)](https://coveralls.io/github/sapcc/maintenance-controller)
 ![Docker Pulls](https://img.shields.io/docker/pulls/sapcc/maintenance-controller)
 

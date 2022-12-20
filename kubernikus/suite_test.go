@@ -42,7 +42,7 @@ import (
 
 const cloudprovider string = `
 [Global]
-auth-url="https://identity-3.qa-de-1.cloud.sap/v3/"
+auth-url="https://localhost/garbage/"
 domain-name="kubernikus"
 tenant-id="id"
 username="user"
@@ -96,6 +96,7 @@ var _ = BeforeSuite(func() {
 		Scheme:             scheme.Scheme,
 		MetricsBindAddress: "0",
 		EventBroadcaster:   event.NewNodeBroadcaster(),
+		Logger:             GinkgoLogr,
 	})
 	Expect(err).ToNot(HaveOccurred())
 

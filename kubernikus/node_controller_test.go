@@ -63,11 +63,19 @@ var _ = Describe("The kubernikus controller", func() {
 	}
 
 	BeforeEach(func() {
+		node = nil
 		nodeName = types.NamespacedName{Namespace: "default", Name: "thenode"}
 	})
 
 	AfterEach(func() {
-		Expect(k8sClient.Delete(context.Background(), node)).To(Succeed())
+		if node != nil {
+			Expect(k8sClient.Delete(context.Background(), node)).To(Succeed())
+			Eventually(func(g Gomega) int {
+				var nodes v1.NodeList
+				g.Expect(k8sClient.List(context.Background(), &nodes)).To(Succeed())
+				return len(nodes.Items)
+			}).Should(Equal(0))
+		}
 	})
 
 	It("marks an outdated node for update", func() {
@@ -75,6 +83,7 @@ var _ = Describe("The kubernikus controller", func() {
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(result.Labels).To(HaveKey(constants.KubeletUpdateLabelKey))
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal(constants.TrueStr))
 	})
@@ -84,6 +93,7 @@ var _ = Describe("The kubernikus controller", func() {
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(result.Labels).To(HaveKey(constants.KubeletUpdateLabelKey))
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal("false"))
 	})
@@ -93,6 +103,7 @@ var _ = Describe("The kubernikus controller", func() {
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
+			g.Expect(result.Labels).To(HaveKey(constants.KubeletUpdateLabelKey))
 			return result.Labels[constants.KubeletUpdateLabelKey]
 		}).Should(Equal(constants.TrueStr))
 	})
@@ -117,11 +128,9 @@ var _ = Describe("The kubernikus controller", func() {
 	})
 
 	It("loads the openstack config", func() {
-		// still need to initialize a node, so the cleanup works
-		initNode("v1.19.2")
 		conf, err := common.LoadOpenStackConfig()
 		Expect(err).To(Succeed())
-		Expect(conf.AuthURL).To(Equal("https://identity-3.qa-de-1.cloud.sap/v3/"))
+		Expect(conf.AuthURL).To(Equal("https://localhost/garbage/"))
 		Expect(conf.Password).To(Equal("pw"))
 		Expect(conf.Region).To(Equal("qa-de-1"))
 		Expect(conf.Username).To(Equal("user"))

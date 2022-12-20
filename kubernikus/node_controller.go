@@ -85,22 +85,25 @@ type NodeReconciler struct {
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	conf, err := r.loadConfig()
 	if err != nil {
-		return ctrl.Result{}, err
+		r.Log.Error(err, "Failed to load Kubernikus configuration")
+		return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, err
 	}
 
 	node := &v1.Node{}
 	err = r.Get(ctx, req.NamespacedName, node)
 	if errors.IsNotFound(err) {
 		r.Log.Info("Could not find node on the API server, maybe it has been deleted?", "node", req.NamespacedName)
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
 	} else if err != nil {
-		return ctrl.Result{}, err
+		r.Log.Error(err, "Failed to retrieve node", "node", req.Name)
+		return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
 	}
 
 	// mark kubelet update
 	err = r.markUpdate(ctx, node)
 	if err != nil {
-		return ctrl.Result{}, err
+		r.Log.Error(err, "failed to mark node for kubelet upgrade", "node", node.Name)
+		return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
 	}
 
 	// delete if requested
@@ -122,7 +125,8 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			},
 		)
 		if err != nil {
-			return ctrl.Result{}, err
+			r.Log.Error(err, "failed to remove Kubernikus node", "node", node.Name)
+			return ctrl.Result{RequeueAfter: conf.Intervals.Requeue}, nil
 		}
 	}
 
