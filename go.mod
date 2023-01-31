@@ -7,14 +7,14 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.6
 	github.com/go-logr/logr v1.2.3
-	github.com/gophercloud/gophercloud v1.1.1
+	github.com/gophercloud/gophercloud v1.2.0
 	github.com/gophercloud/utils v0.0.0-20221207145018-e8fba78967ca
-	github.com/onsi/ginkgo/v2 v2.7.0
+	github.com/onsi/ginkgo/v2 v2.8.0
 	github.com/onsi/gomega v1.26.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.12.1
-	github.com/vmware/govmomi v0.30.0
+	github.com/vmware/govmomi v0.30.1
 	go.uber.org/zap v1.24.0
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.26.1
@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v0.26.1
 	k8s.io/klog/v2 v2.90.0
 	k8s.io/utils v0.0.0-20230115233650-391b47cb4029
-	sigs.k8s.io/controller-runtime v0.14.1
+	sigs.k8s.io/controller-runtime v0.14.2
 )
 
 require (
@@ -74,8 +74,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.0 // indirect
-	k8s.io/component-base v0.26.0 // indirect
+	k8s.io/apiextensions-apiserver v0.26.1 // indirect
+	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect

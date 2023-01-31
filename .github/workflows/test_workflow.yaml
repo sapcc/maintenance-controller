@@ -69,7 +69,7 @@ jobs:
           key: ${{ runner.os }}-kubebuilder-${{ hashFiles('Makefile') }}
 
       - name: Install Ginkgo CLI
-        run: go install github.com/onsi/ginkgo/v2/ginkgo@v2.7.0
+        run: go install github.com/onsi/ginkgo/v2/ginkgo@v2.8.0
 
       - name: Run tests and generate coverage
         run: |
