@@ -3,7 +3,7 @@ module github.com/sapcc/maintenance-controller
 go 1.19
 
 require (
-	github.com/PaesslerAG/gval v1.2.1
+	github.com/PaesslerAG/gval v1.2.2
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.6
 	github.com/go-logr/logr v1.2.3
