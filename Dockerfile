@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.19-alpine as builder
+FROM golang:1.20-alpine as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -10,14 +10,14 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY ./ /workspace/
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o maintenance-controller main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 LABEL source_repository="https://github.com/sapcc/maintenance-controller"
-COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/maintenance-controller .
 USER nonroot:nonroot
 
-ENTRYPOINT ["/manager"]
+ENTRYPOINT ["/maintenance-controller"]
