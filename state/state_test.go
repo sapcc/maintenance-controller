@@ -124,7 +124,7 @@ func (c *mockCheck) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &mockCheck{}, nil
 }
 
-func (c *mockCheck) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (c *mockCheck) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 

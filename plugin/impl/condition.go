@@ -54,6 +54,6 @@ func (c *Condition) Check(params plugin.Parameters) (bool, error) {
 	return false, nil
 }
 
-func (c *Condition) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (c *Condition) OnTransition(params plugin.Parameters) error {
 	return nil
 }

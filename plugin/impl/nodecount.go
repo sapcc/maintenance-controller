@@ -50,6 +50,6 @@ func (n *NodeCount) Check(params plugin.Parameters) (bool, error) {
 	return len(nodeList.Items) >= n.Count, nil
 }
 
-func (n *NodeCount) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (n *NodeCount) OnTransition(params plugin.Parameters) error {
 	return nil
 }

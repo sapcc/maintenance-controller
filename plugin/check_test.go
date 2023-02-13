@@ -41,7 +41,7 @@ func (c *trueCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &trueCheck{}, nil
 }
 
-func (c *trueCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *trueCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
@@ -58,7 +58,7 @@ func (c *falseCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &falseCheck{}, nil
 }
 
-func (c *falseCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *falseCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
@@ -75,7 +75,7 @@ func (c *errorCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &errorCheck{}, nil
 }
 
-func (c *errorCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *errorCheck) OnTransition(params Parameters) error {
 	return nil
 }
 

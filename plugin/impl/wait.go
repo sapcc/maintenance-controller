@@ -54,7 +54,7 @@ func (w *Wait) Check(params plugin.Parameters) (bool, error) {
 	return false, nil
 }
 
-func (w *Wait) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (w *Wait) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 
@@ -147,6 +147,6 @@ func isSameDay(t, u time.Time) bool {
 	return tyear == uyear && tmonth == umonth && tday == uday
 }
 
-func (we *WaitExclude) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (we *WaitExclude) OnTransition(params plugin.Parameters) error {
 	return nil
 }

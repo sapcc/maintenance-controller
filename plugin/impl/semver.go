@@ -100,6 +100,6 @@ func filterByProfile(nodes []v1.Node, profile string) []v1.Node {
 	return filtered
 }
 
-func (cs *ClusterSemver) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (cs *ClusterSemver) OnTransition(params plugin.Parameters) error {
 	return nil
 }

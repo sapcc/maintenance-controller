@@ -55,7 +55,7 @@ func (h *HasAnnotation) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
-func (h *HasAnnotation) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (h *HasAnnotation) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 

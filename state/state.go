@@ -207,6 +207,12 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans [
 		if !shouldTransition {
 			continue
 		}
+		for _, check := range transition.Check.Plugins {
+			err = check.Plugin.OnTransition(params)
+			if err != nil {
+				return current, err
+			}
+		}
 		// ensure only one profile can be in-maintenance at a time.
 		if transition.Next == InMaintenance && params.InMaintenance {
 			return current, nil

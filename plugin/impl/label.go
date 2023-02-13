@@ -55,7 +55,7 @@ func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
 	return val == h.Value, nil
 }
 
-func (h *HasLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (h *HasLabel) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 
@@ -93,7 +93,7 @@ func (a *AnyLabel) Check(params plugin.Parameters) (bool, error) {
 	return false, nil
 }
 
-func (a *AnyLabel) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (a *AnyLabel) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 

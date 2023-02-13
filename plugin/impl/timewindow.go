@@ -119,6 +119,6 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 	return compare.After(tw.Start) && compare.Before(tw.End)
 }
 
-func (tw *TimeWindow) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (tw *TimeWindow) OnTransition(params plugin.Parameters) error {
 	return nil
 }

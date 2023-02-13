@@ -73,6 +73,6 @@ func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
 	return true, nil
 }
 
-func (m *MaxMaintenance) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (m *MaxMaintenance) OnTransition(params plugin.Parameters) error {
 	return nil
 }

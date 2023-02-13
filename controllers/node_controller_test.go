@@ -359,7 +359,7 @@ var _ = Describe("The stagger plugin", func() {
 	checkNode := func(stagger *impl.Stagger, node *corev1.Node) bool {
 		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		err = stagger.AfterEval(result, plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
+		err = stagger.OnTransition(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		return result
 	}
@@ -381,13 +381,13 @@ var _ = Describe("The stagger plugin", func() {
 
 	It("grabs the lease after it timed out", func() {
 		stagger := impl.Stagger{
-			Duration:       3 * time.Second,
+			Duration:       1 * time.Second,
 			LeaseName:      leaseName.Name,
 			LeaseNamespace: leaseName.Namespace,
 			Parallel:       1,
 		}
 		checkNode(&stagger, firstNode)
-		time.Sleep(4 * time.Second)
+		time.Sleep(2 * time.Second)
 		result := checkNode(&stagger, secondNode)
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
@@ -408,6 +408,26 @@ var _ = Describe("The stagger plugin", func() {
 		}
 		Expect(checkNode(&stagger, firstNode)).To(BeTrue())
 		Expect(checkNode(&stagger, secondNode)).To(BeTrue())
+	})
+
+	It("does not grab the lease if it did not contribute to passing the check chain", func() {
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
+		result := checkNode(&stagger, firstNode)
+		Expect(result).To(BeTrue())
+		result = checkNode(&stagger, secondNode)
+		Expect(result).To(BeFalse())
+		lease := &coordinationv1.Lease{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: metav1.NamespaceDefault,
+			Name:      stagger.LeaseName + "-0",
+		}, lease)
+		Expect(err).To(Succeed())
+		Expect(*lease.Spec.HolderIdentity).To(Equal("firstnode"))
 	})
 
 })

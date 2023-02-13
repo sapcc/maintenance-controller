@@ -130,6 +130,6 @@ func hasOperationalAffinity(pod *v1.Pod) bool {
 	return false
 }
 
-func (a *Affinity) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (a *Affinity) OnTransition(params plugin.Parameters) error {
 	return nil
 }

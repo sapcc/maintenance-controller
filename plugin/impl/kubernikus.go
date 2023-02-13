@@ -118,6 +118,6 @@ func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, err
 	return result, nil
 }
 
-func (kc *KubernikusCount) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (kc *KubernikusCount) OnTransition(params plugin.Parameters) error {
 	return nil
 }

@@ -40,7 +40,7 @@ var _ = Describe("The nodecount plugin", func() {
 
 	It("does not fail in AfterEval", func() {
 		var count NodeCount
-		Expect(count.AfterEval(false, plugin.Parameters{})).To(Succeed())
+		Expect(count.OnTransition(plugin.Parameters{})).To(Succeed())
 	})
 
 })
