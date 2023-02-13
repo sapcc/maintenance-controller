@@ -44,15 +44,15 @@ func (h *HasLabel) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check checks whether a node has a label (if h.Value == "") or a label with a certain value (if h.Value != "").
-func (h *HasLabel) Check(params plugin.Parameters) (bool, error) {
+func (h *HasLabel) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	val, ok := params.Node.Labels[h.Key]
 	if !ok {
-		return false, nil
+		return plugin.Failed(nil), nil
 	}
 	if h.Value == "" {
-		return true, nil
+		return plugin.Passed(nil), nil
 	}
-	return val == h.Value, nil
+	return plugin.CheckResult{Passed: val == h.Value}, nil
 }
 
 func (h *HasLabel) OnTransition(params plugin.Parameters) error {
@@ -75,11 +75,11 @@ func (a *AnyLabel) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &AnyLabel{Key: conf.Key, Value: conf.Value}, nil
 }
 
-func (a *AnyLabel) Check(params plugin.Parameters) (bool, error) {
+func (a *AnyLabel) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	var nodes v1.NodeList
 	err := params.Client.List(params.Ctx, &nodes)
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
 	for _, node := range nodes.Items {
 		val, ok := node.Labels[a.Key]
@@ -87,10 +87,10 @@ func (a *AnyLabel) Check(params plugin.Parameters) (bool, error) {
 			continue
 		}
 		if a.Value == "" || a.Value == val {
-			return true, nil
+			return plugin.Passed(nil), nil
 		}
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
 func (a *AnyLabel) OnTransition(params plugin.Parameters) error {

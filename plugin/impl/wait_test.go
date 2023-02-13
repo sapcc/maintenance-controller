@@ -46,7 +46,7 @@ var _ = Describe("The wait plugin", func() {
 			LastTransition: time.Now().UTC().Add(-12 * time.Minute),
 		})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("fails if the time has not passed", func() {
@@ -55,7 +55,7 @@ var _ = Describe("The wait plugin", func() {
 			LastTransition: time.Now().UTC().Add(-12 * time.Minute),
 		})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 })
@@ -74,7 +74,7 @@ var _ = Describe("The waitExclude plugin", func() {
 	})
 
 	checkWaitExclude := func(we *WaitExclude, transition, now time.Time) bool {
-		return we.checkInternal(&plugin.Parameters{LastTransition: transition}, now)
+		return we.checkInternal(&plugin.Parameters{LastTransition: transition}, now).Passed
 	}
 
 	Context("with a duration of one hour and no exclusions", func() {

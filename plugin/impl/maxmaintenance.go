@@ -48,18 +48,18 @@ func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that no more then the specified amount of nodes is in the in-maintenance state.
-func (m *MaxMaintenance) Check(params plugin.Parameters) (bool, error) {
+func (m *MaxMaintenance) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	var nodeList corev1.NodeList
 	err := params.Client.List(params.Ctx, &nodeList, client.MatchingLabels{
 		constants.StateLabelKey: string(state.InMaintenance),
 	})
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
 	return m.checkInternal(&nodeList)
 }
 
-func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
+func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (plugin.CheckResult, error) {
 	inMaintenance := 0
 	for _, node := range nodes.Items {
 		profiles, ok := node.Labels[constants.ProfileLabelKey]
@@ -68,9 +68,9 @@ func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (bool, error) {
 		}
 	}
 	if inMaintenance >= m.MaxNodes {
-		return false, nil
+		return plugin.Failed(nil), nil
 	}
-	return true, nil
+	return plugin.Passed(nil), nil
 }
 
 func (m *MaxMaintenance) OnTransition(params plugin.Parameters) error {

@@ -45,13 +45,13 @@ func (c *Condition) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that the given status matches the specified condition.
-func (c *Condition) Check(params plugin.Parameters) (bool, error) {
+func (c *Condition) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	for _, condition := range params.Node.Status.Conditions {
 		if condition.Type == v1.NodeConditionType(c.Type) {
-			return condition.Status == v1.ConditionStatus(c.Status), nil
+			return plugin.CheckResult{Passed: condition.Status == v1.ConditionStatus(c.Status)}, nil
 		}
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
 func (c *Condition) OnTransition(params plugin.Parameters) error {

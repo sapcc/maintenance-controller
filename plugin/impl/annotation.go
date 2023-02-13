@@ -44,15 +44,15 @@ func (h *HasAnnotation) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 
 // Check checks whether a node has an annotation (if h.Value == "")
 // or an annotation with a certain value (if h.Value != "").
-func (h *HasAnnotation) Check(params plugin.Parameters) (bool, error) {
+func (h *HasAnnotation) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	val, ok := params.Node.Annotations[h.Key]
 	if !ok {
-		return false, nil
+		return plugin.Failed(nil), nil
 	}
 	if h.Value == "" {
-		return true, nil
+		return plugin.Passed(nil), nil
 	}
-	return val == h.Value, nil
+	return plugin.CheckResult{Passed: val == h.Value}, nil
 }
 
 func (h *HasAnnotation) OnTransition(params plugin.Parameters) error {

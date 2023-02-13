@@ -84,37 +84,37 @@ var _ = Describe("The Timewindow plugin", func() {
 		It("passes at 11:00 on monday", func() {
 			targetDate := time.Date(2020, time.June, 29, 11, 0, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("passes at 15:00 on tuesday", func() {
 			targetDate := time.Date(2020, time.June, 30, 15, 0, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("fails at 15:30 on tuesday", func() {
 			targetDate := time.Date(2020, time.June, 30, 15, 30, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("fails at 10:29 on monday", func() {
 			targetDate := time.Date(2020, time.June, 29, 10, 29, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("fails at 11:00 on thursday", func() {
 			targetDate := time.Date(2020, time.June, 25, 11, 0, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("fails at 15:00 on thursday", func() {
 			targetDate := time.Date(2020, time.June, 25, 15, 0, 0, 0, time.UTC)
 			result := plugin.checkInternal(targetDate)
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		Context("and an exclusion for february 2nd", func() {
@@ -133,7 +133,7 @@ var _ = Describe("The Timewindow plugin", func() {
 			It("fails at 15:00 on tuesday february 2nd 2021", func() {
 				targetDate := time.Date(2021, 2, 2, 15, 0, 0, 0, time.UTC)
 				result := plugin.checkInternal(targetDate)
-				Expect(result).To(BeFalse())
+				Expect(result.Passed).To(BeFalse())
 			})
 
 		})

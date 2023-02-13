@@ -65,19 +65,19 @@ func (s *Stagger) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that since the last successful check is a certain time has passed.
-func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
+func (s *Stagger) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	s.grabIndex = noGrab
 	for i := 0; i < s.Parallel; i++ {
 		lease, err := s.getOrCreateLease(i, &params)
 		if err != nil {
-			return false, err
+			return plugin.Failed(nil), err
 		}
 		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 			s.grabIndex = i
-			return true, nil
+			return plugin.Passed(nil), nil
 		}
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
 func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordinationv1.Lease, error) {

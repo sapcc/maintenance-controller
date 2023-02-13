@@ -26,12 +26,25 @@ import (
 	"github.com/sapcc/ucfgwrap"
 )
 
+type CheckResult struct {
+	Passed bool
+	Info   map[string]any
+}
+
+func Passed(info map[string]any) CheckResult {
+	return CheckResult{Passed: true, Info: info}
+}
+
+func Failed(info map[string]any) CheckResult {
+	return CheckResult{Passed: false, Info: info}
+}
+
 // Checker is the interface that check plugins need to implement.
 // Check plugins have to be idempotent, as they are invoked multiple times.
 // A zero-initialized check plugin should not actually work as it is used
 // to create the actual usable configured instances.
 type Checker interface {
-	Check(params Parameters) (bool, error)
+	Check(params Parameters) (CheckResult, error)
 	New(config *ucfgwrap.Config) (Checker, error)
 	// OnTransition is invoked once evaluation the CheckChain this instance is the cause for a transition.
 	OnTransition(params Parameters) error
@@ -66,7 +79,7 @@ func (chain *CheckChain) Execute(params Parameters) (bool, error) {
 				Err:     err,
 			}
 		}
-		evalParams[check.Name] = result
+		evalParams[check.Name] = result.Passed
 	}
 	if params.LogDetails {
 		params.Log.Info("results of check plugins", "node", params.Node.Name, "checks", evalParams)

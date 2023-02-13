@@ -32,9 +32,9 @@ type trueCheck struct {
 	Invoked int
 }
 
-func (c *trueCheck) Check(params Parameters) (bool, error) {
+func (c *trueCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return true, nil
+	return Passed(nil), nil
 }
 
 func (c *trueCheck) New(config *ucfgwrap.Config) (Checker, error) {
@@ -49,9 +49,9 @@ type falseCheck struct {
 	Invoked int
 }
 
-func (c *falseCheck) Check(params Parameters) (bool, error) {
+func (c *falseCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return false, nil
+	return Failed(nil), nil
 }
 
 func (c *falseCheck) New(config *ucfgwrap.Config) (Checker, error) {
@@ -66,9 +66,9 @@ type errorCheck struct {
 	Invoked int
 }
 
-func (c *errorCheck) Check(params Parameters) (bool, error) {
+func (c *errorCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return false, errors.New("this check is expected to fail")
+	return Failed(nil), errors.New("this check is expected to fail")
 }
 
 func (c *errorCheck) New(config *ucfgwrap.Config) (Checker, error) {

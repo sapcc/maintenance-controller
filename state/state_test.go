@@ -112,12 +112,12 @@ type mockCheck struct {
 	Invoked int
 }
 
-func (c *mockCheck) Check(params plugin.Parameters) (bool, error) {
+func (c *mockCheck) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	c.Invoked++
 	if c.Fail {
-		return false, errors.New("expected to fail")
+		return plugin.Failed(nil), errors.New("expected to fail")
 	}
-	return c.Result, nil
+	return plugin.CheckResult{Passed: c.Result}, nil
 }
 
 func (c *mockCheck) New(config *ucfgwrap.Config) (plugin.Checker, error) {

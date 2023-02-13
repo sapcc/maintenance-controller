@@ -51,19 +51,19 @@ func (cs *ClusterSemver) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &ClusterSemver{Key: conf.Key, ProfileScoped: conf.ProfileScoped}, nil
 }
 
-func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
+func (cs *ClusterSemver) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	versionStr, ok := params.Node.Labels[cs.Key]
 	if !ok {
-		return false, fmt.Errorf("node does not have label %s containing version", cs.Key)
+		return plugin.Failed(nil), fmt.Errorf("node does not have label %s containing version", cs.Key)
 	}
 	ownVersion, err := semver.Parse(versionStr)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse current nodes version label: %w", err)
+		return plugin.Failed(nil), fmt.Errorf("failed to parse current nodes version label: %w", err)
 	}
 	var nodeList v1.NodeList
 	err = params.Client.List(params.Ctx, &nodeList, client.HasLabels{cs.Key})
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
 	nodes := nodeList.Items
 	if cs.ProfileScoped {
@@ -73,7 +73,7 @@ func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
 	for _, node := range nodes {
 		versionStr, ok := node.Labels[cs.Key]
 		if !ok {
-			return false, fmt.Errorf("node labels do not contain %s although filtered on it", cs.Key)
+			return plugin.Failed(nil), fmt.Errorf("node labels do not contain %s although filtered on it", cs.Key)
 		}
 		version, err := semver.Parse(versionStr)
 		if err != nil {
@@ -83,7 +83,7 @@ func (cs *ClusterSemver) Check(params plugin.Parameters) (bool, error) {
 			maxVersion = version
 		}
 	}
-	return ownVersion.LT(maxVersion), nil
+	return plugin.CheckResult{Passed: ownVersion.LT(maxVersion)}, nil
 }
 
 func filterByProfile(nodes []v1.Node, profile string) []v1.Node {
