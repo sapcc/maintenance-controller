@@ -184,7 +184,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		Address:       cfg.metricsAddr,
 		Log:           ctrl.Log.WithName("metrics"),
 		WaitTimeout:   cfg.metricsTimeout,
-		NodeInfoCache: cache.NewNodeInfoCache(),
+		NodeInfoCache: nodeInfoCache,
 	}
 	if err := mgr.Add(&apiServer); err != nil {
 		return fmt.Errorf("Failed to attach prometheus metrics server: %w", err)
