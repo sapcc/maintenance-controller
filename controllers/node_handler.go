@@ -87,14 +87,14 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder,
 			LogDetails: logDetails}
 
-		next, err := state.Apply(stateObj, params.node, data, pluginParams)
+		applied, err := state.Apply(stateObj, params.node, data, pluginParams)
 		if err != nil {
 			return fmt.Errorf("failed to apply current state: %w", err)
 		}
 		// check if a transition happened
-		if ps.State != next {
+		if ps.State != applied.Next {
 			data.LastTransition = time.Now().UTC()
-			data.ProfileStates[ps.Profile.Name] = next
+			data.ProfileStates[ps.Profile.Name] = applied.Next
 		}
 		// track the state of this reconciliation for the next run
 		data.PreviousStates[ps.Profile.Name] = stateObj.Label()

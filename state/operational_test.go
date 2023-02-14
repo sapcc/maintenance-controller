@@ -100,6 +100,7 @@ var _ = Describe("Operational State", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Required))
 			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).To(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 
@@ -110,6 +111,7 @@ var _ = Describe("Operational State", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).To(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 
@@ -120,6 +122,7 @@ var _ = Describe("Operational State", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).ToNot(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 

@@ -86,6 +86,17 @@ type TransitionsResult struct {
 	Infos []TransitionResult
 }
 
+type ApplyResult struct {
+	Next        NodeStateLabel
+	Transitions []TransitionResult
+	Error       string
+}
+
+type ProfileResult struct {
+	Applied ApplyResult
+	Name    string
+}
+
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
 	Notification plugin.NotificationChain
@@ -160,14 +171,16 @@ func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 // and invokes all trigger plugins if a transitions happens.
 // Returns the next node state.
 // In case of an error state.Label() is retuned alongside with the error.
-func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (NodeStateLabel, error) {
+func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (ApplyResult, error) {
 	recorder := params.Recorder
+	result := ApplyResult{Next: state.Label(), Transitions: []TransitionResult{}}
 	if data.PreviousStates[params.Profile] != data.ProfileStates[params.Profile] {
 		if err := state.Enter(params, data); err != nil {
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 				"Failed to enter state for profile %v: Will stay in %v state",
 				params.Profile, params.State)
-			return state.Label(), fmt.Errorf("failed to enter state %v for profile %v: %w", state.Label(), params.Profile, err)
+			result.Error = err.Error()
+			return result, fmt.Errorf("failed to enter state %v for profile %v: %w", state.Label(), params.Profile, err)
 		}
 	}
 	// invoke notifications and check for transition
@@ -178,16 +191,19 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			params.Profile, params.State)
 		params.Log.Error(err, "Failed to notify", "state", params.State,
 			"profile", params.Profile)
-		return state.Label(), fmt.Errorf("failed to notify for profile %v: %w", params.Profile, err)
+		result.Error = err.Error()
+		return result, fmt.Errorf("failed to notify for profile %v: %w", params.Profile, err)
 	}
 	transitions, err := state.Transition(params, data)
+	result.Transitions = transitions.Infos
 	if err != nil {
 		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 			"At least one check plugin failed for profile %v: Will stay in %v state",
 			params.Profile, params.State)
 		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
 			"profile", params.Profile)
-		return state.Label(), fmt.Errorf("failed transition for profile %v: %w", params.Profile, err)
+		result.Error = err.Error()
+		return result, fmt.Errorf("failed transition for profile %v: %w", params.Profile, err)
 	}
 
 	// check if a transition should happen
@@ -197,14 +213,16 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile)
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile, params.State)
-			return state.Label(), err
+			result.Error = err.Error()
+			return result, err
 		}
 		params.Log.Info("Moved node to next state", "state", string(transitions.Next), "profile", params.Profile)
 		recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
 			"The node is now in the %v state caused by profile %v", string(transitions.Next), params.Profile)
-		return transitions.Next, nil
+		result.Next = transitions.Next
+		return result, nil
 	}
-	return state.Label(), nil
+	return result, nil
 }
 
 // transitionDefault is a default NodeState.Transition implementation that checks

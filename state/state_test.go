@@ -220,7 +220,9 @@ var _ = Describe("Apply", func() {
 		}
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{LastNotificationTimes: make(map[string]time.Time)}, buildParams())
 		Expect(err).To(HaveOccurred())
-		Expect(result).To(Equal(Operational))
+		Expect(result.Next).To(Equal(Operational))
+		Expect(result.Transitions).To(HaveLen(0))
+		Expect(result.Error).ToNot(BeEmpty())
 	})
 
 	It("fails if the check plugin fails", func() {
@@ -239,7 +241,9 @@ var _ = Describe("Apply", func() {
 		}
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
 		Expect(err).To(HaveOccurred())
-		Expect(result).To(Equal(Operational))
+		Expect(result.Next).To(Equal(Operational))
+		Expect(result.Transitions).To(HaveLen(1))
+		Expect(result.Error).ToNot(BeEmpty())
 	})
 
 	It("fails if the trigger plugin fails", func() {
@@ -261,7 +265,9 @@ var _ = Describe("Apply", func() {
 		}
 		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
 		Expect(err).To(HaveOccurred())
-		Expect(result).To(Equal(Operational))
+		Expect(result.Next).To(Equal(Operational))
+		Expect(result.Transitions).To(HaveLen(1))
+		Expect(result.Error).ToNot(BeEmpty())
 	})
 
 })
