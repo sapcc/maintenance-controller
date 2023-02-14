@@ -28,6 +28,7 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
@@ -45,18 +46,20 @@ import (
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Log           logr.Logger
+	Scheme        *runtime.Scheme
+	Recorder      record.EventRecorder
+	NodeInfoCache cache.NodeInfoCache
 }
 
 type reconcileParameters struct {
-	client   client.Client
-	config   *Config
-	ctx      context.Context
-	log      logr.Logger
-	recorder record.EventRecorder
-	node     *corev1.Node
+	client        client.Client
+	config        *Config
+	ctx           context.Context
+	log           logr.Logger
+	recorder      record.EventRecorder
+	node          *corev1.Node
+	nodeInfoCache cache.NodeInfoCache
 }
 
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -94,12 +97,13 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// perform the reconciliation
 	err = reconcileInternal(reconcileParameters{
-		client:   r.Client,
-		config:   config,
-		ctx:      ctx,
-		log:      r.Log.WithValues("node", req.NamespacedName),
-		node:     &theNode,
-		recorder: r.Recorder,
+		client:        r.Client,
+		config:        config,
+		ctx:           ctx,
+		log:           r.Log.WithValues("node", req.NamespacedName),
+		node:          &theNode,
+		recorder:      r.Recorder,
+		nodeInfoCache: r.NodeInfoCache,
 	})
 	if err != nil {
 		r.Log.Error(err, "Failed to reconcile. Skipping node patching.", "node", req.NamespacedName)

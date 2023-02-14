@@ -97,6 +97,11 @@ type ProfileResult struct {
 	Name    string
 }
 
+type NodeInfo struct {
+	Node     string
+	Profiles []ProfileResult
+}
+
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
 	Notification plugin.NotificationChain

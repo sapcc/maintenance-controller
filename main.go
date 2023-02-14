@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
 	"github.com/sapcc/maintenance-controller/event"
@@ -155,11 +156,13 @@ func setupChecks(mgr manager.Manager) {
 }
 
 func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
+	nodeInfoCache := cache.NewNodeInfoCache()
 	if err := (&controllers.NodeReconciler{
-		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("maintenance"),
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("maintenance"),
+		Scheme:        mgr.GetScheme(),
+		Recorder:      mgr.GetEventRecorderFor("maintenance"),
+		NodeInfoCache: nodeInfoCache,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
 	}
