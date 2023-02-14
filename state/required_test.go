@@ -41,9 +41,9 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("transitions to maintenance-required", func() {
 			mr := newMaintenanceRequired(PluginChains{})
-			next, err := mr.Transition(plugin.Parameters{}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Required))
+			Expect(result.Next).To(Equal(Required))
 		})
 
 	})
@@ -98,31 +98,34 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to in maintenance if checks pass", func() {
 			check.Result = true
 			mr := newMaintenanceRequired(chains)
-			next, err := mr.Transition(plugin.Parameters{
+			result, err := mr.Transition(plugin.Parameters{
 				Log:    logr.Discard(),
 				Node:   &v1.Node{},
 				Client: fake.NewClientBuilder().Build(),
 			}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(InMaintenance))
+			Expect(result.Next).To(Equal(InMaintenance))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to required if checks do not pass", func() {
 			check.Result = false
 			mr := newMaintenanceRequired(chains)
-			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Required))
+			Expect(result.Next).To(Equal(Required))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to required if checks fail", func() {
 			check.Fail = true
 			mr := newMaintenanceRequired(chains)
-			next, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
-			Expect(next).To(Equal(Required))
+			Expect(result.Next).To(Equal(Required))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 

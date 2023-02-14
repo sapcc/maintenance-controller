@@ -39,9 +39,9 @@ var _ = Describe("InMaintenance State", func() {
 
 		It("transitions to in-maintenance", func() {
 			im := newInMaintenance(PluginChains{})
-			next, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(InMaintenance))
+			Expect(result.Next).To(Equal(InMaintenance))
 		})
 
 	})
@@ -96,27 +96,30 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to in operational if checks pass", func() {
 			check.Result = true
 			im := newInMaintenance(chains)
-			next, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Operational))
+			Expect(result.Next).To(Equal(Operational))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to inMaintenance if checks do not pass", func() {
 			check.Result = false
 			im := newInMaintenance(chains)
-			next, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(InMaintenance))
+			Expect(result.Next).To(Equal(InMaintenance))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to inMaintenance if checks fail", func() {
 			check.Fail = true
 			im := newInMaintenance(chains)
-			next, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
-			Expect(next).To(Equal(InMaintenance))
+			Expect(result.Next).To(Equal(InMaintenance))
+			Expect(result.Infos).To(HaveLen(1))
 			Expect(check.Invoked).To(Equal(1))
 		})
 
