@@ -200,11 +200,11 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 // is 0, the current state is returned.
 func transitionDefault(params plugin.Parameters, current NodeStateLabel, trans []Transition) (NodeStateLabel, error) {
 	for _, transition := range trans {
-		shouldTransition, err := transition.Check.Execute(params)
+		chainResult, err := transition.Check.Execute(params)
 		if err != nil {
 			return current, err
 		}
-		if !shouldTransition {
+		if !chainResult.Passed {
 			continue
 		}
 		for _, check := range transition.Check.Plugins {
