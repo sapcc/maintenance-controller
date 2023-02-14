@@ -28,6 +28,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/metrics"
@@ -120,6 +121,7 @@ var k8sClient client.Client
 var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
 var stopController context.CancelFunc
+var nodeInfoCache cache.NodeInfoCache
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -164,11 +166,13 @@ var _ = BeforeSuite(func() {
 
 	metrics.RegisterMaintenanceMetrics()
 
+	nodeInfoCache = cache.NewNodeInfoCache()
 	err = (&NodeReconciler{
-		Client:   k8sManager.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("maintenance"),
-		Scheme:   k8sManager.GetScheme(),
-		Recorder: k8sManager.GetEventRecorderFor("controller"),
+		Client:        k8sManager.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("maintenance"),
+		Scheme:        k8sManager.GetScheme(),
+		Recorder:      k8sManager.GetEventRecorderFor("controller"),
+		NodeInfoCache: nodeInfoCache,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

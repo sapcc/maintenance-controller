@@ -59,28 +59,28 @@ var _ = Describe("The HasLabel plugin", func() {
 			plugin := HasLabel{Key: "key", Value: ""}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("matches the label with correct value", func() {
 			plugin := HasLabel{Key: "key", Value: "value"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("does not match the label with wrong value", func() {
 			plugin := HasLabel{Key: "key", Value: "assdas"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("does not match the label with wrong key", func() {
 			plugin := HasLabel{Key: "sdasdasda", Value: ""}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 	})

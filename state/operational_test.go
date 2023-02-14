@@ -39,9 +39,9 @@ var _ = Describe("Operational State", func() {
 
 		It("transitions to Operational", func() {
 			op := newOperational(PluginChains{})
-			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Operational))
+			Expect(result.Next).To(Equal(Operational))
 		})
 
 	})
@@ -96,27 +96,33 @@ var _ = Describe("Operational State", func() {
 		It("transitions to required if checks pass", func() {
 			check.Result = true
 			op := newOperational(chains)
-			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Required))
+			Expect(result.Next).To(Equal(Required))
+			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).To(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to operational if checks do not pass", func() {
 			check.Result = false
 			op := newOperational(chains)
-			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(Succeed())
-			Expect(next).To(Equal(Operational))
+			Expect(result.Next).To(Equal(Operational))
+			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).To(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 
 		It("transitions to operational if checks fail", func() {
 			check.Fail = true
 			op := newOperational(chains)
-			next, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := op.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
 			Expect(err).To(HaveOccurred())
-			Expect(next).To(Equal(Operational))
+			Expect(result.Next).To(Equal(Operational))
+			Expect(result.Infos).To(HaveLen(1))
+			Expect(result.Infos[0].Error).ToNot(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
 

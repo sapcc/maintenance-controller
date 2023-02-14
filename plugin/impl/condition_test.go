@@ -63,21 +63,21 @@ var _ = Describe("The Condition plugin", func() {
 			plugin := Condition{Type: "Ready", Status: "True"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("does not match when configured Ready=Unknown", func() {
 			plugin := Condition{Type: "Ready", Status: "Unknown"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("does not match when configured DiskPressure=True", func() {
 			plugin := Condition{Type: "DiskPressure", Status: "True"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 	})

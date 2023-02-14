@@ -17,30 +17,18 @@
 *
 *******************************************************************************/
 
-package impl
+package common
 
-import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/ucfgwrap"
-)
+import "strings"
 
-var _ = Describe("The nodecount plugin", func() {
-
-	It("can parse its configuration", func() {
-		configStr := "count: 154"
-		config, err := ucfgwrap.FromYAML([]byte(configStr))
-		Expect(err).To(Succeed())
-		var base NodeCount
-		plugin, err := base.New(&config)
-		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
-	})
-
-	It("does not fail in AfterEval", func() {
-		var count NodeCount
-		Expect(count.OnTransition(plugin.Parameters{})).To(Succeed())
-	})
-
-})
+// when the maintenance-controller is using go 1.20 the errs slice can be wrapped properly.
+func ConcatErrors(errs []error) string {
+	if len(errs) == 0 {
+		return ""
+	}
+	errStrings := make([]string, 0)
+	for _, err := range errs {
+		errStrings = append(errStrings, err.Error())
+	}
+	return strings.Join(errStrings, ", ")
+}

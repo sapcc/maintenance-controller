@@ -57,24 +57,24 @@ func (kc *KubernikusCount) New(config *ucfgwrap.Config) (plugin.Checker, error) 
 	return &KubernikusCount{Cluster: conf.Cluster}, nil
 }
 
-func (kc *KubernikusCount) Check(params plugin.Parameters) (bool, error) {
+func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	kluster, err := kc.fetchKluster(&params)
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
 	var nodeList corev1.NodeList
 	err = params.Client.List(params.Ctx, &nodeList)
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
 	specCount := 0
 	for _, nodePool := range kluster.Spec.NodePools {
 		specCount += nodePool.Size
 	}
 	if len(nodeList.Items) >= specCount {
-		return true, nil
+		return plugin.Passed(nil), nil
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
 func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, error) {
@@ -118,6 +118,6 @@ func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, err
 	return result, nil
 }
 
-func (kc *KubernikusCount) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (kc *KubernikusCount) OnTransition(params plugin.Parameters) error {
 	return nil
 }

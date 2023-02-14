@@ -87,12 +87,12 @@ func (tw *TimeWindow) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check checks whether the current time is within specified time window on allowed weekdays.
-func (tw *TimeWindow) Check(params plugin.Parameters) (bool, error) {
+func (tw *TimeWindow) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	return tw.checkInternal(time.Now().UTC()), nil
 }
 
 // checkInternal expects a time in UTC.
-func (tw *TimeWindow) checkInternal(current time.Time) bool {
+func (tw *TimeWindow) checkInternal(current time.Time) plugin.CheckResult {
 	containsWeekday := false
 	for _, weekday := range tw.Weekdays {
 		if weekday == current.Weekday() {
@@ -101,7 +101,7 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 		}
 	}
 	if !containsWeekday {
-		return false
+		return plugin.Failed(nil)
 	}
 	isExcluded := false
 	for _, exclude := range tw.Exclude {
@@ -111,14 +111,14 @@ func (tw *TimeWindow) checkInternal(current time.Time) bool {
 		}
 	}
 	if isExcluded {
-		return false
+		return plugin.Failed(nil)
 	}
 	// It is required to set the date to the configured values only keeping the time
 	compare := time.Date(tw.Start.Year(), tw.Start.Month(), tw.Start.Day(), current.Hour(),
 		current.Minute(), current.Second(), current.Nanosecond(), time.UTC)
-	return compare.After(tw.Start) && compare.Before(tw.End)
+	return plugin.CheckResult{Passed: compare.After(tw.Start) && compare.Before(tw.End)}
 }
 
-func (tw *TimeWindow) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (tw *TimeWindow) OnTransition(params plugin.Parameters) error {
 	return nil
 }

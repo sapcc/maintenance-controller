@@ -47,14 +47,14 @@ func (w *Wait) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Wait{Duration: duration}, nil
 }
 
-func (w *Wait) Check(params plugin.Parameters) (bool, error) {
+func (w *Wait) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if time.Since(params.LastTransition) > w.Duration {
-		return true, nil
+		return plugin.Passed(nil), nil
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
-func (w *Wait) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (w *Wait) OnTransition(params plugin.Parameters) error {
 	return nil
 }
 
@@ -86,11 +86,11 @@ func (we *WaitExclude) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &WaitExclude{Duration: duration, Exclude: weekdays}, nil
 }
 
-func (we *WaitExclude) Check(params plugin.Parameters) (bool, error) {
+func (we *WaitExclude) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	return we.checkInternal(&params, time.Now().UTC()), nil
 }
 
-func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) bool {
+func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) plugin.CheckResult {
 	timestamp := params.LastTransition
 	since := now.Sub(params.LastTransition)
 	// "since" currently includes excluded days.
@@ -127,9 +127,9 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) b
 		since -= sub
 	}
 	if since > we.Duration {
-		return true
+		return plugin.Passed(nil)
 	}
-	return false
+	return plugin.Failed(nil)
 }
 
 func (we *WaitExclude) isExcluded(weekday time.Weekday) bool {
@@ -147,6 +147,6 @@ func isSameDay(t, u time.Time) bool {
 	return tyear == uyear && tmonth == umonth && tday == uday
 }
 
-func (we *WaitExclude) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (we *WaitExclude) OnTransition(params plugin.Parameters) error {
 	return nil
 }

@@ -65,6 +65,6 @@ func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, d
 	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
-func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (NodeStateLabel, error) {
+func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (TransitionsResult, error) {
 	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

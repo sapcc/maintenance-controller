@@ -17,30 +17,34 @@
 *
 *******************************************************************************/
 
-package impl
+package cache
 
 import (
+	"encoding/json"
+	"testing"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/ucfgwrap"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
-var _ = Describe("The nodecount plugin", func() {
+func TestCache(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Cache Suite")
+}
 
-	It("can parse its configuration", func() {
-		configStr := "count: 154"
-		config, err := ucfgwrap.FromYAML([]byte(configStr))
-		Expect(err).To(Succeed())
-		var base NodeCount
-		plugin, err := base.New(&config)
-		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
-	})
+var _ = Describe("NodeInfoCache", func() {
 
-	It("does not fail in AfterEval", func() {
-		var count NodeCount
-		Expect(count.OnTransition(plugin.Parameters{})).To(Succeed())
+	It("caches NodeInfos", func() {
+		cache := NewNodeInfoCache()
+		cache.Update(state.NodeInfo{Node: "a"})
+		cache.Update(state.NodeInfo{Node: "a"})
+		cache.Update(state.NodeInfo{Node: "b"})
+		jsonStr, err := cache.JSON()
+		Expect(err).To(Succeed())
+		result := make([]state.NodeInfo, 0)
+		Expect(json.Unmarshal(jsonStr, &result)).To(Succeed())
+		Expect(result).To(HaveLen(2))
 	})
 
 })

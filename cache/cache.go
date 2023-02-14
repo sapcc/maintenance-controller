@@ -17,30 +17,43 @@
 *
 *******************************************************************************/
 
-package impl
+package cache
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/ucfgwrap"
+	"encoding/json"
+	"sync"
+
+	"github.com/sapcc/maintenance-controller/state"
+	"golang.org/x/exp/maps"
 )
 
-var _ = Describe("The nodecount plugin", func() {
+type NodeInfoCache interface {
+	Update(state.NodeInfo)
+	JSON() ([]byte, error)
+}
 
-	It("can parse its configuration", func() {
-		configStr := "count: 154"
-		config, err := ucfgwrap.FromYAML([]byte(configStr))
-		Expect(err).To(Succeed())
-		var base NodeCount
-		plugin, err := base.New(&config)
-		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
-	})
+func NewNodeInfoCache() NodeInfoCache {
+	return &nodeInfoCacheImpl{
+		mutex: sync.Mutex{},
+		nodes: make(map[string]state.NodeInfo),
+	}
+}
 
-	It("does not fail in AfterEval", func() {
-		var count NodeCount
-		Expect(count.OnTransition(plugin.Parameters{})).To(Succeed())
-	})
+type nodeInfoCacheImpl struct {
+	mutex sync.Mutex
+	nodes map[string]state.NodeInfo
+}
 
-})
+func (nic *nodeInfoCacheImpl) Update(info state.NodeInfo) {
+	nic.mutex.Lock()
+	defer nic.mutex.Unlock()
+	nic.nodes[info.Node] = info
+}
+
+func (nic *nodeInfoCacheImpl) JSON() ([]byte, error) {
+	// do not hand out data of the nodes map as it contains
+	// pointers, which in turn open up for data races
+	nic.mutex.Lock()
+	defer nic.mutex.Unlock()
+	return json.Marshal(maps.Values(nic.nodes))
+}

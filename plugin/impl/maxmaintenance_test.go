@@ -48,7 +48,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		plugin := MaxMaintenance{MaxNodes: 2}
 		result, err := plugin.checkInternal(&nodes)
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("fails if the returned nodes equal the max value", func() {
@@ -58,7 +58,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		plugin := MaxMaintenance{MaxNodes: 2}
 		result, err := plugin.checkInternal(&nodes)
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("filters out not matching profiles", func() {
@@ -75,7 +75,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		plugin := MaxMaintenance{MaxNodes: 1, Profile: "profile"}
 		result, err := plugin.checkInternal(&nodes)
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 })

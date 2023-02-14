@@ -41,15 +41,15 @@ func (n *NodeCount) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that the cluster has at least the configured amount of nodes.
-func (n *NodeCount) Check(params plugin.Parameters) (bool, error) {
+func (n *NodeCount) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	nodeList := &v1.NodeList{}
 	err := params.Client.List(params.Ctx, nodeList)
 	if err != nil {
-		return false, err
+		return plugin.Failed(nil), err
 	}
-	return len(nodeList.Items) >= n.Count, nil
+	return plugin.CheckResult{Passed: len(nodeList.Items) >= n.Count}, nil
 }
 
-func (n *NodeCount) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (n *NodeCount) OnTransition(params plugin.Parameters) error {
 	return nil
 }

@@ -20,40 +20,43 @@
 // We run our on prometheus serving logic here, to "ensure" a last scrape in case
 // the maintenance-controller drains itself. Otherwise shuffle metrics are inaccurate.
 
-package metrics
+package api
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sapcc/maintenance-controller/cache"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
-type PromServer struct {
-	Address     string
-	WaitTimeout time.Duration
-	Log         logr.Logger
-	counter     int
-	shutdown    chan struct{}
+type Server struct {
+	Address       string
+	WaitTimeout   time.Duration
+	Log           logr.Logger
+	NodeInfoCache cache.NodeInfoCache
+	counter       int
+	shutdown      chan struct{}
 }
 
-func (ps *PromServer) NeedLeaderElection() bool {
+func (s *Server) NeedLeaderElection() bool {
 	return false
 }
 
 // returns a channel that is closed, when the server properly terminates.
-func (ps *PromServer) Done() chan struct{} {
-	return ps.shutdown
+func (s *Server) Done() chan struct{} {
+	return s.shutdown
 }
 
-func (ps *PromServer) Start(ctx context.Context) error {
-	ps.shutdown = make(chan struct{})
-	listener, err := net.Listen("tcp", ps.Address)
+func (s *Server) Start(ctx context.Context) error {
+	s.shutdown = make(chan struct{})
+	listener, err := net.Listen("tcp", s.Address)
 	if err != nil {
 		return err
 	}
@@ -62,8 +65,18 @@ func (ps *PromServer) Start(ctx context.Context) error {
 	})
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		ps.counter++
+		s.counter++
 		handler.ServeHTTP(w, r)
+	})
+	mux.HandleFunc("/api/v1/info", func(w http.ResponseWriter, r *http.Request) {
+		jsonBytes, err := s.NodeInfoCache.JSON()
+		if err != nil {
+			jsonBytes = []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
+		}
+		_, err = w.Write(jsonBytes)
+		if err != nil {
+			s.Log.Error(err, "failed to write reply to /api/v1/info")
+		}
 	})
 	// values copied over from controller-runtime
 	server := &http.Server{
@@ -77,16 +90,16 @@ func (ps *PromServer) Start(ctx context.Context) error {
 		_ = server.Serve(listener)
 	}()
 	<-ctx.Done()
-	last := ps.counter
-	ps.Log.Info("Awaiting an other metrics scrape", "timeout", ps.WaitTimeout)
-	_ = wait.PollImmediate(1*time.Second, ps.WaitTimeout, func() (bool, error) {
-		return ps.counter > last, nil
+	last := s.counter
+	s.Log.Info("Awaiting an other metrics scrape", "timeout", s.WaitTimeout)
+	_ = wait.PollImmediate(1*time.Second, s.WaitTimeout, func() (bool, error) {
+		return s.counter > last, nil
 	})
 	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gomnd
 	defer cancel()
 	if err := server.Shutdown(timeout); err != nil {
 		return err
 	}
-	close(ps.shutdown)
+	close(s.shutdown)
 	return nil
 }

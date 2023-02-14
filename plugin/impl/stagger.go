@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const noGrab int = -1
+
 // Stagger is a check plugin that checks that only one node
 // can pass every configurable period.
 type Stagger struct {
@@ -39,7 +41,7 @@ type Stagger struct {
 	LeaseName      string
 	LeaseNamespace string
 	Parallel       int
-	// index of the available lease to grab in AfterEval()
+	// index of the available lease to grab in OnTransition()
 	grabIndex int
 }
 
@@ -63,18 +65,19 @@ func (s *Stagger) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 }
 
 // Check asserts that since the last successful check is a certain time has passed.
-func (s *Stagger) Check(params plugin.Parameters) (bool, error) {
+func (s *Stagger) Check(params plugin.Parameters) (plugin.CheckResult, error) {
+	s.grabIndex = noGrab
 	for i := 0; i < s.Parallel; i++ {
 		lease, err := s.getOrCreateLease(i, &params)
 		if err != nil {
-			return false, err
+			return plugin.Failed(nil), err
 		}
 		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 			s.grabIndex = i
-			return true, nil
+			return plugin.Passed(nil), nil
 		}
 	}
-	return false, nil
+	return plugin.Failed(nil), nil
 }
 
 func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordinationv1.Lease, error) {
@@ -91,7 +94,7 @@ func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordina
 	lease.Namespace = leaseKey.Namespace
 	lease.Spec.HolderIdentity = &params.Node.Name
 	// Create the lease in the past, so it can immediately pass the timeout check.
-	// In AfterEval() the lease will then also receive sensible values.
+	// In OnTransition() the lease will then also receive sensible values.
 	past := v1.MicroTime{
 		Time: time.Now().UTC().Add(-2 * s.Duration),
 	}
@@ -107,8 +110,8 @@ func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordina
 }
 
 // If the whole check chain passed, the lease needs to be grabed, so other nodes are blocked from progressing.
-func (s *Stagger) AfterEval(chainResult bool, params plugin.Parameters) error {
-	if !chainResult {
+func (s *Stagger) OnTransition(params plugin.Parameters) error {
+	if s.grabIndex == noGrab {
 		return nil
 	}
 	lease := &coordinationv1.Lease{}

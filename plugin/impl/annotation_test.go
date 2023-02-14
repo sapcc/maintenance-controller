@@ -59,28 +59,28 @@ var _ = Describe("The HasAnnotation plugin", func() {
 			plugin := HasAnnotation{Key: "key", Value: ""}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("matches the annotation with correct value", func() {
 			plugin := HasAnnotation{Key: "key", Value: "value"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("does not match the annotation with wrong value", func() {
 			plugin := HasAnnotation{Key: "key", Value: "assdas"}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("does not match the annotation with wrong key", func() {
 			plugin := HasAnnotation{Key: "sdasdasda", Value: ""}
 			result, err := plugin.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 		})
 
 	})

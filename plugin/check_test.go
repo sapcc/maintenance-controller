@@ -28,20 +28,22 @@ import (
 	"github.com/sapcc/ucfgwrap"
 )
 
+const invokedKey = "invoked"
+
 type trueCheck struct {
 	Invoked int
 }
 
-func (c *trueCheck) Check(params Parameters) (bool, error) {
+func (c *trueCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return true, nil
+	return Passed(map[string]any{invokedKey: c.Invoked}), nil
 }
 
 func (c *trueCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &trueCheck{}, nil
 }
 
-func (c *trueCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *trueCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
@@ -49,16 +51,16 @@ type falseCheck struct {
 	Invoked int
 }
 
-func (c *falseCheck) Check(params Parameters) (bool, error) {
+func (c *falseCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return false, nil
+	return Failed(map[string]any{invokedKey: c.Invoked}), nil
 }
 
 func (c *falseCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &falseCheck{}, nil
 }
 
-func (c *falseCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *falseCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
@@ -66,16 +68,16 @@ type errorCheck struct {
 	Invoked int
 }
 
-func (c *errorCheck) Check(params Parameters) (bool, error) {
+func (c *errorCheck) Check(params Parameters) (CheckResult, error) {
 	c.Invoked++
-	return false, errors.New("this check is expected to fail")
+	return Failed(map[string]any{invokedKey: c.Invoked}), errors.New("this check is expected to fail")
 }
 
 func (c *errorCheck) New(config *ucfgwrap.Config) (Checker, error) {
 	return &errorCheck{}, nil
 }
 
-func (c *errorCheck) AfterEval(chainResult bool, params Parameters) error {
+func (c *errorCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
@@ -88,7 +90,7 @@ var _ = Describe("CheckChain", func() {
 		var chain CheckChain
 		It("should not error", func() {
 			result, err := chain.Execute(emptyParams)
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 			Expect(err).To(Succeed())
 		})
 
@@ -127,7 +129,7 @@ var _ = Describe("CheckChain", func() {
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
 		})
 
@@ -141,7 +143,7 @@ var _ = Describe("CheckChain", func() {
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
 			Expect(falseInstance.Plugin.(*falseCheck).Invoked).To(Equal(2))
 		})
@@ -156,7 +158,7 @@ var _ = Describe("CheckChain", func() {
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
 		})
 
@@ -170,7 +172,7 @@ var _ = Describe("CheckChain", func() {
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
 		})
 
@@ -184,7 +186,7 @@ var _ = Describe("CheckChain", func() {
 			}
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeFalse())
+			Expect(result.Passed).To(BeFalse())
 			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(1))
 		})
 
@@ -192,10 +194,42 @@ var _ = Describe("CheckChain", func() {
 			chain := CheckChain{
 				Plugins: []CheckInstance{trueInstance, errorInstance, trueInstance, trueInstance},
 			}
-			_, err := chain.Execute(emptyParams)
+			result, err := chain.Execute(emptyParams)
 			Expect(err).To(HaveOccurred())
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(1))
+			Expect(result.Passed).To(BeFalse())
+			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
 			Expect(errorInstance.Plugin.(*errorCheck).Invoked).To(Equal(1))
+		})
+
+		It("should collect check infos", func() {
+			eval, err := gval.Full().NewEvaluable("True")
+			Expect(err).To(Succeed())
+
+			chain := CheckChain{
+				Plugins:   []CheckInstance{trueInstance},
+				Evaluable: eval,
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+			Expect(result.Info["True"].Passed).To(BeTrue())
+			Expect(result.Info["True"].Info[invokedKey]).To(Equal(1))
+		})
+
+		It("should collect error infos", func() {
+			eval, err := gval.Full().NewEvaluable("Error")
+			Expect(err).To(Succeed())
+
+			chain := CheckChain{
+				Plugins:   []CheckInstance{errorInstance},
+				Evaluable: eval,
+			}
+			result, err := chain.Execute(emptyParams)
+			Expect(err).To(HaveOccurred())
+			Expect(result.Passed).To(BeFalse())
+			Expect(result.Info["Error"].Passed).To(BeFalse())
+			Expect(result.Info["Error"].Info[invokedKey]).To(Equal(1))
+			Expect(result.Info["Error"].Info).To(HaveKey("error"))
 		})
 
 	})

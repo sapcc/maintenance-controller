@@ -39,27 +39,28 @@ func (a *Affinity) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Affinity{}, nil
 }
 
-func (a *Affinity) Check(params plugin.Parameters) (bool, error) {
+func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if params.State != string(state.Required) {
-		return false, fmt.Errorf("affinity check plugin failed, node %v is not in maintenance-required but %v state",
+		err := fmt.Errorf("affinity check plugin failed, node %v is not in maintenance-required but %v state",
 			params.Node.Name, params.State)
+		return plugin.Failed(nil), err
 	}
 	currentAffinity, err := hasAffinityPod(params.Node.Name, &params)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
+		return plugin.Failed(nil), fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
 	}
 	// current node does not have any relevant pods, so pass
 	if !currentAffinity {
-		return true, nil
+		return plugin.Passed(nil), nil
 	}
 	return checkOther(&params)
 }
 
-func checkOther(params *plugin.Parameters) (bool, error) {
+func checkOther(params *plugin.Parameters) (plugin.CheckResult, error) {
 	var nodeList v1.NodeList
 	err := params.Client.List(params.Ctx, &nodeList)
 	if err != nil {
-		return false, fmt.Errorf("failed to list nodes in the cluster: %w", err)
+		return plugin.Failed(nil), fmt.Errorf("failed to list nodes in the cluster: %w", err)
 	}
 	for i := range nodeList.Items {
 		node := &nodeList.Items[i]
@@ -73,7 +74,7 @@ func checkOther(params *plugin.Parameters) (bool, error) {
 		// caused by other profiles without affinity pods
 		nodeData, err := state.ParseData(node)
 		if err != nil {
-			return false, err
+			return plugin.Failed(nil), err
 		}
 		// skip nodes, which don't have the profile
 		otherState, ok := nodeData.ProfileStates[params.Profile]
@@ -87,14 +88,14 @@ func checkOther(params *plugin.Parameters) (bool, error) {
 		// some other node in the cluster does not have any relevant pods, so block
 		nodeAffinity, err := hasAffinityPod(node.Name, params)
 		if err != nil {
-			return false, fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
+			return plugin.Failed(nil), fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
 		}
 		if !nodeAffinity {
-			return false, nil
+			return plugin.Failed(nil), nil
 		}
 	}
 	// all other nodes have relevant pods as well, so pass
-	return true, nil
+	return plugin.Passed(nil), nil
 }
 
 func hasAffinityPod(nodeName string, params *plugin.Parameters) (bool, error) {
@@ -130,6 +131,6 @@ func hasOperationalAffinity(pod *v1.Pod) bool {
 	return false
 }
 
-func (a *Affinity) AfterEval(chainResult bool, params plugin.Parameters) error {
+func (a *Affinity) OnTransition(params plugin.Parameters) error {
 	return nil
 }

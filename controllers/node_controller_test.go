@@ -30,8 +30,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
@@ -305,7 +305,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		max := impl.MaxMaintenance{MaxNodes: 1}
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("should pass if no node is in maintenance", func() {
@@ -317,7 +317,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		max := impl.MaxMaintenance{MaxNodes: 1}
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 })
@@ -359,9 +359,9 @@ var _ = Describe("The stagger plugin", func() {
 	checkNode := func(stagger *impl.Stagger, node *corev1.Node) bool {
 		result, err := stagger.Check(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		err = stagger.AfterEval(result, plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
+		err = stagger.OnTransition(plugin.Parameters{Client: k8sClient, Node: node, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		return result
+		return result.Passed
 	}
 
 	It("blocks within the lease duration", func() {
@@ -381,13 +381,13 @@ var _ = Describe("The stagger plugin", func() {
 
 	It("grabs the lease after it timed out", func() {
 		stagger := impl.Stagger{
-			Duration:       3 * time.Second,
+			Duration:       1 * time.Second,
 			LeaseName:      leaseName.Name,
 			LeaseNamespace: leaseName.Namespace,
 			Parallel:       1,
 		}
 		checkNode(&stagger, firstNode)
-		time.Sleep(4 * time.Second)
+		time.Sleep(2 * time.Second)
 		result := checkNode(&stagger, secondNode)
 		Expect(result).To(BeTrue())
 		lease := &coordinationv1.Lease{}
@@ -408,6 +408,26 @@ var _ = Describe("The stagger plugin", func() {
 		}
 		Expect(checkNode(&stagger, firstNode)).To(BeTrue())
 		Expect(checkNode(&stagger, secondNode)).To(BeTrue())
+	})
+
+	It("does not grab the lease if it did not contribute to passing the check chain", func() {
+		stagger := impl.Stagger{
+			Duration:       3 * time.Second,
+			LeaseName:      leaseName.Name,
+			LeaseNamespace: leaseName.Namespace,
+			Parallel:       1,
+		}
+		result := checkNode(&stagger, firstNode)
+		Expect(result).To(BeTrue())
+		result = checkNode(&stagger, secondNode)
+		Expect(result).To(BeFalse())
+		lease := &coordinationv1.Lease{}
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: metav1.NamespaceDefault,
+			Name:      stagger.LeaseName + "-0",
+		}, lease)
+		Expect(err).To(Succeed())
+		Expect(*lease.Spec.HolderIdentity).To(Equal("firstnode"))
 	})
 
 })
@@ -601,7 +621,7 @@ var _ = Describe("The affinity plugin", func() {
 		affinity := impl.Affinity{}
 		result, err := affinity.Check(buildParams(firstNode))
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("fails if current has an affinity pod and the others don't", func() {
@@ -609,7 +629,7 @@ var _ = Describe("The affinity plugin", func() {
 		affinity := impl.Affinity{}
 		result, err := affinity.Check(buildParams(firstNode))
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("passes if all nodes have affinity pods", func() {
@@ -618,7 +638,7 @@ var _ = Describe("The affinity plugin", func() {
 		affinity := impl.Affinity{}
 		result, err := affinity.Check(buildParams(firstNode))
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("fails if node is not in maintenance-required", func() {
@@ -639,7 +659,7 @@ var _ = Describe("The affinity plugin", func() {
 			params.Profile = "otherprofile"
 			result, err := affinity.Check(params)
 			Expect(err).To(Succeed())
-			Expect(result).To(BeTrue())
+			Expect(result.Passed).To(BeTrue())
 		})
 
 	})
@@ -659,10 +679,10 @@ var _ = Describe("The affinity plugin", func() {
 		affinity := impl.Affinity{}
 		result, err := affinity.Check(buildParams(firstNode))
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 		result, err = affinity.Check(buildParams(secondNode))
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 })
@@ -684,14 +704,14 @@ var _ = Describe("The nodecount plugin", func() {
 		count := impl.NodeCount{Count: 1}
 		result, err := count.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("returns false if a cluster does not have enough nodes", func() {
 		count := impl.NodeCount{Count: 3}
 		result, err := count.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 })
 
@@ -730,14 +750,14 @@ var _ = Describe("The clusterSemver plugin", func() {
 		cs := impl.ClusterSemver{Key: "version"}
 		result, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: maxnode})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("passes for an outdated node", func() {
 		cs := impl.ClusterSemver{Key: "version"}
 		result, err := cs.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background(), Node: minnode})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("returns false for a cluster-wide outdated node if scoped to a profile with no nodes", func() {
@@ -749,7 +769,7 @@ var _ = Describe("The clusterSemver plugin", func() {
 			Profile: "does-not-exist",
 		})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("fails for checked node with invalid version label", func() {
@@ -765,7 +785,7 @@ var _ = Describe("The clusterSemver plugin", func() {
 	})
 })
 
-var _ = Describe("The metrics server", func() {
+var _ = Describe("The api server", func() {
 
 	var targetNode *corev1.Node
 	var dsPod *corev1.Pod
@@ -775,7 +795,7 @@ var _ = Describe("The metrics server", func() {
 	var replicaSet *appsv1.ReplicaSet
 	var statefulSet *appsv1.StatefulSet
 	var stopServer context.CancelFunc
-	var metricsServer metrics.PromServer
+	var metricsServer api.Server
 
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
@@ -783,10 +803,11 @@ var _ = Describe("The metrics server", func() {
 		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi"}
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
-		metricsServer = metrics.PromServer{
-			Address:     ":15423",
-			WaitTimeout: 50 * time.Millisecond,
-			Log:         logr.Discard(),
+		metricsServer = api.Server{
+			Address:       ":15423",
+			WaitTimeout:   50 * time.Millisecond,
+			Log:           logr.Discard(),
+			NodeInfoCache: nodeInfoCache,
 		}
 		withCancel, cancel := context.WithCancel(context.Background())
 		stopServer = cancel
@@ -983,6 +1004,21 @@ var _ = Describe("The metrics server", func() {
 		Expect(err).To(Succeed())
 	})
 
+	It("should return node infos", func() {
+		// since the cache is global the precise number
+		// of nodes is unknown for the cache
+		Eventually(func(g Gomega) []any {
+			res, err := http.Get("http://localhost:15423/api/v1/info")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			nodes := make([]any, 0)
+			Expect(json.Unmarshal(data, &nodes)).To(Succeed())
+			return nodes
+		}).ShouldNot(HaveLen(0))
+	})
+
 })
 
 var _ = Describe("The AnyLabel plugin", func() {
@@ -1009,28 +1045,28 @@ var _ = Describe("The AnyLabel plugin", func() {
 		anyLabel := impl.AnyLabel{Key: "label", Value: "gopher"}
 		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("should pass if label='' is configured", func() {
 		anyLabel := impl.AnyLabel{Key: "label", Value: ""}
 		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeTrue())
+		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("should block if label=something", func() {
 		anyLabel := impl.AnyLabel{Key: "label", Value: "something"}
 		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 	It("should block if zone=''", func() {
 		anyLabel := impl.AnyLabel{Key: "zone", Value: ""}
 		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
 		Expect(err).To(Succeed())
-		Expect(result).To(BeFalse())
+		Expect(result.Passed).To(BeFalse())
 	})
 
 })

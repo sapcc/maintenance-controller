@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -66,6 +67,7 @@ func MaintainProfileStates(params reconcileParameters, data *state.Data) error {
 func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
+	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
 	for _, ps := range profileStates {
 		err := metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
@@ -74,7 +76,8 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 		// construct state
 		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
 		if err != nil {
-			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
+			errs = append(errs, fmt.Errorf("failed to create internal state from unknown label value: %w", err))
+			continue
 		}
 
 		logDetails := false
@@ -87,16 +90,34 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder,
 			LogDetails: logDetails}
 
-		next, err := state.Apply(stateObj, params.node, data, pluginParams)
+		applied, err := state.Apply(stateObj, params.node, data, pluginParams)
+		profileResults = append(profileResults, state.ProfileResult{
+			Applied: applied,
+			Name:    ps.Profile.Name,
+		})
 		if err != nil {
-			return fmt.Errorf("failed to apply current state: %w", err)
+			errs = append(errs, err)
 		}
+	}
+	params.nodeInfoCache.Update(state.NodeInfo{
+		Node:     params.node.Name,
+		Profiles: profileResults,
+	})
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to apply current state: %s", common.ConcatErrors(errs))
+	}
+	for i, ps := range profileStates {
+		result := profileResults[i]
 		// check if a transition happened
-		if ps.State != next {
+		if ps.State != result.Applied.Next {
 			data.LastTransition = time.Now().UTC()
-			data.ProfileStates[ps.Profile.Name] = next
+			data.ProfileStates[ps.Profile.Name] = result.Applied.Next
 		}
 		// track the state of this reconciliation for the next run
+		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
+		if err != nil {
+			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
+		}
 		data.PreviousStates[ps.Profile.Name] = stateObj.Label()
 	}
 	return nil
