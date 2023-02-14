@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
@@ -179,12 +180,13 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
 	}
 
-	prom := metrics.PromServer{
-		Address:     cfg.metricsAddr,
-		Log:         ctrl.Log.WithName("metrics"),
-		WaitTimeout: cfg.metricsTimeout,
+	apiServer := api.Server{
+		Address:       cfg.metricsAddr,
+		Log:           ctrl.Log.WithName("metrics"),
+		WaitTimeout:   cfg.metricsTimeout,
+		NodeInfoCache: cache.NewNodeInfoCache(),
 	}
-	if err := mgr.Add(&prom); err != nil {
+	if err := mgr.Add(&apiServer); err != nil {
 		return fmt.Errorf("Failed to attach prometheus metrics server: %w", err)
 	}
 

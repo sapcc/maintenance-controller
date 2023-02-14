@@ -16,6 +16,7 @@ require (
 	github.com/slack-go/slack v0.12.1
 	github.com/vmware/govmomi v0.30.2
 	go.uber.org/zap v1.24.0
+	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -62,7 +63,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sys v0.4.0 // indirect

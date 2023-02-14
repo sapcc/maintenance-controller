@@ -30,8 +30,8 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
@@ -785,7 +785,7 @@ var _ = Describe("The clusterSemver plugin", func() {
 	})
 })
 
-var _ = Describe("The metrics server", func() {
+var _ = Describe("The api server", func() {
 
 	var targetNode *corev1.Node
 	var dsPod *corev1.Pod
@@ -795,7 +795,7 @@ var _ = Describe("The metrics server", func() {
 	var replicaSet *appsv1.ReplicaSet
 	var statefulSet *appsv1.StatefulSet
 	var stopServer context.CancelFunc
-	var metricsServer metrics.PromServer
+	var metricsServer api.Server
 
 	BeforeEach(func() {
 		targetNode = &corev1.Node{}
@@ -803,10 +803,11 @@ var _ = Describe("The metrics server", func() {
 		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi"}
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
-		metricsServer = metrics.PromServer{
-			Address:     ":15423",
-			WaitTimeout: 50 * time.Millisecond,
-			Log:         logr.Discard(),
+		metricsServer = api.Server{
+			Address:       ":15423",
+			WaitTimeout:   50 * time.Millisecond,
+			Log:           logr.Discard(),
+			NodeInfoCache: nodeInfoCache,
 		}
 		withCancel, cancel := context.WithCancel(context.Background())
 		stopServer = cancel
@@ -1001,6 +1002,21 @@ var _ = Describe("The metrics server", func() {
 		Expect(err).To(Succeed())
 		err = k8sClient.Delete(context.Background(), ssPod, client.GracePeriodSeconds(0))
 		Expect(err).To(Succeed())
+	})
+
+	It("should return node infos", func() {
+		// since the cache is global the precise number
+		// of nodes is unknown for the cache
+		Eventually(func(g Gomega) []any {
+			res, err := http.Get("http://localhost:15423/api/v1/info")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			nodes := make([]any, 0)
+			Expect(json.Unmarshal(data, &nodes)).To(Succeed())
+			return nodes
+		}).ShouldNot(HaveLen(0))
 	})
 
 })
