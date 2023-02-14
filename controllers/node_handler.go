@@ -21,9 +21,9 @@ package controllers
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -67,8 +67,7 @@ func MaintainProfileStates(params reconcileParameters, data *state.Data) error {
 func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
-	profileResults := make([]state.ProfileResult, 0)
-	errs := make([]error, 0)
+	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
 	for _, ps := range profileStates {
 		err := metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
@@ -105,11 +104,7 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 		Profiles: profileResults,
 	})
 	if len(errs) > 0 {
-		errStrings := make([]string, 0)
-		for _, err := range errs {
-			errStrings = append(errStrings, err.Error())
-		}
-		return fmt.Errorf("failed to apply current state: %s", strings.Join(errStrings, ", "))
+		return fmt.Errorf("failed to apply current state: %s", common.ConcatErrors(errs))
 	}
 	for i, ps := range profileStates {
 		result := profileResults[i]

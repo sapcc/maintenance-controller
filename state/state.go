@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
@@ -247,13 +248,8 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 		Next:  current,
 		Infos: results,
 	}
-	// when the maintenance-controller is using go 1.20 the errs slice can be wrapped properly
 	if len(errs) > 0 {
-		errStrings := make([]string, 0)
-		for _, err := range errs {
-			errStrings = append(errStrings, err.Error())
-		}
-		return final, fmt.Errorf("had failed transition checks: %s", strings.Join(errStrings, "; "))
+		return final, fmt.Errorf("had failed transition checks: %s", common.ConcatErrors(errs))
 	}
 	for i, result := range results {
 		if !result.Passed {

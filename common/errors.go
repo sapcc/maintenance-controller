@@ -17,43 +17,18 @@
 *
 *******************************************************************************/
 
-package cache
+package common
 
-import (
-	"encoding/json"
-	"sync"
+import "strings"
 
-	"github.com/sapcc/maintenance-controller/state"
-	"golang.org/x/exp/maps"
-)
-
-type NodeInfoCache interface {
-	Update(state.NodeInfo)
-	JSON() ([]byte, error)
-}
-
-func NewNodeInfoCache() NodeInfoCache {
-	return &nodeInfoCacheImpl{
-		mutex: sync.Mutex{},
-		nodes: make(map[string]state.NodeInfo),
+// when the maintenance-controller is using go 1.20 the errs slice can be wrapped properly.
+func ConcatErrors(errs []error) string {
+	if len(errs) == 0 {
+		return ""
 	}
-}
-
-type nodeInfoCacheImpl struct {
-	mutex sync.Mutex
-	nodes map[string]state.NodeInfo
-}
-
-func (nic *nodeInfoCacheImpl) Update(info state.NodeInfo) {
-	nic.mutex.Lock()
-	defer nic.mutex.Unlock()
-	nic.nodes[info.Node] = info
-}
-
-func (nic *nodeInfoCacheImpl) JSON() ([]byte, error) {
-	// do not hand out data of the nodes map as it contains
-	// pointers, which in turn open up for data races
-	nic.mutex.Lock()
-	defer nic.mutex.Unlock()
-	return json.Marshal(maps.Values(nic.nodes))
+	errStrings := make([]string, 0)
+	for _, err := range errs {
+		errStrings = append(errStrings, err.Error())
+	}
+	return strings.Join(errStrings, ", ")
 }

@@ -96,15 +96,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	unmodifiedNode := theNode.DeepCopy()
 
 	// perform the reconciliation
-	err = reconcileInternal(reconcileParameters{
-		client:        r.Client,
-		config:        config,
-		ctx:           ctx,
-		log:           r.Log.WithValues("node", req.NamespacedName),
-		node:          &theNode,
-		recorder:      r.Recorder,
-		nodeInfoCache: r.NodeInfoCache,
-	})
+	err = reconcileInternal(r.makeParams(ctx, config, &theNode))
 	if err != nil {
 		r.Log.Error(err, "Failed to reconcile. Skipping node patching.", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
@@ -130,6 +122,18 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		r.Log.Error(err, "Failed to poll for cache update")
 	}
 	return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
+}
+
+func (r *NodeReconciler) makeParams(ctx context.Context, config *Config, node *corev1.Node) reconcileParameters {
+	return reconcileParameters{
+		client:        r.Client,
+		config:        config,
+		ctx:           ctx,
+		log:           r.Log.WithValues("node", types.NamespacedName{Name: node.Name, Namespace: node.Namespace}),
+		node:          node,
+		recorder:      r.Recorder,
+		nodeInfoCache: r.NodeInfoCache,
+	}
 }
 
 // Ensures a new version of the specified resources arrives in the cache made by controller-runtime.

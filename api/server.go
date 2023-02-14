@@ -69,13 +69,14 @@ func (s *Server) Start(ctx context.Context) error {
 		handler.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/api/v1/info", func(w http.ResponseWriter, r *http.Request) {
-		jsonStr, err := s.NodeInfoCache.Json()
+		jsonBytes, err := s.NodeInfoCache.JSON()
 		if err != nil {
-			msg := fmt.Sprintf("{\"error\":\"%s\"}", err.Error())
-			w.Write([]byte(msg))
-			return
+			jsonBytes = []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
 		}
-		w.Write(jsonStr)
+		_, err = w.Write(jsonBytes)
+		if err != nil {
+			s.Log.Error(err, "failed to write reply to /api/v1/info")
+		}
 	})
 	// values copied over from controller-runtime
 	server := &http.Server{

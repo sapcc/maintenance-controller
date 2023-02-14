@@ -40,7 +40,7 @@ var _ = Describe("NodeInfoCache", func() {
 		cache.Update(state.NodeInfo{Node: "a"})
 		cache.Update(state.NodeInfo{Node: "a"})
 		cache.Update(state.NodeInfo{Node: "b"})
-		jsonStr, err := cache.Json()
+		jsonStr, err := cache.JSON()
 		Expect(err).To(Succeed())
 		result := make([]state.NodeInfo, 0)
 		Expect(json.Unmarshal(jsonStr, &result)).To(Succeed())
