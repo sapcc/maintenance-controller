@@ -94,6 +94,7 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 		profileResults = append(profileResults, state.ProfileResult{
 			Applied: applied,
 			Name:    ps.Profile.Name,
+			State:   stateObj.Label(),
 		})
 		if err != nil {
 			errs = append(errs, err)
@@ -114,11 +115,7 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 			data.ProfileStates[ps.Profile.Name] = result.Applied.Next
 		}
 		// track the state of this reconciliation for the next run
-		stateObj, err := state.FromLabel(ps.State, ps.Profile.Chains[ps.State])
-		if err != nil {
-			return fmt.Errorf("failed to create internal state from unknown label value: %w", err)
-		}
-		data.PreviousStates[ps.Profile.Name] = stateObj.Label()
+		data.PreviousStates[ps.Profile.Name] = result.State
 	}
 	return nil
 }

@@ -28,8 +28,8 @@ import (
 )
 
 type CheckResult struct {
-	Passed bool
-	Info   map[string]any
+	Passed bool           `json:"passed"`
+	Info   map[string]any `json:"info"`
 }
 
 func Passed(info map[string]any) CheckResult {
@@ -58,22 +58,30 @@ type CheckInstance struct {
 }
 
 type CheckChainResult struct {
-	Passed bool
-	Info   map[string]CheckResult
+	Passed     bool                   `json:"passed"`
+	Info       map[string]CheckResult `json:"info"`
+	Expression string                 `json:"expression"`
 }
 
 // CheckChain represents a collection of multiple TriggerInstance that can be executed one after another.
 type CheckChain struct {
-	Plugins   []CheckInstance
-	Evaluable gval.Evaluable
+	Plugins    []CheckInstance
+	Evaluable  gval.Evaluable
+	Expression string
 }
 
 // Execute invokes Trigger on each TriggerInstance in the chain and aborts when a plugin returns an error.
 // It returns true if all checks passed.
 func (chain *CheckChain) Execute(params Parameters) (CheckChainResult, error) {
+	result := CheckChainResult{
+		Passed:     false,
+		Info:       make(map[string]CheckResult),
+		Expression: chain.Expression,
+	}
 	// no checks configured
 	if chain.Evaluable == nil && len(chain.Plugins) == 0 {
-		return CheckChainResult{Passed: true, Info: make(map[string]CheckResult)}, nil
+		result.Passed = true
+		return result, nil
 	}
 	// execute all plugins and build gval parameter map
 	evalParams := make(map[string]interface{})
@@ -96,14 +104,16 @@ func (chain *CheckChain) Execute(params Parameters) (CheckChainResult, error) {
 	if params.LogDetails {
 		params.Log.Info("results of check plugins", "node", params.Node.Name, "checks", evalParams)
 	}
+	result.Info = infos
 	if len(failedInstances) > 0 {
-		return CheckChainResult{Passed: false, Info: infos},
+		return result,
 			fmt.Errorf("failed check instances: %s", strings.Join(failedInstances, ", "))
 	}
 	// evaluate boolean expression
-	result, err := chain.Evaluable.EvalBool(params.Ctx, evalParams)
+	eval, err := chain.Evaluable.EvalBool(params.Ctx, evalParams)
 	if err != nil {
-		return CheckChainResult{Passed: false, Info: infos}, err
+		return result, err
 	}
-	return CheckChainResult{Passed: result, Info: infos}, nil
+	result.Passed = eval
+	return result, nil
 }

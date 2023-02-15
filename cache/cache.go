@@ -22,6 +22,7 @@ package cache
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/sapcc/maintenance-controller/state"
 	"golang.org/x/exp/maps"
@@ -47,6 +48,7 @@ type nodeInfoCacheImpl struct {
 func (nic *nodeInfoCacheImpl) Update(info state.NodeInfo) {
 	nic.mutex.Lock()
 	defer nic.mutex.Unlock()
+	info.Updated = time.Now()
 	nic.nodes[info.Node] = info
 }
 

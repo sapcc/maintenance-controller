@@ -380,6 +380,7 @@ var _ = Describe("Registry", func() {
 				chain, err := registry.NewCheckChain(config)
 				Expect(err).To(Succeed())
 				Expect(chain.Plugins).To(HaveLen(2))
+				Expect(chain.Expression).To(Equal("instance && instance"))
 			})
 
 			It("should create CheckChains using all possible operators", func() {
@@ -390,6 +391,7 @@ var _ = Describe("Registry", func() {
 				Expect(chain.Plugins[0].Name).To(Equal("instance"))
 				Expect(chain.Plugins[1].Name).To(Equal("instance"))
 				Expect(chain.Plugins[2].Name).To(Equal("instance"))
+				Expect(chain.Expression).To(Equal(config))
 			})
 
 			It("should create an empty NotificationChain from an empty config", func() {

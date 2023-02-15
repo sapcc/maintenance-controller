@@ -142,6 +142,7 @@ func (r *Registry) NewCheckChain(config string) (CheckChain, error) {
 		return chain, err
 	}
 	chain.Evaluable = eval
+	chain.Expression = config
 	return chain, nil
 }
 

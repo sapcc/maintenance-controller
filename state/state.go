@@ -76,31 +76,33 @@ type Transition struct {
 }
 
 type TransitionResult struct {
-	Passed bool
-	Target NodeStateLabel
-	Chain  plugin.CheckChainResult
-	Error  string
+	Passed bool                    `json:"passed"`
+	Target NodeStateLabel          `json:"target"`
+	Chain  plugin.CheckChainResult `json:"chain"`
+	Error  string                  `json:"error"`
 }
 
 type TransitionsResult struct {
-	Next  NodeStateLabel
-	Infos []TransitionResult
+	Next  NodeStateLabel     `json:"next"`
+	Infos []TransitionResult `json:"infos"`
 }
 
 type ApplyResult struct {
-	Next        NodeStateLabel
-	Transitions []TransitionResult
-	Error       string
+	Next        NodeStateLabel     `json:"next"`
+	Transitions []TransitionResult `json:"transitions"`
+	Error       string             `json:"error"`
 }
 
 type ProfileResult struct {
-	Applied ApplyResult
-	Name    string
+	Applied ApplyResult    `json:"applied"`
+	Name    string         `json:"name"`
+	State   NodeStateLabel `json:"state"`
 }
 
 type NodeInfo struct {
-	Node     string
-	Profiles []ProfileResult
+	Node     string          `json:"node"`
+	Profiles []ProfileResult `json:"profiles"`
+	Updated  time.Time       `json:"updated"`
 }
 
 // PluginChains is a struct containing a plugin chain of each plugin type.
