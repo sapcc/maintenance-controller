@@ -38,6 +38,7 @@ import (
 type Notifier interface {
 	Notify(params Parameters) error
 	New(config *ucfgwrap.Config) (Notifier, error)
+	ID() string
 }
 
 // NotificationInstance represents a configured and named instance of a notification plugin.

@@ -57,6 +57,10 @@ func (kc *KubernikusCount) New(config *ucfgwrap.Config) (plugin.Checker, error) 
 	return &KubernikusCount{Cluster: conf.Cluster}, nil
 }
 
+func (kc *KubernikusCount) ID() string {
+	return "kubernikusCount"
+}
+
 func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	kluster, err := kc.fetchKluster(&params)
 	if err != nil {

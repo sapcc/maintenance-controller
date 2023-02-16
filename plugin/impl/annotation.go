@@ -42,6 +42,10 @@ func (h *HasAnnotation) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &HasAnnotation{Key: conf.Key, Value: conf.Value}, nil
 }
 
+func (h *HasAnnotation) ID() string {
+	return "hasAnnotation"
+}
+
 // Check checks whether a node has an annotation (if h.Value == "")
 // or an annotation with a certain value (if h.Value != "").
 func (h *HasAnnotation) Check(params plugin.Parameters) (plugin.CheckResult, error) {
@@ -77,6 +81,10 @@ func (a *AlterAnnotation) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 		return nil, err
 	}
 	return &AlterAnnotation{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil
+}
+
+func (a *AlterAnnotation) ID() string {
+	return "alterAnnotation"
 }
 
 // Trigger ensures the annotation with the provided key is removed if removes is set to true.

@@ -32,6 +32,7 @@ import (
 type Trigger interface {
 	Trigger(params Parameters) error
 	New(config *ucfgwrap.Config) (Trigger, error)
+	ID() string
 }
 
 // TriggerInstance represents a configured and named instance of a trigger plugin.

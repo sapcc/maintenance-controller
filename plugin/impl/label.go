@@ -43,6 +43,10 @@ func (h *HasLabel) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &HasLabel{Key: conf.Key, Value: conf.Value}, nil
 }
 
+func (h *HasLabel) ID() string {
+	return "hasLabel"
+}
+
 // Check checks whether a node has a label (if h.Value == "") or a label with a certain value (if h.Value != "").
 func (h *HasLabel) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	val, ok := params.Node.Labels[h.Key]
@@ -73,6 +77,10 @@ func (a *AnyLabel) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 		return nil, err
 	}
 	return &AnyLabel{Key: conf.Key, Value: conf.Value}, nil
+}
+
+func (a *AnyLabel) ID() string {
+	return "anyLabel"
 }
 
 func (a *AnyLabel) Check(params plugin.Parameters) (plugin.CheckResult, error) {
@@ -115,6 +123,10 @@ func (a *AlterLabel) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 		return nil, err
 	}
 	return &AlterLabel{Key: conf.Key, Remove: conf.Remove, Value: conf.Value}, nil
+}
+
+func (a *AlterLabel) ID() string {
+	return "alterLabel"
 }
 
 // Trigger ensures the label with the provided key is removed if removes is set to true.

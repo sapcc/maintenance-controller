@@ -59,6 +59,10 @@ func (sw *SlackWebhook) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
 	return &SlackWebhook{Hook: conf.Hook, Channel: conf.Channel, Message: conf.Message}, nil
 }
 
+func (sw *SlackWebhook) ID() string {
+	return "slack"
+}
+
 // Notify performs a POST-Request to the slack API to create a message within slack.
 func (sw *SlackWebhook) Notify(params plugin.Parameters) error {
 	theMessage, err := plugin.RenderNotificationTemplate(sw.Message, &params)
@@ -132,6 +136,10 @@ func (st *SlackThread) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
 			Name:      conf.LeaseName,
 		},
 	}, nil
+}
+
+func (st *SlackThread) ID() string {
+	return "slackThread"
 }
 
 func (st *SlackThread) SetTestURL(url string) {

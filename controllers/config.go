@@ -158,23 +158,29 @@ func loadPluginChains(config StateDescriptor, registry *plugin.Registry) (state.
 
 // addPluginsToRegistry adds known plugins to the registry.
 func addPluginsToRegistry(registry *plugin.Registry) {
-	registry.CheckPlugins["affinity"] = &impl.Affinity{}
-	registry.CheckPlugins["anyLabel"] = &impl.AnyLabel{}
-	registry.CheckPlugins["clusterSemver"] = &impl.ClusterSemver{}
-	registry.CheckPlugins["condition"] = &impl.Condition{}
-	registry.CheckPlugins["hasAnnotation"] = &impl.HasAnnotation{}
-	registry.CheckPlugins["hasLabel"] = &impl.HasLabel{}
-	registry.CheckPlugins["kubernikusCount"] = &impl.KubernikusCount{}
-	registry.CheckPlugins["maxMaintenance"] = &impl.MaxMaintenance{}
-	registry.CheckPlugins["nodeCount"] = &impl.NodeCount{}
-	registry.CheckPlugins["stagger"] = &impl.Stagger{}
-	registry.CheckPlugins["timeWindow"] = &impl.TimeWindow{}
-	registry.CheckPlugins["wait"] = &impl.Wait{}
-	registry.CheckPlugins["waitExclude"] = &impl.WaitExclude{}
+	addChecker := func(checker plugin.Checker) {
+		registry.CheckPlugins[checker.ID()] = checker
+	}
+	addChecker(&impl.Affinity{})
+	addChecker(&impl.AnyLabel{})
+	addChecker(&impl.ClusterSemver{})
+	addChecker(&impl.Condition{})
+	addChecker(&impl.HasAnnotation{})
+	addChecker(&impl.HasLabel{})
+	addChecker(&impl.KubernikusCount{})
+	addChecker(&impl.MaxMaintenance{})
+	addChecker(&impl.NodeCount{})
+	addChecker(&impl.Stagger{})
+	addChecker(&impl.TimeWindow{})
+	addChecker(&impl.Wait{})
+	addChecker(&impl.WaitExclude{})
 
-	registry.NotificationPlugins["mail"] = &impl.Mail{}
-	registry.NotificationPlugins["slack"] = &impl.SlackWebhook{}
-	registry.NotificationPlugins["slackThread"] = &impl.SlackThread{}
+	addNotifier := func(notifier plugin.Notifier) {
+		registry.NotificationPlugins[notifier.ID()] = notifier
+	}
+	addNotifier(&impl.Mail{})
+	addNotifier(&impl.SlackWebhook{})
+	addNotifier(&impl.SlackThread{})
 
 	registry.TriggerPlugins["alterAnnotation"] = &impl.AlterAnnotation{}
 	registry.TriggerPlugins["alterLabel"] = &impl.AlterLabel{}

@@ -51,6 +51,10 @@ func (cs *ClusterSemver) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &ClusterSemver{Key: conf.Key, ProfileScoped: conf.ProfileScoped}, nil
 }
 
+func (cs *ClusterSemver) ID() string {
+	return "clusterSemver"
+}
+
 func (cs *ClusterSemver) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	versionStr, ok := params.Node.Labels[cs.Key]
 	if !ok {

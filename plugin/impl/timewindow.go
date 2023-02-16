@@ -86,6 +86,10 @@ func (tw *TimeWindow) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return timewindow, nil
 }
 
+func (tw *TimeWindow) ID() string {
+	return "timeWindow"
+}
+
 // Check checks whether the current time is within specified time window on allowed weekdays.
 func (tw *TimeWindow) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	return tw.checkInternal(time.Now().UTC()), nil

@@ -44,6 +44,10 @@ func (c *Condition) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Condition{Type: conf.Type, Status: conf.Status}, nil
 }
 
+func (c *Condition) ID() string {
+	return "condition"
+}
+
 // Check asserts that the given status matches the specified condition.
 func (c *Condition) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	for _, condition := range params.Node.Status.Conditions {

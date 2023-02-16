@@ -69,6 +69,10 @@ func (m *Mail) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
 	}, nil
 }
 
+func (m *Mail) ID() string {
+	return "mail"
+}
+
 // Notify performs connects to the provided SMTP server and transmits the configured message.
 func (m *Mail) Notify(params plugin.Parameters) error {
 	theMessage, err := plugin.RenderNotificationTemplate(m.Message, &params)

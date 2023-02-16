@@ -39,6 +39,10 @@ func (a *Affinity) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Affinity{}, nil
 }
 
+func (a *Affinity) ID() string {
+	return "affinity"
+}
+
 func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if params.State != string(state.Required) {
 		err := fmt.Errorf("affinity check plugin failed, node %v is not in maintenance-required but %v state",

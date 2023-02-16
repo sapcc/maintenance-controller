@@ -58,6 +58,10 @@ func (n *mockTrigger) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 	return &mockTrigger{}, nil
 }
 
+func (n *mockTrigger) ID() string {
+	return "mock"
+}
+
 func mockTriggerChain() (plugin.TriggerChain, *mockTrigger) {
 	p := &mockTrigger{}
 	instance := plugin.TriggerInstance{
@@ -85,6 +89,10 @@ func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
 
 func (n *mockNotificaiton) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
 	return &mockNotificaiton{}, nil
+}
+
+func (n *mockNotificaiton) ID() string {
+	return "mock"
 }
 
 func mockNotificationChain(instanceCount int) (plugin.NotificationChain, *mockNotificaiton) {
@@ -126,6 +134,10 @@ func (c *mockCheck) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 
 func (c *mockCheck) OnTransition(params plugin.Parameters) error {
 	return nil
+}
+
+func (c *mockCheck) ID() string {
+	return "Mock"
 }
 
 func mockCheckChain() (plugin.CheckChain, *mockCheck) {

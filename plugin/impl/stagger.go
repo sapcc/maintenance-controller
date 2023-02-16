@@ -64,6 +64,10 @@ func (s *Stagger) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	}, nil
 }
 
+func (s *Stagger) ID() string {
+	return "stagger"
+}
+
 // Check asserts that since the last successful check is a certain time has passed.
 func (s *Stagger) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	s.grabIndex = noGrab

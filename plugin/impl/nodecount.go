@@ -40,6 +40,10 @@ func (n *NodeCount) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &NodeCount{Count: conf.Count}, nil
 }
 
+func (n *NodeCount) ID() string {
+	return "nodeCount"
+}
+
 // Check asserts that the cluster has at least the configured amount of nodes.
 func (n *NodeCount) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	nodeList := &v1.NodeList{}

@@ -41,6 +41,10 @@ func (n *successfulTrigger) New(config *ucfgwrap.Config) (Trigger, error) {
 	return &successfulTrigger{}, nil
 }
 
+func (n *successfulTrigger) ID() string {
+	return "success"
+}
+
 type failingTrigger struct {
 	Invoked int
 }
@@ -52,6 +56,10 @@ func (n *failingTrigger) Trigger(params Parameters) error {
 
 func (n *failingTrigger) New(config *ucfgwrap.Config) (Trigger, error) {
 	return &failingTrigger{}, nil
+}
+
+func (n *failingTrigger) ID() string {
+	return "fail"
 }
 
 var _ = Describe("TriggerChain", func() {

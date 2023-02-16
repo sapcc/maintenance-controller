@@ -42,6 +42,10 @@ func (n *successfulNotification) New(config *ucfgwrap.Config) (Notifier, error) 
 	return &successfulNotification{}, nil
 }
 
+func (n *successfulNotification) ID() string {
+	return "success"
+}
+
 type failingNotification struct {
 	Invoked int
 }
@@ -53,6 +57,10 @@ func (n *failingNotification) Notify(params Parameters) error {
 
 func (n *failingNotification) New(config *ucfgwrap.Config) (Notifier, error) {
 	return &failingNotification{}, nil
+}
+
+func (n *failingNotification) ID() string {
+	return "fail"
 }
 
 var _ = Describe("NotificationChain", func() {

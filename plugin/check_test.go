@@ -47,6 +47,10 @@ func (c *trueCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
+func (c *trueCheck) ID() string {
+	return "True"
+}
+
 type falseCheck struct {
 	Invoked int
 }
@@ -64,6 +68,10 @@ func (c *falseCheck) OnTransition(params Parameters) error {
 	return nil
 }
 
+func (c *falseCheck) ID() string {
+	return "False"
+}
+
 type errorCheck struct {
 	Invoked int
 }
@@ -79,6 +87,10 @@ func (c *errorCheck) New(config *ucfgwrap.Config) (Checker, error) {
 
 func (c *errorCheck) OnTransition(params Parameters) error {
 	return nil
+}
+
+func (c *errorCheck) ID() string {
+	return "Error"
 }
 
 var _ = Describe("CheckChain", func() {

@@ -28,6 +28,7 @@ import (
 )
 
 type CheckResult struct {
+	ID     string         `json:"id"`
 	Passed bool           `json:"passed"`
 	Info   map[string]any `json:"info"`
 }
@@ -47,6 +48,7 @@ func Failed(info map[string]any) CheckResult {
 type Checker interface {
 	Check(params Parameters) (CheckResult, error)
 	New(config *ucfgwrap.Config) (Checker, error)
+	ID() string
 	// OnTransition is invoked once evaluation the CheckChain this instance is the cause for a transition.
 	OnTransition(params Parameters) error
 }
@@ -89,6 +91,7 @@ func (chain *CheckChain) Execute(params Parameters) (CheckChainResult, error) {
 	failedInstances := make([]string, 0)
 	for _, check := range chain.Plugins {
 		result, err := check.Plugin.Check(params)
+		result.ID = check.Plugin.ID()
 		if result.Info == nil {
 			result.Info = make(map[string]any)
 		}

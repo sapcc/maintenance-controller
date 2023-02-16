@@ -47,6 +47,10 @@ func (w *Wait) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &Wait{Duration: duration}, nil
 }
 
+func (w *Wait) ID() string {
+	return "wait"
+}
+
 func (w *Wait) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if time.Since(params.LastTransition) > w.Duration {
 		return plugin.Passed(nil), nil
@@ -84,6 +88,10 @@ func (we *WaitExclude) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 		weekdays = append(weekdays, weekday)
 	}
 	return &WaitExclude{Duration: duration, Exclude: weekdays}, nil
+}
+
+func (we *WaitExclude) ID() string {
+	return "waitExclude"
 }
 
 func (we *WaitExclude) Check(params plugin.Parameters) (plugin.CheckResult, error) {

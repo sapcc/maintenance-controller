@@ -47,6 +47,10 @@ func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	return &MaxMaintenance{MaxNodes: conf.Max, Profile: conf.Profile}, nil
 }
 
+func (m *MaxMaintenance) ID() string {
+	return "maxMaintenance"
+}
+
 // Check asserts that no more then the specified amount of nodes is in the in-maintenance state.
 func (m *MaxMaintenance) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	var nodeList corev1.NodeList
