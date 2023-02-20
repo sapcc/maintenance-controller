@@ -83,7 +83,7 @@ func (s *Server) Start(ctx context.Context) error {
 	if path == "" {
 		path = "static"
 	}
-	static := http.FileServer(http.Dir(s.StaticPath))
+	static := http.FileServer(http.Dir(path))
 	mux.Handle("/static/", http.StripPrefix("/static", static))
 	mux.Handle("/", http.RedirectHandler("/static", http.StatusMovedPermanently))
 	// values copied over from controller-runtime
