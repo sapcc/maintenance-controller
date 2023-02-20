@@ -19,3 +19,6 @@ maintenance_config.yaml
 
 # IDEs
 .vscode
+
+# Dev files
+static/api/v1/info

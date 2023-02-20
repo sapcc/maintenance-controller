@@ -41,6 +41,7 @@ type Server struct {
 	WaitTimeout   time.Duration
 	Log           logr.Logger
 	NodeInfoCache cache.NodeInfoCache
+	StaticPath    string
 	counter       int
 	shutdown      chan struct{}
 }
@@ -78,6 +79,13 @@ func (s *Server) Start(ctx context.Context) error {
 			s.Log.Error(err, "failed to write reply to /api/v1/info")
 		}
 	})
+	path := s.StaticPath
+	if path == "" {
+		path = "static"
+	}
+	static := http.FileServer(http.Dir(s.StaticPath))
+	mux.Handle("/static/", http.StripPrefix("/static", static))
+	mux.Handle("/", http.RedirectHandler("/static", http.StatusMovedPermanently))
 	// values copied over from controller-runtime
 	server := &http.Server{
 		Handler:        mux,

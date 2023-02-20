@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Controller</title>
+    <link rel="stylesheet" type="text/css" href="/purecss@3.0.0.css">
+    <script defer src="/alpinejs@3.11.1.js"></script>
+    <script>
+        const nodeRequest = new Request("/api/v1/info");
+        nodeRequest.method = "GET";
+
+        function entries(info) {
+            return Object.entries(info)
+        }
+
+        function nodeByName(name, nodes) {
+            return nodes.filter((n) => n.node == name)[0]
+        }
+
+        function groupByState(nodes) {
+            let result = {}
+            for (const node of nodes) {
+                for (const profile of node.profiles) {
+                    if (result[profile.name] === undefined) {
+                        result[profile.name] = {
+                            'operational': 0,
+                            'maintenance-required': 0,
+                            'in-maintenance': 0
+                        }
+                    }
+                    result[profile.name][profile.state] += 1
+                }
+            }
+            return result
+        }
+    </script>
+</head>
+
+<body>
+    <div x-data="{
+        nodes: null, selected: null, current: null, grouped: null, getNodes() {
+            fetch(nodeRequest)
+                .then((response) => response.json())
+                .then((json) => this.nodes = json.sort((a, b) => {
+                    if (a.node < b.node) {
+                        return -1;
+                    } else {
+                        return 1;
+                    }
+                    })
+                )
+                .then((nodes) => {
+                    this.current = nodes[0];
+                    this.grouped = entries(groupByState(nodes));
+                });
+        }
+    }" x-init="getNodes()" style="padding: 1em;">
+        <h2>Overview</h2>
+        <table class="pure-table">
+            <thead>
+                <tr>
+                    <th>Profile</th>
+                    <th>Operational</th>
+                    <th>Maintenance-Required</th>
+                    <th>In-Maintenance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-if="grouped !== null">
+                    <template x-for="group in grouped">
+                        <tr>
+                            <td x-text="group[0]"></td>
+                            <td x-text="group[1]['operational']"></td>
+                            <td x-text="group[1]['maintenance-required']"></td>
+                            <td x-text="group[1]['in-maintenance']"></td> -->
+                        </tr>
+                    </template>
+                </template>
+            </tbody>
+        </table>
+        <h2>Details</h2>
+        <form class="pure-form">
+            <fieldset>
+                <label for="nodeSelect">Node: </label>
+                <select name="nodeSelect" id="nodeSelect" x-model="selected"
+                    @change="current = nodeByName(selected, nodes)">
+                    <template x-for="node in nodes">
+                        <option x-text="node.node"></option>
+                    </template>
+                </select>
+            </fieldset>
+        </form>
+        <template x-if="current !== null">
+            <div>
+                <span x-text="`Snapshot of checks at ${current.updated}`"></span>
+                <div class="pure-g">
+                    <template x-for="profile in current.profiles">
+                        <div class="pure-u-1-3">
+                            <h3 x-text="`${profile.name}: ${profile.state}`"></h3>
+                            <template x-for="transition in profile.applied.transitions">
+                                <div>
+                                    <div style="font-weight: bold;" x-text="`Transition to ${transition.target}`"></div>
+                                    <div x-text="`Check chain yielded ${transition.chain.passed}`"></div>
+                                    <div x-text="`Expression: '${transition.chain.expression}'`"></div>
+                                    <div x-show="transition.chain.passed && !transition.passed">Advancing is likely
+                                        blocked by an other profile being in-maintenance.</div>
+                                    <div>
+                                        <table class="pure-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Instance</th>
+                                                    <th>Type</th>
+                                                    <th>Passed</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody x-data="{get plugins() { return entries(transition.chain.info); }}">
+                                                <template x-for="plugin in plugins">
+                                                    <tr>
+                                                        <td x-text="plugin[0]"></td>
+                                                        <td x-text="plugin[1].id"></td>
+                                                        <td x-text="plugin[1].passed"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <p>
+            <a href="https://github.com/sapcc/maintenance-controller#readme">Documentation</a>
+        </p>
+    </div>
+</body>
+
+</html>

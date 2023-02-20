@@ -18,6 +18,7 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 LABEL source_repository="https://github.com/sapcc/maintenance-controller"
 COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/static static
 USER nonroot:nonroot
 
 ENTRYPOINT ["/manager"]

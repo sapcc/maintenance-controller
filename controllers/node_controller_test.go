@@ -808,6 +808,7 @@ var _ = Describe("The api server", func() {
 			WaitTimeout:   50 * time.Millisecond,
 			Log:           logr.Discard(),
 			NodeInfoCache: nodeInfoCache,
+			StaticPath:    "../static",
 		}
 		withCancel, cancel := context.WithCancel(context.Background())
 		stopServer = cancel
@@ -1017,6 +1018,13 @@ var _ = Describe("The api server", func() {
 			Expect(json.Unmarshal(data, &nodes)).To(Succeed())
 			return nodes
 		}).ShouldNot(HaveLen(0))
+	})
+
+	It("should serve the dashboard", func() {
+		res, err := http.Get("http://localhost:15423")
+		Expect(err).To(Succeed())
+		Expect(res.StatusCode).To(Equal(http.StatusOK))
+		Expect(res.ContentLength).To(BeNumerically(">", 0))
 	})
 
 })
