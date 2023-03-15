@@ -71,6 +71,11 @@ Also transitions have to be defined.
 These consist of at least of a check chain and the state, which should follow next.
 Optionally, a trigger chain can be configured to perform actions, when a node moves from one state into the next one.
 
+### Debugging
+By port-forwarding to the port specified by the `metrics-addr` flag (default `8080`) of the currently active maintenance-controller one can access a webview on `/`, which shows details about the state the maintenance-controller has.
+It provides an overview about how many nodes are in a certain state regarding a certain profile.
+Also, individual check chain evaluations can be checked.
+
 ### Format
 There is a global configuration, which defines some general options, plugin instances and maintenance profiles.
 The global configuration should be named `./config/maintenance.yaml` and should be placed relative to the controllers working directory preferably via a Kubernetes secret or a config map.
