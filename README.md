@@ -51,7 +51,7 @@ Check out the additional integrations further down.
 
 ## Installation
 
-Docker Images are on [DockerHub](https://hub.docker.com/r/sapcc/maintenance-controller).
+Docker Images are on [GitHubs Container registry](https://github.com/sapcc/maintenance-controller/pkgs/container/maintenance-controller) (and older images on [DockerHub](https://hub.docker.com/r/sapcc/maintenance-controller) until they remove them).
 A helm chart can be found [here](https://github.com/sapcc/helm-charts/tree/master/system/maintenance-controller).
 Alternatively, execute ```make deploy IMG=sapcc/maintenance-controller```.
 
