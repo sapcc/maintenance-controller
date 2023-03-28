@@ -49,6 +49,11 @@ linters:
   - usestdlibvars
   disable-all: false
   fast: false
+linters-settings:
+  revive:
+    rules:
+    - name: unused-parameter
+      disabled: true
 issues:
   exclude-rules:
     # Exclude some linters from running on tests files.

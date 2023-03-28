@@ -112,7 +112,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
 		}
-		r.StartNodes(ctx, &conf.VCenters, esx, &conf)
+		r.StartNodes(ctx, &conf.VCenters, esx)
 		err = r.ShutdownNodes(ctx, &conf.VCenters, esx, &conf)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
@@ -227,7 +227,7 @@ func nodeGracePeriod(node *v1.Node) *int64 {
 
 // Starts the nodes on the given ESX, if this controller shut them down
 // and the underlying ESX is no longer in maintenance.
-func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) {
+func (r *Runnable) StartNodes(ctx context.Context, vCenters *VCenters, esx *Host) {
 	for i := range esx.Nodes {
 		node := &esx.Nodes[i]
 		if !ShouldStart(node) {

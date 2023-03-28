@@ -240,7 +240,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 	results := make([]TransitionResult, 0)
 	errs := make([]error, 0)
 	for _, transtition := range ts {
-		result, err := transtition.Execute(params, current)
+		result, err := transtition.Execute(params)
 		results = append(results, result)
 		if err != nil {
 			errs = append(errs, err)
@@ -334,7 +334,7 @@ type ProfileState struct {
 	State   NodeStateLabel
 }
 
-func (t *Transition) Execute(params plugin.Parameters, current NodeStateLabel) (TransitionResult, error) {
+func (t *Transition) Execute(params plugin.Parameters) (TransitionResult, error) {
 	chainResult, err := t.Check.Execute(params)
 	if err != nil {
 		return TransitionResult{Passed: false, Target: t.Next, Chain: chainResult, Error: err.Error()}, err
