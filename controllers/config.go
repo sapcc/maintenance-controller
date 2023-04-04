@@ -170,6 +170,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	addChecker(&impl.KubernikusCount{})
 	addChecker(&impl.MaxMaintenance{})
 	addChecker(&impl.NodeCount{})
+	addChecker(&impl.PrometheusInstant{})
 	addChecker(&impl.Stagger{})
 	addChecker(&impl.TimeWindow{})
 	addChecker(&impl.Wait{})

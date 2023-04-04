@@ -201,6 +201,13 @@ config:
   max: the limit of nodes that are in-maintenance, required
   profile: if set only consider nodes which do have the specified profile, optional
 ```
+__prometheusInstant__: Checks that the most recent value of a prometheus query satisfies a given expression.
+```yaml
+config:
+  url: prometheus url
+  query: prometheus query, that yields a vector with exactly a single value
+  expr: comparision where 'value' is fetched from prometheus, e.g. 'value <= 1'
+```
 __stagger__: Checks that a certain duration has passed since a previous node passed. This is implemented with `coordination.k8s.io/Lease`s, which needs to be manually removed when the maintenance controller is removed from a cluster.
 ```yaml
 config:
