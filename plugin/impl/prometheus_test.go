@@ -22,6 +22,7 @@ package impl
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/PaesslerAG/gval"
 	. "github.com/onsi/ginkgo/v2"
@@ -30,7 +31,7 @@ import (
 	"github.com/sapcc/ucfgwrap"
 )
 
-const promReply string = "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[{\"metric\":{\"__name__\":\"cool_metric\"},\"value\":[1680600891.782,\"1\"]}]}}"
+const promReply string = "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[{\"metric\":{\"__name__\":\"cool_metric\"},\"value\":[1680600891.782,\"1\"]}]}}" //nolint:lll
 
 var _ = Describe("The prometheusInstant plugin", func() {
 
@@ -58,14 +59,17 @@ var _ = Describe("The prometheusInstant plugin", func() {
 				metric := r.Form.Get("query")
 				GinkgoLogr.Info("query", "val", metric)
 				if metric == "cool_metric" {
-					w.Write([]byte(promReply))
+					_, err := w.Write([]byte(promReply))
+					Expect(err).To(Succeed())
 				} else {
-					w.Write([]byte("{}"))
+					_, err := w.Write([]byte("{}"))
+					Expect(err).To(Succeed())
 				}
 			})
 			server = http.Server{
-				Addr:    addr,
-				Handler: mux,
+				Addr:              addr,
+				Handler:           mux,
+				ReadHeaderTimeout: 1 * time.Second,
 			}
 			go func() {
 				defer GinkgoRecover()
@@ -75,7 +79,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		AfterEach(func() {
-			server.Shutdown(context.Background())
+			Expect(server.Shutdown(context.Background())).To(Succeed())
 		})
 
 		It("passes if the expression is satisfied", func() {

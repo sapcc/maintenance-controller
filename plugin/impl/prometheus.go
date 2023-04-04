@@ -31,7 +31,8 @@ import (
 	"github.com/sapcc/ucfgwrap"
 )
 
-// HasLabel is a check plugin that queries a prometheus for the most recent value of a query, which is checked against a given expression.
+// HasLabel is a check plugin that queries a prometheus for the most recent
+// value of a query, which is checked against a given expression.
 type PrometheusInstant struct {
 	URL       string
 	Query     string
@@ -59,7 +60,7 @@ func (pi *PrometheusInstant) ID() string {
 	return "prometheusInstant"
 }
 
-// Queries the prometheus and evaluate the result against the given expression
+// Queries the prometheus and evaluate the result against the given expression.
 func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	info := map[string]any{"url": pi.URL, "query": pi.Query, "expr": pi.Evaluable}
 	cfg := api.Config{
