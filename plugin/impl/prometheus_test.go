@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/PaesslerAG/gval"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -83,12 +82,10 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		It("passes if the expression is satisfied", func() {
-			eval, err := gval.Full().NewEvaluable("value == 1")
-			Expect(err).To(Succeed())
 			prom := PrometheusInstant{
-				URL:       "http://" + addr,
-				Query:     "cool_metric",
-				Evaluable: eval,
+				URL:   "http://" + addr,
+				Query: "cool_metric",
+				Expr:  "value == 1",
 			}
 			result, err := prom.Check(plugin.Parameters{Ctx: context.Background()})
 			Expect(err).To(Succeed())
@@ -96,12 +93,10 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		It("fails if the expression is not satisfied", func() {
-			eval, err := gval.Full().NewEvaluable("value < 1")
-			Expect(err).To(Succeed())
 			prom := PrometheusInstant{
-				URL:       "http://" + addr,
-				Query:     "cool_metric",
-				Evaluable: eval,
+				URL:   "http://" + addr,
+				Query: "cool_metric",
+				Expr:  "value < 1",
 			}
 			result, err := prom.Check(plugin.Parameters{Ctx: context.Background()})
 			Expect(err).To(Succeed())
@@ -109,12 +104,10 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		It("fails if the server cannot be reached", func() {
-			eval, err := gval.Full().NewEvaluable("value == 1")
-			Expect(err).To(Succeed())
 			prom := PrometheusInstant{
-				URL:       "http://" + addr + "/unreachable",
-				Query:     "cool_metric",
-				Evaluable: eval,
+				URL:   "http://" + addr + "/unreachable",
+				Query: "cool_metric",
+				Expr:  "value == 1",
 			}
 			result, err := prom.Check(plugin.Parameters{Ctx: context.Background()})
 			Expect(err).To(HaveOccurred())
@@ -122,12 +115,10 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		It("fails if the metric does not exist", func() {
-			eval, err := gval.Full().NewEvaluable("value == 1")
-			Expect(err).To(Succeed())
 			prom := PrometheusInstant{
-				URL:       "http://" + addr,
-				Query:     "not_so_cool_metric",
-				Evaluable: eval,
+				URL:   "http://" + addr,
+				Query: "not_so_cool_metric",
+				Expr:  "value == 1",
 			}
 			result, err := prom.Check(plugin.Parameters{Ctx: context.Background()})
 			Expect(err).To(HaveOccurred())

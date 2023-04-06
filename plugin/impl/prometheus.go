@@ -34,9 +34,9 @@ import (
 // HasLabel is a check plugin that queries a prometheus for the most recent
 // value of a query, which is checked against a given expression.
 type PrometheusInstant struct {
-	URL       string
-	Query     string
-	Evaluable gval.Evaluable
+	URL   string
+	Query string
+	Expr  string
 }
 
 // New creates a new PrometheusInstant instance with the given config.
@@ -49,11 +49,7 @@ func (pi *PrometheusInstant) New(config *ucfgwrap.Config) (plugin.Checker, error
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	evaluable, err := gval.Full().NewEvaluable(conf.Expr)
-	if err != nil {
-		return nil, err
-	}
-	return &PrometheusInstant{URL: conf.URL, Query: conf.Query, Evaluable: evaluable}, nil
+	return &PrometheusInstant{URL: conf.URL, Query: conf.Query, Expr: conf.Expr}, nil
 }
 
 func (pi *PrometheusInstant) ID() string {
@@ -62,7 +58,7 @@ func (pi *PrometheusInstant) ID() string {
 
 // Queries the prometheus and evaluate the result against the given expression.
 func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult, error) {
-	info := map[string]any{"url": pi.URL, "query": pi.Query, "expr": pi.Evaluable}
+	info := map[string]any{"url": pi.URL, "query": pi.Query, "expr": pi.Expr}
 	cfg := api.Config{
 		Address: pi.URL,
 	}
@@ -86,7 +82,11 @@ func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult
 		return plugin.Failed(info), fmt.Errorf("result does not contain exactly one element")
 	}
 	value := float64(vector[0].Value)
-	passed, err := pi.Evaluable.EvalBool(params.Ctx, map[string]float64{"value": value})
+	evaluable, err := gval.Full().NewEvaluable(pi.Expr)
+	if err != nil {
+		return plugin.Failed(info), err
+	}
+	passed, err := evaluable.EvalBool(params.Ctx, map[string]float64{"value": value})
 	if err != nil {
 		return plugin.Failed(info), fmt.Errorf("failed to evaluate prometheus expression: %w", err)
 	}
