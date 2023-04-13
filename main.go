@@ -44,6 +44,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
 	"github.com/sapcc/maintenance-controller/event"
@@ -107,7 +108,7 @@ func main() {
 		EventBroadcaster:           event.NewNodeBroadcaster(),
 		LeaderElectionResourceLock: "leases",
 		LeaderElection:             enableLeaderElection,
-		LeaderElectionID:           "maintenance-controller-leader-election.cloud.sap",
+		LeaderElectionID:           constants.LeaderElectionID,
 		RetryPeriod:                &leaderElectionRetry,
 		GracefulShutdownTimeout:    &shutdownTimeout,
 	})
@@ -185,6 +186,8 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		Log:           ctrl.Log.WithName("metrics"),
 		WaitTimeout:   cfg.metricsTimeout,
 		NodeInfoCache: nodeInfoCache,
+		Elected:       mgr.Elected(),
+		Client:        mgr.GetClient(),
 	}
 	if err := mgr.Add(&apiServer); err != nil {
 		return fmt.Errorf("Failed to attach prometheus metrics server: %w", err)

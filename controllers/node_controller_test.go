@@ -802,6 +802,8 @@ var _ = Describe("The api server", func() {
 		targetNode.Name = targetNodeName
 		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "multi"}
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
+		elected := make(chan struct{})
+		close(elected)
 
 		metricsServer = api.Server{
 			Address:       ":15423",
@@ -809,6 +811,9 @@ var _ = Describe("The api server", func() {
 			Log:           logr.Discard(),
 			NodeInfoCache: nodeInfoCache,
 			StaticPath:    "../static",
+			Namespace:     metav1.NamespaceDefault,
+			Client:        k8sClient,
+			Elected:       elected,
 		}
 		withCancel, cancel := context.WithCancel(context.Background())
 		stopServer = cancel

@@ -21,6 +21,9 @@ const (
 	// Generic constants.
 	TrueStr string = "true"
 
+	// Name of the leader election leases.
+	LeaderElectionID string = "maintenance-controller-leader-election.cloud.sap"
+
 	// Label key that holds the physical ESX host.
 	HostLabelKey string = "kubernetes.cloud.sap/host"
 

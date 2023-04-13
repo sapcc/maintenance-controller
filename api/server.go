@@ -25,14 +25,21 @@ package api
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/constants"
+	coordinationv1 "k8s.io/api/coordination/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -42,6 +49,9 @@ type Server struct {
 	Log           logr.Logger
 	NodeInfoCache cache.NodeInfoCache
 	StaticPath    string
+	Namespace     string
+	Elected       <-chan struct{}
+	Client        client.Client
 	counter       int
 	shutdown      chan struct{}
 }
@@ -70,13 +80,17 @@ func (s *Server) Start(ctx context.Context) error {
 		handler.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/api/v1/info", func(w http.ResponseWriter, r *http.Request) {
-		jsonBytes, err := s.NodeInfoCache.JSON()
-		if err != nil {
-			jsonBytes = []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
+		elected := false
+		select {
+		case _, ok := <-s.Elected:
+			elected = !ok
+			break
+		default:
 		}
-		_, err = w.Write(jsonBytes)
-		if err != nil {
-			s.Log.Error(err, "failed to write reply to /api/v1/info")
+		if elected {
+			s.serveInfo(w)
+		} else {
+			s.fetchInfo(w)
 		}
 	})
 	path := s.StaticPath
@@ -110,4 +124,91 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	close(s.shutdown)
 	return nil
+}
+
+func (s *Server) writeError(err error, w http.ResponseWriter) {
+	jsonBytes := []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
+	_, err = w.Write(jsonBytes)
+	if err != nil {
+		s.Log.Error(err, "failed to write error reply to /api/v1/info")
+	}
+}
+
+func (s *Server) serveInfo(w http.ResponseWriter) {
+	jsonBytes, err := s.NodeInfoCache.JSON()
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	_, err = w.Write(jsonBytes)
+	if err != nil {
+		s.Log.Error(err, "failed to write reply to /api/v1/info")
+	}
+}
+
+func (s *Server) fetchInfo(w http.ResponseWriter) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	namespace, err := s.getNamespace()
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	var lease coordinationv1.Lease
+	leaseName := types.NamespacedName{Namespace: namespace, Name: constants.LeaderElectionID}
+	err = s.Client.Get(ctx, leaseName, &lease)
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	if lease.Spec.HolderIdentity == nil {
+		s.writeError(fmt.Errorf("no maintenance-controller is leading"), w)
+		return
+	}
+	holder := *lease.Spec.HolderIdentity
+	leader := strings.Split(holder, "_")[0]
+	addr := net.JoinHostPort(leader, "8080")
+	url := fmt.Sprintf("http://%s/api/v1/info", addr)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	_, err = io.Copy(w, res.Body)
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	err = res.Body.Close()
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+}
+
+// mostly copied from controller-runtime.
+func (s *Server) getNamespace() (string, error) {
+	if s.Namespace != "" {
+		return s.Namespace, nil
+	}
+	path := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	// Check whether the namespace file exists.
+	// If not, we are not running in cluster so can't guess the namespace.
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return "", fmt.Errorf("namespace file does not exist")
+	} else if err != nil {
+		return "", fmt.Errorf("error checking namespace file: %w", err)
+	}
+
+	// Load the namespace file and return its content
+	namespace, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("error reading namespace file: %w", err)
+	}
+	return string(namespace), nil
 }
