@@ -37,6 +37,7 @@ import (
 	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/constants"
 	coordinationv1 "k8s.io/api/coordination/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -167,7 +168,13 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 	}
 	holder := *lease.Spec.HolderIdentity
 	leader := strings.Split(holder, "_")[0]
-	addr := net.JoinHostPort(leader, "8080")
+	var pod corev1.Pod
+	err = s.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: leader}, &pod)
+	if err != nil {
+		s.writeError(err, w)
+		return
+	}
+	addr := net.JoinHostPort(pod.Status.PodIP, "8080")
 	url := fmt.Sprintf("http://%s/api/v1/info", addr)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
