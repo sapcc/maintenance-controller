@@ -21,6 +21,7 @@ package impl
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -45,12 +46,12 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		Expect(plugin.(*PrometheusInstant).Query).To(Equal("q"))
 	})
 
-	Context("with a mock prometheus", func() {
+	Context("with a mock prometheus", Ordered, func() {
 
 		var server http.Server
 		const addr string = "127.0.0.1:29572"
 
-		BeforeEach(func() {
+		BeforeAll(func() {
 			mux := http.NewServeMux()
 			mux.HandleFunc("/api/v1/query", func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
@@ -73,14 +74,20 @@ var _ = Describe("The prometheusInstant plugin", func() {
 				IdleTimeout:       90 * time.Second,
 				ReadHeaderTimeout: 32 * time.Second,
 			}
+			listenReady := make(chan struct{})
 			go func() {
 				defer GinkgoRecover()
-				err := server.ListenAndServe()
+				listener, err := net.Listen("tcp", addr)
+				Expect(err).To(Succeed())
+				listenReady <- struct{}{}
+				close(listenReady)
+				err = server.Serve(listener)
 				Expect(err).To(MatchError(http.ErrServerClosed))
 			}()
+			<-listenReady
 		})
 
-		AfterEach(func() {
+		AfterAll(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			Expect(server.Shutdown(ctx)).To(Succeed())
