@@ -66,9 +66,12 @@ var _ = Describe("The prometheusInstant plugin", func() {
 				}
 			})
 			server = http.Server{
-				Addr:              addr,
-				Handler:           mux,
-				ReadHeaderTimeout: 1 * time.Second,
+				Addr:           addr,
+				Handler:        mux,
+				MaxHeaderBytes: 1 << 20,
+				// matches http.DefaultTransport keep-alive timeout
+				IdleTimeout:       90 * time.Second,
+				ReadHeaderTimeout: 32 * time.Second,
 			}
 			go func() {
 				defer GinkgoRecover()
@@ -78,7 +81,9 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		})
 
 		AfterEach(func() {
-			Expect(server.Shutdown(context.Background())).To(Succeed())
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			Expect(server.Shutdown(ctx)).To(Succeed())
 		})
 
 		It("passes if the expression is satisfied", func() {
