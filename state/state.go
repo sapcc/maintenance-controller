@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -128,11 +129,25 @@ type Data struct {
 	PreviousStates map[string]NodeStateLabel
 }
 
+type ProfileData struct {
+	Transition time.Time
+	Current    NodeStateLabel
+	Previous   NodeStateLabel
+}
+
+type Data2 struct {
+	Profiles map[string]*ProfileData
+	// Maps a notification instance name to the last time it was triggered.
+	Notifications map[string]time.Time
+}
+
 func ParseData(node *v1.Node) (Data, error) {
 	dataStr := node.Annotations[constants.DataAnnotationKey]
 	var data Data
 	if dataStr != "" {
-		err := json.Unmarshal([]byte(dataStr), &data)
+		decoder := json.NewDecoder(strings.NewReader(dataStr))
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&data)
 		if err != nil {
 			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
@@ -144,6 +159,55 @@ func ParseData(node *v1.Node) (Data, error) {
 		data.PreviousStates = make(map[string]NodeStateLabel)
 	}
 	return data, nil
+}
+
+func ParseData2(node *v1.Node) (Data2, error) {
+	dataStr := node.Annotations[constants.DataAnnotationKey]
+	var data Data2
+	if dataStr != "" {
+		decoder := json.NewDecoder(strings.NewReader(dataStr))
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&data)
+		if err != nil {
+			return Data2{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
+		}
+	}
+	if data.Notifications == nil {
+		data.Notifications = make(map[string]time.Time)
+	}
+	return data, nil
+}
+
+func ParseMigrateData2(node *v1.Node, log logr.Logger) (Data2, error) {
+	dataStr := node.Annotations[constants.DataAnnotationKey]
+	if dataStr == "" {
+		return Data2{}, nil
+	}
+	data2, err := ParseData2(node)
+	if err == nil {
+		return data2, nil
+	}
+	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
+	data, err := ParseData(node)
+	if err != nil {
+		return Data2{}, err
+	}
+	data2 = Data2{
+		Profiles:      make(map[string]*ProfileData),
+		Notifications: data.LastNotificationTimes,
+	}
+	for profile, current := range data.ProfileStates {
+		previous, ok := data.PreviousStates[profile]
+		if !ok {
+			previous = current
+		}
+		data2.Profiles[profile] = &ProfileData{
+			Transition: data.LastTransition,
+			Current:    current,
+			Previous:   previous,
+		}
+	}
+	return data2, nil
 }
 
 // NodeState represents the state a node can be in.
@@ -275,7 +339,7 @@ func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.Notificat
 	currentState NodeStateLabel, previousState NodeStateLabel) error {
 	for _, notifyInstance := range chain.Plugins {
 		if notifyInstance.Schedule == nil {
-			return fmt.Errorf("Notification plugin instance %s has no schedule assigned", notifyInstance.Name)
+			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyInstance.Name)
 		}
 		_, ok := data.LastNotificationTimes[notifyInstance.Name]
 		if !ok {
@@ -418,6 +482,58 @@ func (d *Data) MaintainPreviousStates(profilesStr string, availableProfiles map[
 	for _, profile := range profiles {
 		if _, ok := d.PreviousStates[profile.Name]; !ok {
 			d.PreviousStates[profile.Name] = d.ProfileStates[profile.Name]
+		}
+	}
+}
+
+// Returns a Profile instance with its corresponding state for each profile named in profileStr.
+// If profileStr is an empty string, falls back to the default profile.
+// Call MaintainProfileStates before.
+func (d *Data2) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
+	// if no profile is attached, use the default profile
+	if profilesStr == "" {
+		profilesStr = constants.DefaultProfileName
+	}
+	result := make([]ProfileState, 0)
+	profiles := getProfiles(profilesStr, availableProfiles)
+	for _, profile := range profiles {
+		state := d.Profiles[profile.Name].Current
+		result = append(result, ProfileState{
+			Profile: profile,
+			State:   state,
+		})
+	}
+	return result
+}
+
+// Removes state data for removed profile and initializes it for added profiles.
+func (d *Data2) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
+	if d.Profiles == nil {
+		d.Profiles = make(map[string]*ProfileData)
+	}
+	// if no profile is attached, use the default profile
+	if profilesStr == "" {
+		profilesStr = constants.DefaultProfileName
+	}
+	// cleanup unused states
+	toRemove := make([]string, 0)
+	for profileName := range d.Profiles {
+		if !ContainsProfile(profilesStr, profileName) {
+			toRemove = append(toRemove, profileName)
+		}
+	}
+	for _, remove := range toRemove {
+		delete(d.Profiles, remove)
+	}
+	// initialize new states
+	profiles := getProfiles(profilesStr, availableProfiles)
+	for _, profile := range profiles {
+		if _, ok := d.Profiles[profile.Name]; !ok {
+			d.Profiles[profile.Name] = &ProfileData{
+				Transition: time.Now(),
+				Current:    Operational,
+				Previous:   Operational,
+			}
 		}
 	}
 }
