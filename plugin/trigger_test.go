@@ -22,7 +22,6 @@ package plugin
 import (
 	"errors"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
@@ -64,7 +63,7 @@ func (n *failingTrigger) ID() string {
 
 var _ = Describe("TriggerChain", func() {
 
-	emptyParams := Parameters{Log: logr.Discard()}
+	emptyParams := Parameters{Log: GinkgoLogr}
 
 	Context("is empty", func() {
 

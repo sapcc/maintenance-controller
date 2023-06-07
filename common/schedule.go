@@ -186,7 +186,7 @@ type WaitParameters struct {
 
 func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
 	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
-	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) {
+	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) { //nolint:staticcheck,lll
 		var err error
 		if version == v1beta1 {
 			eviction := policyv1beta1.Eviction{}
@@ -254,7 +254,7 @@ func waitParallel(waiters []WaitFunc) error {
 
 // Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/agent/agent.go#L470
 func waitForPodDeletion(ctx context.Context, client client.Client, pod corev1.Pod, params WaitParameters) error {
-	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) {
+	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) { //nolint:staticcheck
 		var p corev1.Pod
 		err := client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
 		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) {

@@ -22,7 +22,6 @@ package esx
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/vmware/govmomi/object"
@@ -76,7 +75,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}, logr.Discard()})
+		}, GinkgoLogr})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(NoMaintenance))
 	})
@@ -98,7 +97,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}, logr.Discard()})
+		}, GinkgoLogr})
 		Expect(err).To(Succeed())
 		Expect(result).To(Equal(InMaintenance))
 	})
@@ -124,7 +123,7 @@ var _ = Describe("FetchVersion", func() {
 		version, err := FetchVersion(context.Background(), CheckParameters{vCenters, HostInfo{
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
-		}, logr.Discard()})
+		}, GinkgoLogr})
 		Expect(err).To(Succeed())
 		Expect(version).To(Equal("6.5.0"))
 	})

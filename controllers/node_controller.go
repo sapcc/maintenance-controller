@@ -138,7 +138,7 @@ func (r *NodeReconciler) makeParams(ctx context.Context, config *Config, node *c
 
 // Ensures a new version of the specified resources arrives in the cache made by controller-runtime.
 func pollCacheUpdate(ctx context.Context, client client.Client, ref types.NamespacedName, targetVersion string) error {
-	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:gomnd
+	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:gomnd,staticcheck
 		var nextNode corev1.Node
 		if err := client.Get(ctx, ref, &nextNode); err != nil {
 			return false, err
@@ -156,7 +156,7 @@ func pollCacheUpdate(ctx context.Context, client client.Client, ref types.Namesp
 }
 
 func reconcileInternal(params reconcileParameters) error {
-	data, err := state.ParseData(params.node)
+	data, err := state.ParseMigrateDataV2(params.node, params.log)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func reconcileInternal(params reconcileParameters) error {
 	return writeData(params.node, data)
 }
 
-func writeData(node *corev1.Node, data state.Data) error {
+func writeData(node *corev1.Node, data state.DataV2) error {
 	dataBytes, err := json.Marshal(&data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal internal data: %w", err)

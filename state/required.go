@@ -39,15 +39,15 @@ func (s *maintenanceRequired) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *maintenanceRequired) Enter(params plugin.Parameters, data *Data) error {
+func (s *maintenanceRequired) Enter(params plugin.Parameters, data *DataV2) error {
 	return nil
 }
 
-func (s *maintenanceRequired) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, &s.chains.Notification, s.label, data.PreviousStates[params.Profile])
+func (s *maintenanceRequired) Notify(params plugin.Parameters, data *DataV2) error {
+	return notifyDefault(params, data, &s.chains.Notification)
 }
 
-func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLabel, data *DataV2) error {
 	for _, transition := range s.chains.Transitions {
 		if transition.Next == next {
 			return transition.Trigger.Execute(params)
@@ -56,6 +56,6 @@ func (s *maintenanceRequired) Trigger(params plugin.Parameters, next NodeStateLa
 	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
-func (s *maintenanceRequired) Transition(params plugin.Parameters, data *Data) (TransitionsResult, error) {
+func (s *maintenanceRequired) Transition(params plugin.Parameters, data *DataV2) (TransitionsResult, error) {
 	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

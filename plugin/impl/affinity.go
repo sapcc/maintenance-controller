@@ -76,17 +76,17 @@ func checkOther(params *plugin.Parameters) (plugin.CheckResult, error) {
 		// by the same profile being checked right now.
 		// Doing otherwise could cause unnecessary block due to nodes being in maintenance-required
 		// caused by other profiles without affinity pods
-		nodeData, err := state.ParseData(node)
+		nodeData, err := state.ParseMigrateDataV2(node, params.Log)
 		if err != nil {
 			return plugin.Failed(nil), err
 		}
 		// skip nodes, which don't have the profile
-		otherState, ok := nodeData.ProfileStates[params.Profile]
-		if !ok {
+		otherState, ok := nodeData.Profiles[params.Profile]
+		if !ok || otherState == nil {
 			continue
 		}
 		// skip nodes, that are not in maintenance-required
-		if otherState != state.Required {
+		if otherState.Current != state.Required {
 			continue
 		}
 		// some other node in the cluster does not have any relevant pods, so block

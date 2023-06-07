@@ -115,7 +115,7 @@ func (s *Server) Start(ctx context.Context) error {
 	<-ctx.Done()
 	last := s.counter
 	s.Log.Info("Awaiting an other metrics scrape", "timeout", s.WaitTimeout)
-	_ = wait.PollImmediate(1*time.Second, s.WaitTimeout, func() (bool, error) {
+	_ = wait.PollImmediate(1*time.Second, s.WaitTimeout, func() (bool, error) { //nolint:staticcheck
 		return s.counter > last, nil
 	})
 	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gomnd

@@ -22,7 +22,6 @@ package state
 import (
 	"time"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -39,7 +38,7 @@ var _ = Describe("InMaintenance State", func() {
 
 		It("transitions to in-maintenance", func() {
 			im := newInMaintenance(PluginChains{})
-			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(InMaintenance))
 		})
@@ -74,21 +73,27 @@ var _ = Describe("InMaintenance State", func() {
 
 		It("executes the triggers", func() {
 			im := newInMaintenance(chains)
-			err := im.Trigger(plugin.Parameters{Log: logr.Discard()}, Operational, &Data{})
+			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Operational, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("fails to transition if target state is not defined", func() {
 			im := newInMaintenance(chains)
-			err := im.Trigger(plugin.Parameters{Log: logr.Discard()}, Required, &Data{})
+			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Required, &DataV2{})
 			Expect(err).ToNot(Succeed())
 			Expect(trigger.Invoked).To(Equal(0))
 		})
 
 		It("executes the notifications", func() {
 			im := newInMaintenance(chains)
-			err := im.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{LastNotificationTimes: make(map[string]time.Time)})
+			err := im.Notify(
+				plugin.Parameters{Log: GinkgoLogr, Profile: "p"},
+				&DataV2{
+					Profiles:      map[string]*ProfileData{"p": {Current: InMaintenance, Previous: InMaintenance}},
+					Notifications: make(map[string]time.Time),
+				},
+			)
 			Expect(err).To(Succeed())
 			Expect(notification.Invoked).To(Equal(1))
 		})
@@ -96,7 +101,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to in operational if checks pass", func() {
 			check.Result = true
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
@@ -107,7 +112,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to inMaintenance if checks do not pass", func() {
 			check.Result = false
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(InMaintenance))
 			Expect(result.Infos).To(HaveLen(1))
@@ -118,7 +123,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to inMaintenance if checks fail", func() {
 			check.Fail = true
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(HaveOccurred())
 			Expect(result.Next).To(Equal(InMaintenance))
 			Expect(result.Infos).To(HaveLen(1))

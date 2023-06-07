@@ -23,7 +23,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
@@ -65,7 +64,7 @@ func (n *failingNotification) ID() string {
 
 var _ = Describe("NotificationChain", func() {
 
-	emptyParams := Parameters{Log: logr.Discard()}
+	emptyParams := Parameters{Log: GinkgoLogr}
 
 	Context("is empty", func() {
 
@@ -144,7 +143,7 @@ var _ = Describe("NotifyPeriodic", func() {
 var _ = Describe("NotifyScheduled", func() {
 
 	SchedLog := SchedulingLogger{
-		Log:        logr.Discard(),
+		Log:        GinkgoLogr,
 		LogDetails: true,
 	}
 

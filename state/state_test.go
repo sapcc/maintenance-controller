@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/PaesslerAG/gval"
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
@@ -159,51 +158,76 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should not execute the notification chain if the interval has not passed", func() {
 		chain, notification := mockNotificationChain(1)
-		err := notifyDefault(plugin.Parameters{}, &Data{
-			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
-		}, &chain, Operational, Operational)
+		data := DataV2{
+			Profiles: map[string]*ProfileData{
+				"p": {
+					Transition: time.Now().UTC(),
+					Current:    Operational,
+					Previous:   Operational,
+				},
+			},
+			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
+		}
+		err := notifyDefault(plugin.Parameters{Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})
 
 	It("should execute the notification chain if the interval has passed", func() {
 		chain, notification := mockNotificationChain(1)
-		data := Data{
-			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
+		data := DataV2{
+			Profiles: map[string]*ProfileData{
+				"p": {
+					Transition: time.Now().UTC(),
+					Current:    Operational,
+					Previous:   InMaintenance,
+				},
+			},
+			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational, InMaintenance)
+		err := notifyDefault(plugin.Parameters{Log: GinkgoLogr, Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(1))
 	})
 
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
 		chain, notification := mockNotificationChain(1)
-		data := Data{
-			LastTransition:        time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{"mock0": time.Now().UTC()},
+		data := DataV2{
+			Profiles: map[string]*ProfileData{
+				"p": {
+					Transition: time.Now().UTC(),
+					Current:    Operational,
+					Previous:   Operational,
+				},
+			},
+			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, Operational, Operational)
+		err := notifyDefault(plugin.Parameters{Log: GinkgoLogr, Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(0))
 	})
 
 	It("should execute each notification instance once", func() {
 		chain, notification := mockNotificationChain(3)
-		data := Data{
-			LastTransition: time.Now().UTC(),
-			LastNotificationTimes: map[string]time.Time{
+		data := DataV2{
+			Profiles: map[string]*ProfileData{
+				"p": {
+					Transition: time.Now().UTC(),
+					Current:    InMaintenance,
+					Previous:   InMaintenance,
+				},
+			},
+			Notifications: map[string]time.Time{
 				"mock0": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 				"mock1": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 				"mock2": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 			},
 		}
-		err := notifyDefault(plugin.Parameters{Log: logr.Discard()}, &data, &chain, InMaintenance, InMaintenance)
+		err := notifyDefault(plugin.Parameters{Log: GinkgoLogr, Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())
 		Expect(notification.Invoked).To(Equal(3))
 	})
@@ -217,7 +241,7 @@ var _ = Describe("Apply", func() {
 			Recorder: record.NewFakeRecorder(128),
 			Profile:  "profile",
 			State:    string(Operational),
-			Log:      logr.Discard(),
+			Log:      GinkgoLogr,
 		}
 	}
 
@@ -230,7 +254,7 @@ var _ = Describe("Apply", func() {
 				Notification: chain,
 			},
 		}
-		result, err := Apply(&nodeState, &v1.Node{}, &Data{LastNotificationTimes: make(map[string]time.Time)}, buildParams())
+		result, err := Apply(&nodeState, &v1.Node{}, &DataV2{Notifications: make(map[string]time.Time)}, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
 		Expect(result.Transitions).To(HaveLen(0))
@@ -251,7 +275,8 @@ var _ = Describe("Apply", func() {
 				},
 			},
 		}
-		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
+		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
 		Expect(result.Transitions).To(HaveLen(1))
@@ -275,7 +300,8 @@ var _ = Describe("Apply", func() {
 				},
 			},
 		}
-		result, err := Apply(&nodeState, &v1.Node{}, &Data{}, buildParams())
+		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
+		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
 		Expect(result.Transitions).To(HaveLen(1))

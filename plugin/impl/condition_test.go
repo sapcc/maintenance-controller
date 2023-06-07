@@ -20,7 +20,6 @@
 package impl
 
 import (
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -56,7 +55,7 @@ var _ = Describe("The Condition plugin", func() {
 				},
 			},
 			Client: nil,
-			Log:    logr.Discard(),
+			Log:    GinkgoLogr,
 		}
 
 		It("matches when configured Ready=True", func() {

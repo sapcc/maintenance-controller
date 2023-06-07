@@ -21,7 +21,6 @@ package esx
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -97,7 +96,7 @@ func shutdownVM(ctx context.Context, log logr.Logger, vm *object.VirtualMachine,
 			log.Info("graceful VM shutdown succeeded")
 			return nil
 		}
-		if !errors.Is(err, wait.ErrWaitTimeout) {
+		if !wait.Interrupted(err) {
 			// not a timeout error => bubble up
 			return fmt.Errorf("failed to wait for guest OS shutdown: %w", err)
 		}
@@ -130,7 +129,7 @@ type PollPowerOffParams struct {
 }
 
 func pollPowerOff(ctx context.Context, params PollPowerOffParams) error {
-	return wait.PollWithContext(ctx, params.period, params.timeout, func(ctx context.Context) (bool, error) {
+	return wait.PollWithContext(ctx, params.period, params.timeout, func(ctx context.Context) (bool, error) { //nolint:staticcheck,lll
 		vm, err := RetrieveVM(ctx, params.client, params.nodeName)
 		if err != nil {
 			return false, err

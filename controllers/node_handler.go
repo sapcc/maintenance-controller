@@ -30,7 +30,7 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 )
 
-type NodeHandler = func(params reconcileParameters, data *state.Data) error
+type NodeHandler = func(params reconcileParameters, data *state.DataV2) error
 
 var handlers []NodeHandler = []NodeHandler{
 	EnsureLabelMap,
@@ -39,7 +39,7 @@ var handlers []NodeHandler = []NodeHandler{
 	UpdateMaintenanceStateLabel,
 }
 
-func HandleNode(params reconcileParameters, data *state.Data) error {
+func HandleNode(params reconcileParameters, data *state.DataV2) error {
 	for _, handler := range handlers {
 		if err := handler(params, data); err != nil {
 			return err
@@ -48,7 +48,7 @@ func HandleNode(params reconcileParameters, data *state.Data) error {
 	return nil
 }
 
-func EnsureLabelMap(params reconcileParameters, data *state.Data) error {
+func EnsureLabelMap(params reconcileParameters, data *state.DataV2) error {
 	if params.node.Labels == nil {
 		params.node.Labels = make(map[string]string)
 	}
@@ -56,15 +56,14 @@ func EnsureLabelMap(params reconcileParameters, data *state.Data) error {
 }
 
 // ensure a profile is assigned beforehand.
-func MaintainProfileStates(params reconcileParameters, data *state.Data) error {
+func MaintainProfileStates(params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	data.MaintainProfileStates(profilesStr, params.config.Profiles)
-	data.MaintainPreviousStates(profilesStr, params.config.Profiles)
 	return nil
 }
 
 // ensure a profile is assigned and profile states have been maintained beforehand.
-func ApplyProfiles(params reconcileParameters, data *state.Data) error {
+func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
@@ -87,8 +86,8 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 		// build plugin arguments
 		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: params.log,
 			Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),
-			State: string(ps.State), LastTransition: data.LastTransition, Recorder: params.recorder,
-			LogDetails: logDetails}
+			State: string(ps.State), LastTransition: data.Profiles[ps.Profile.Name].Transition,
+			Recorder: params.recorder, LogDetails: logDetails}
 
 		applied, err := state.Apply(stateObj, params.node, data, pluginParams)
 		profileResults = append(profileResults, state.ProfileResult{
@@ -111,11 +110,11 @@ func ApplyProfiles(params reconcileParameters, data *state.Data) error {
 		result := profileResults[i]
 		// check if a transition happened
 		if ps.State != result.Applied.Next {
-			data.LastTransition = time.Now().UTC()
-			data.ProfileStates[ps.Profile.Name] = result.Applied.Next
+			data.Profiles[ps.Profile.Name].Transition = time.Now().UTC()
+			data.Profiles[ps.Profile.Name].Current = result.Applied.Next
 		}
 		// track the state of this reconciliation for the next run
-		data.PreviousStates[ps.Profile.Name] = result.State
+		data.Profiles[ps.Profile.Name].Previous = result.State
 	}
 	return nil
 }
@@ -129,7 +128,7 @@ func anyInMaintenance(profileStates []state.ProfileState) bool {
 	return false
 }
 
-func UpdateMaintenanceStateLabel(params reconcileParameters, data *state.Data) error {
+func UpdateMaintenanceStateLabel(params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	if params.node.Labels == nil {

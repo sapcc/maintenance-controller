@@ -40,7 +40,7 @@ func (s *inMaintenance) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *inMaintenance) Enter(params plugin.Parameters, data *Data) error {
+func (s *inMaintenance) Enter(params plugin.Parameters, data *DataV2) error {
 	if err := metrics.RecordShuffles(
 		params.Ctx,
 		params.Client,
@@ -52,11 +52,11 @@ func (s *inMaintenance) Enter(params plugin.Parameters, data *Data) error {
 	return nil
 }
 
-func (s *inMaintenance) Notify(params plugin.Parameters, data *Data) error {
-	return notifyDefault(params, data, &s.chains.Notification, s.label, data.PreviousStates[params.Profile])
+func (s *inMaintenance) Notify(params plugin.Parameters, data *DataV2) error {
+	return notifyDefault(params, data, &s.chains.Notification)
 }
 
-func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
+func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, data *DataV2) error {
 	for _, transition := range s.chains.Transitions {
 		if transition.Next == next {
 			return transition.Trigger.Execute(params)
@@ -65,6 +65,6 @@ func (s *inMaintenance) Trigger(params plugin.Parameters, next NodeStateLabel, d
 	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
-func (s *inMaintenance) Transition(params plugin.Parameters, data *Data) (TransitionsResult, error) {
+func (s *inMaintenance) Transition(params plugin.Parameters, data *DataV2) (TransitionsResult, error) {
 	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }

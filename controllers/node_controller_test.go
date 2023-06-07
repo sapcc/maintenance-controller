@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/api"
@@ -121,9 +120,9 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
-		data, err := state.ParseData(&node)
+		data, err := state.ParseDataV2(&node)
 		Expect(err).To(Succeed())
-		Expect(data.ProfileStates["test"]).To(Equal(state.Required))
+		Expect(data.Profiles["test"].Current).To(Equal(state.Required))
 		events := &corev1.EventList{}
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
@@ -147,10 +146,10 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseData(&node)
+		data, err := state.ParseDataV2(&node)
 		Expect(err).To(Succeed())
-		Expect(data.ProfileStates["block"]).To(Equal(state.Required))
-		Expect(data.ProfileStates["multi"]).To(Equal(state.InMaintenance))
+		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
+		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
 	})
 
 	// more or less a copy of "should follow profiles concurrently" to ensure we don't break
@@ -177,27 +176,27 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseData(&node)
+		data, err := state.ParseDataV2(&node)
 		Expect(err).To(Succeed())
-		Expect(data.ProfileStates["block"]).To(Equal(state.Required))
-		Expect(data.ProfileStates["multi"]).To(Equal(state.InMaintenance))
+		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
+		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
 	})
 
 	It("should use a profile even if other specified profiles have not been configured", func() {
 		createNodeWithProfile("does-not-exist--test")
 
-		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
+		Eventually(func(g Gomega) map[string]*state.ProfileData {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseData(&node)
+			data, err := state.ParseDataV2(&node)
 			g.Expect(err).To(Succeed())
-			return data.ProfileStates
+			return data.Profiles
 		}).Should(SatisfyAll(
 			Not(HaveKey("does-not-exist")),
-			Satisfy(func(ps map[string]state.NodeStateLabel) bool {
-				return ps["test"] == state.Required
+			Satisfy(func(ps map[string]*state.ProfileData) bool {
+				return ps["test"] != nil && ps["test"].Current == state.Required
 			}),
 		))
 	})
@@ -214,11 +213,11 @@ var _ = Describe("The controller", func() {
 		Consistently(func(g Gomega) int {
 			var node corev1.Node
 			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)).To(Succeed())
-			data, err := state.ParseData(&node)
+			data, err := state.ParseDataV2(&node)
 			g.Expect(err).To(Succeed())
 			var maintenanceCounter int
-			for _, val := range data.ProfileStates {
-				if val == state.InMaintenance {
+			for _, val := range data.Profiles {
+				if val.Current == state.InMaintenance {
 					maintenanceCounter++
 				}
 			}
@@ -229,14 +228,14 @@ var _ = Describe("The controller", func() {
 	It("should cleanup the profile-state map in the data annotation", func() {
 		createNodeWithProfile("multi--otherprofile1--otherprofile2")
 
-		Eventually(func(g Gomega) map[string]state.NodeStateLabel {
+		Eventually(func(g Gomega) map[string]*state.ProfileData {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseData(&node)
+			data, err := state.ParseDataV2(&node)
 			g.Expect(err).To(Succeed())
-			return data.ProfileStates
+			return data.Profiles
 		}).Should(HaveLen(1))
 	})
 
@@ -808,7 +807,7 @@ var _ = Describe("The api server", func() {
 		metricsServer = api.Server{
 			Address:       ":15423",
 			WaitTimeout:   50 * time.Millisecond,
-			Log:           logr.Discard(),
+			Log:           GinkgoLogr,
 			NodeInfoCache: nodeInfoCache,
 			StaticPath:    "../static",
 			Namespace:     metav1.NamespaceDefault,

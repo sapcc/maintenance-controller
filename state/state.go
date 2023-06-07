@@ -135,7 +135,7 @@ type ProfileData struct {
 	Previous   NodeStateLabel
 }
 
-type Data2 struct {
+type DataV2 struct {
 	Profiles map[string]*ProfileData
 	// Maps a notification instance name to the last time it was triggered.
 	Notifications map[string]time.Time
@@ -161,15 +161,15 @@ func ParseData(node *v1.Node) (Data, error) {
 	return data, nil
 }
 
-func ParseData2(node *v1.Node) (Data2, error) {
+func ParseDataV2(node *v1.Node) (DataV2, error) {
 	dataStr := node.Annotations[constants.DataAnnotationKey]
-	var data Data2
+	var data DataV2
 	if dataStr != "" {
 		decoder := json.NewDecoder(strings.NewReader(dataStr))
 		decoder.DisallowUnknownFields()
 		err := decoder.Decode(&data)
 		if err != nil {
-			return Data2{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
+			return DataV2{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
 	if data.Notifications == nil {
@@ -178,21 +178,21 @@ func ParseData2(node *v1.Node) (Data2, error) {
 	return data, nil
 }
 
-func ParseMigrateData2(node *v1.Node, log logr.Logger) (Data2, error) {
+func ParseMigrateDataV2(node *v1.Node, log logr.Logger) (DataV2, error) {
 	dataStr := node.Annotations[constants.DataAnnotationKey]
 	if dataStr == "" {
-		return Data2{}, nil
+		return DataV2{}, nil
 	}
-	data2, err := ParseData2(node)
+	data2, err := ParseDataV2(node)
 	if err == nil {
 		return data2, nil
 	}
 	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
 	data, err := ParseData(node)
 	if err != nil {
-		return Data2{}, err
+		return DataV2{}, err
 	}
-	data2 = Data2{
+	data2 = DataV2{
 		Profiles:      make(map[string]*ProfileData),
 		Notifications: data.LastNotificationTimes,
 	}
@@ -216,14 +216,14 @@ type NodeState interface {
 	Label() NodeStateLabel
 	// Enter is executed when a node enters a new state.
 	// Its not executed when a profile gets freshly attached.
-	Enter(params plugin.Parameters, data *Data) error
+	Enter(params plugin.Parameters, data *DataV2) error
 	// Notify executes the notification chain if required
-	Notify(params plugin.Parameters, data *Data) error
+	Notify(params plugin.Parameters, data *DataV2) error
 	// Trigger executes the trigger chain
-	Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error
+	Trigger(params plugin.Parameters, next NodeStateLabel, data *DataV2) error
 	// Trigger executes the check chain and determines, which state should be the next one.
 	// If an error is returned the NodeStateLabel must match the current state.
-	Transition(params plugin.Parameters, data *Data) (TransitionsResult, error)
+	Transition(params plugin.Parameters, data *DataV2) (TransitionsResult, error)
 }
 
 // FromLabel creates a new NodeState instance identified by the label with given chains and notification interval.
@@ -243,10 +243,16 @@ func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 // and invokes all trigger plugins if a transitions happens.
 // Returns the next node state.
 // In case of an error state.Label() is retuned alongside with the error.
-func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (ApplyResult, error) {
+func Apply(state NodeState, node *v1.Node, data *DataV2, params plugin.Parameters) (ApplyResult, error) {
 	recorder := params.Recorder
 	result := ApplyResult{Next: state.Label(), Transitions: []TransitionResult{}}
-	if data.PreviousStates[params.Profile] != data.ProfileStates[params.Profile] {
+	stateInfo, ok := data.Profiles[params.Profile]
+	if !ok {
+		err := fmt.Errorf("could not find profile '%s' in state data", params.Profile)
+		result.Error = err.Error()
+		return result, err
+	}
+	if stateInfo.Previous != stateInfo.Current {
 		if err := state.Enter(params, data); err != nil {
 			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
 				"Failed to enter state for profile %v: Will stay in %v state",
@@ -335,23 +341,35 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 
 // notifyDefault is a default NodeState.Notify implemention that executes
 // the notification chain again after a specified interval.
-func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.NotificationChain,
-	currentState NodeStateLabel, previousState NodeStateLabel) error {
+func notifyDefault(params plugin.Parameters, data *DataV2, chain *plugin.NotificationChain) error {
 	for _, notifyInstance := range chain.Plugins {
 		if notifyInstance.Schedule == nil {
 			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyInstance.Name)
 		}
-		_, ok := data.LastNotificationTimes[notifyInstance.Name]
+		_, ok := data.Notifications[notifyInstance.Name]
 		if !ok {
-			data.LastNotificationTimes[notifyInstance.Name] = time.Time{}
+			data.Notifications[notifyInstance.Name] = time.Time{}
 		}
 		now := time.Now().UTC()
+		currentState, ok := data.Profiles[params.Profile]
+		if !ok {
+			return fmt.Errorf(
+				"cannot determine state of profile %s because state data does not contain information regarding that profile",
+				params.Profile,
+			)
+		}
+		if currentState == nil {
+			return fmt.Errorf(
+				"cannot determine state of profile %s because state data for it is nil",
+				params.Profile,
+			)
+		}
 		shouldNotify := notifyInstance.Schedule.ShouldNotify(plugin.NotificationData{
-			State: string(currentState),
+			State: string(currentState.Current),
 			Time:  now,
 		}, plugin.NotificationData{
-			State: string(previousState),
-			Time:  data.LastNotificationTimes[notifyInstance.Name],
+			State: string(currentState.Previous),
+			Time:  data.Notifications[notifyInstance.Name],
 		}, plugin.SchedulingLogger{
 			Log:        params.Log,
 			LogDetails: params.LogDetails,
@@ -367,7 +385,7 @@ func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.Notificat
 			return err
 		}
 		params.Log.Info("Executed notification instance", "instance", notifyInstance.Name)
-		data.LastNotificationTimes[notifyInstance.Name] = now
+		data.Notifications[notifyInstance.Name] = now
 	}
 	return nil
 }
@@ -489,7 +507,7 @@ func (d *Data) MaintainPreviousStates(profilesStr string, availableProfiles map[
 // Returns a Profile instance with its corresponding state for each profile named in profileStr.
 // If profileStr is an empty string, falls back to the default profile.
 // Call MaintainProfileStates before.
-func (d *Data2) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
+func (d *DataV2) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
 	// if no profile is attached, use the default profile
 	if profilesStr == "" {
 		profilesStr = constants.DefaultProfileName
@@ -507,7 +525,7 @@ func (d *Data2) GetProfilesWithState(profilesStr string, availableProfiles map[s
 }
 
 // Removes state data for removed profile and initializes it for added profiles.
-func (d *Data2) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
+func (d *DataV2) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
 	if d.Profiles == nil {
 		d.Profiles = make(map[string]*ProfileData)
 	}

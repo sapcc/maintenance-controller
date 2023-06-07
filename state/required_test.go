@@ -22,7 +22,6 @@ package state
 import (
 	"time"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -41,7 +40,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("transitions to maintenance-required", func() {
 			mr := newMaintenanceRequired(PluginChains{})
-			result, err := mr.Transition(plugin.Parameters{}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Required))
 		})
@@ -76,21 +75,27 @@ var _ = Describe("MaintenanceRequired State", func() {
 
 		It("executes the triggers", func() {
 			mr := newMaintenanceRequired(chains)
-			err := mr.Trigger(plugin.Parameters{Log: logr.Discard()}, InMaintenance, &Data{})
+			err := mr.Trigger(plugin.Parameters{Log: GinkgoLogr}, InMaintenance, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("fails to transition if target state is not defined", func() {
 			mr := newMaintenanceRequired(chains)
-			err := mr.Trigger(plugin.Parameters{Log: logr.Discard()}, Operational, &Data{})
+			err := mr.Trigger(plugin.Parameters{Log: GinkgoLogr}, Operational, &DataV2{})
 			Expect(err).ToNot(Succeed())
 			Expect(trigger.Invoked).To(Equal(0))
 		})
 
 		It("executes the notifications", func() {
 			mr := newMaintenanceRequired(chains)
-			err := mr.Notify(plugin.Parameters{Log: logr.Discard()}, &Data{LastNotificationTimes: make(map[string]time.Time)})
+			err := mr.Notify(
+				plugin.Parameters{Log: GinkgoLogr, Profile: "p"},
+				&DataV2{
+					Profiles:      map[string]*ProfileData{"p": {Current: Required, Previous: Required}},
+					Notifications: make(map[string]time.Time),
+				},
+			)
 			Expect(err).To(Succeed())
 			Expect(notification.Invoked).To(Equal(1))
 		})
@@ -99,10 +104,10 @@ var _ = Describe("MaintenanceRequired State", func() {
 			check.Result = true
 			mr := newMaintenanceRequired(chains)
 			result, err := mr.Transition(plugin.Parameters{
-				Log:    logr.Discard(),
+				Log:    GinkgoLogr,
 				Node:   &v1.Node{},
 				Client: fake.NewClientBuilder().Build(),
-			}, &Data{})
+			}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(InMaintenance))
 			Expect(result.Infos).To(HaveLen(1))
@@ -113,7 +118,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to required if checks do not pass", func() {
 			check.Result = false
 			mr := newMaintenanceRequired(chains)
-			result, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Required))
 			Expect(result.Infos).To(HaveLen(1))
@@ -124,7 +129,7 @@ var _ = Describe("MaintenanceRequired State", func() {
 		It("transitions to required if checks fail", func() {
 			check.Fail = true
 			mr := newMaintenanceRequired(chains)
-			result, err := mr.Transition(plugin.Parameters{Log: logr.Discard()}, &Data{})
+			result, err := mr.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
 			Expect(err).To(HaveOccurred())
 			Expect(result.Next).To(Equal(Required))
 			Expect(result.Infos).To(HaveLen(1))
