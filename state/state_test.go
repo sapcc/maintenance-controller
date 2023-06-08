@@ -353,7 +353,12 @@ var _ = Describe("ParseMigrateDataV2", func() {
 	It("should migrate data", func() {
 		var node v1.Node
 		node.Annotations = map[string]string{
-			constants.DataAnnotationKey: `{"LastTransition":"2023-06-01T14:00:00Z","LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},"ProfileStates":{"p":"operational"},"PreviousStates":{"p":"in-maintenance"}}`,
+			constants.DataAnnotationKey: `{
+				"LastTransition":"2023-06-01T14:00:00Z",
+				"LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},
+				"ProfileStates":{"p":"operational"},
+				"PreviousStates":{"p":"in-maintenance"}
+			}`,
 		}
 		data, err := ParseMigrateDataV2(&node, GinkgoLogr)
 		Expect(err).To(Succeed())
