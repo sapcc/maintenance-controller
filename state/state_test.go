@@ -329,6 +329,42 @@ var _ = Describe("ParseData", func() {
 
 })
 
+var _ = Describe("ParseDataV2", func() {
+
+	It("should initialize the notification times map", func() {
+		var node v1.Node
+		node.Annotations = map[string]string{constants.DataAnnotationKey: "{}"}
+		data, err := ParseDataV2(&node)
+		Expect(err).To(Succeed())
+		Expect(data.Notifications).ToNot(BeNil())
+	})
+
+	It("should fail with invalid json", func() {
+		var node v1.Node
+		node.Annotations = map[string]string{constants.DataAnnotationKey: "{{}"}
+		_, err := ParseDataV2(&node)
+		Expect(err).ToNot(Succeed())
+	})
+
+})
+
+var _ = Describe("ParseMigrateDataV2", func() {
+
+	It("should migrate data", func() {
+		var node v1.Node
+		node.Annotations = map[string]string{
+			constants.DataAnnotationKey: `{"LastTransition":"2023-06-01T14:00:00Z","LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},"ProfileStates":{"p":"operational"},"PreviousStates":{"p":"in-maintenance"}}`,
+		}
+		data, err := ParseMigrateDataV2(&node, GinkgoLogr)
+		Expect(err).To(Succeed())
+		Expect(data.Profiles["p"].Current).To(Equal(Operational))
+		Expect(data.Profiles["p"].Previous).To(Equal(InMaintenance))
+		Expect(data.Profiles["p"].Transition).To(Equal(time.Date(2023, 6, 1, 14, 0, 0, 0, time.UTC)))
+		Expect(data.Notifications["n"]).To(Equal(time.Date(2023, 6, 1, 15, 0, 0, 0, time.UTC)))
+	})
+
+})
+
 var _ = Describe("ValidateLabel", func() {
 
 	It("fails on invalid input", func() {
