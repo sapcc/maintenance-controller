@@ -84,11 +84,16 @@ type InstanceDescriptor struct {
 
 // Parameters describes the parameters plugins get to work with.
 type Parameters struct {
-	Node           *corev1.Node
-	State          string
-	Profile        string
-	InMaintenance  bool // if any profile is in-maintenance
-	LogDetails     bool // whether to log failing checks, notifications, ...
+	// the current evaluated node
+	Node *corev1.Node
+	// the current state of the evaluated node
+	State string
+	// the profile that is currently evaluated
+	Profile string
+	// if any profile is in-maintenance on the evaluated node
+	InMaintenance bool
+	// whether to log failing checks, notifications, ...
+	LogDetails     bool
 	Client         client.Client
 	Ctx            context.Context
 	Log            logr.Logger

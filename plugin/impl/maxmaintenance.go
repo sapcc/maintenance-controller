@@ -20,6 +20,9 @@
 package impl
 
 import (
+	"time"
+
+	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
@@ -31,20 +34,22 @@ import (
 // MaxMaintenance is a check plugin that checks whether the amount
 // of nodes with the in-maintenance state does not exceed the specified amount.
 type MaxMaintenance struct {
-	MaxNodes int
-	Profile  string
+	MaxNodes  int
+	Profile   string
+	SkipAfter time.Duration
 }
 
 // New creates a new MaxMaintenance instance with the given config.
 func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
-		Max     int    `config:"max" validate:"required"`
-		Profile string `config:"profile"`
+		Max       int           `config:"max" validate:"required"`
+		Profile   string        `config:"profile"`
+		SkipAfter time.Duration `config:"skipAfter"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &MaxMaintenance{MaxNodes: conf.Max, Profile: conf.Profile}, nil
+	return &MaxMaintenance{MaxNodes: conf.Max, Profile: conf.Profile, SkipAfter: conf.SkipAfter}, nil
 }
 
 func (m *MaxMaintenance) ID() string {
@@ -60,21 +65,67 @@ func (m *MaxMaintenance) Check(params plugin.Parameters) (plugin.CheckResult, er
 	if err != nil {
 		return plugin.Failed(nil), err
 	}
-	return m.checkInternal(&nodeList)
+	return m.checkInternal(nodeList.Items, params.Log)
 }
 
-func (m *MaxMaintenance) checkInternal(nodes *corev1.NodeList) (plugin.CheckResult, error) {
-	inMaintenance := 0
-	for _, node := range nodes.Items {
-		profiles, ok := node.Labels[constants.ProfileLabelKey]
-		if m.Profile == "" || (ok && state.ContainsProfile(profiles, m.Profile)) {
-			inMaintenance++
-		}
+func (m *MaxMaintenance) checkInternal(nodes []corev1.Node, log logr.Logger) (plugin.CheckResult, error) {
+	// profile == "" && skipAfter == nil => count all in-maintenance
+	// profile == "abc" && skipAfter == nil => count all containing "abc" profile
+	// profile == "" && skipAfter != nil => count all which most recent transition does not exceed skipAfter
+	// profile == "abc" && skipAfter != nil => count all where the transition of "abc" does not exceed skipAfter
+	if m.Profile != "" {
+		nodes = m.filterProfileName(nodes)
 	}
-	if inMaintenance >= m.MaxNodes {
+	if int64(m.SkipAfter) != 0 {
+		filtered, err := m.filterRecentTransition(nodes, log)
+		if err != nil {
+			return plugin.Failed(nil), err
+		}
+		nodes = filtered
+	}
+	if len(nodes) >= m.MaxNodes {
 		return plugin.Failed(nil), nil
 	}
 	return plugin.Passed(nil), nil
+}
+
+func (m *MaxMaintenance) filterProfileName(nodes []corev1.Node) []corev1.Node {
+	if m.Profile == "" {
+		return nodes
+	}
+	matching := make([]corev1.Node, 0)
+	for _, node := range nodes {
+		profiles, ok := node.Labels[constants.ProfileLabelKey]
+		if ok && state.ContainsProfile(profiles, m.Profile) {
+			matching = append(matching, node)
+		}
+	}
+	return matching
+}
+
+func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node, log logr.Logger) ([]corev1.Node, error) {
+	matching := make([]corev1.Node, 0)
+	for i := range nodes {
+		node := nodes[i]
+		stateData, err := state.ParseMigrateDataV2(&node, log)
+		if err != nil {
+			return nil, err
+		}
+		dataMap := stateData.Profiles
+		if m.Profile != "" {
+			dataMap = map[string]*state.ProfileData{m.Profile: dataMap[m.Profile]}
+		}
+		var mostRecent time.Time
+		for _, data := range dataMap {
+			if data.Transition.After(mostRecent) {
+				mostRecent = data.Transition
+			}
+		}
+		if time.Since(mostRecent) < m.SkipAfter {
+			matching = append(matching, node)
+		}
+	}
+	return matching, nil
 }
 
 func (m *MaxMaintenance) OnTransition(params plugin.Parameters) error {
