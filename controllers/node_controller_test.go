@@ -880,8 +880,9 @@ var _ = Describe("The api server", func() {
 
 		// Trigger the maintenance after resource that should be recorded have been created
 		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		unmodified := targetNode.DeepCopy()
 		targetNode.Labels["transition"] = constants.TrueStr
-		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+		Expect(k8sClient.Patch(context.Background(), targetNode, client.MergeFrom(unmodified))).To(Succeed())
 		Eventually(func(g Gomega) []string {
 			time.Sleep(2 * time.Second)
 			res, err := http.Get("http://localhost:15423/metrics")
@@ -935,8 +936,9 @@ var _ = Describe("The api server", func() {
 
 		// Trigger the maintenance after resource that should be recorded have been created
 		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		unmodified := targetNode.DeepCopy()
 		targetNode.Labels["transition"] = constants.TrueStr
-		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+		Expect(k8sClient.Patch(context.Background(), targetNode, client.MergeFrom(unmodified))).To(Succeed())
 
 		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
@@ -989,8 +991,9 @@ var _ = Describe("The api server", func() {
 
 		// Trigger the maintenance after resource that should be recorded have been created
 		Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(targetNode), targetNode)).To(Succeed())
+		unmodified := targetNode.DeepCopy()
 		targetNode.Labels["transition"] = constants.TrueStr
-		Expect(k8sClient.Update(context.Background(), targetNode)).To(Succeed())
+		Expect(k8sClient.Patch(context.Background(), targetNode, client.MergeFrom(unmodified))).To(Succeed())
 
 		Eventually(func(g Gomega) []string {
 			res, err := http.Get("http://localhost:15423/metrics")
