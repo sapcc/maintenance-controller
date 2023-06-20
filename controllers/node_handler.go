@@ -102,6 +102,7 @@ func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
 	params.nodeInfoCache.Update(state.NodeInfo{
 		Node:     params.node.Name,
 		Profiles: profileResults,
+		Labels:   filterNodeLabels(params.node.Labels, params.config.DashboardLabelFilter),
 	})
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to apply current state: %s", common.ConcatErrors(errs))
@@ -126,6 +127,17 @@ func anyInMaintenance(profileStates []state.ProfileState) bool {
 		}
 	}
 	return false
+}
+
+func filterNodeLabels(nodeLabels map[string]string, keys []string) map[string]string {
+	result := make(map[string]string)
+	for _, key := range keys {
+		val, ok := nodeLabels[key]
+		if ok {
+			result[key] = val
+		}
+	}
+	return result
 }
 
 func UpdateMaintenanceStateLabel(params reconcileParameters, data *state.DataV2) error {

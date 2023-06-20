@@ -54,6 +54,9 @@ type ConfigDescriptor struct {
 	} `config:"intervals" validate:"required"`
 	Instances plugin.InstancesDescriptor
 	Profiles  []ProfileDescriptor
+	Dashboard struct {
+		LabelFilter []string `config:"labelFilter"`
+	} `config:"dashboard"`
 }
 
 // Config represents the controllers global configuration.
@@ -64,6 +67,8 @@ type Config struct {
 	Profiles map[string]state.Profile
 	// Contains reference to all plugins and their instances
 	Registry plugin.Registry
+	// Keys of labels to show on the dashboard
+	DashboardLabelFilter []string
 }
 
 // LoadConfig (re-)initializes the config with values provided by the given ucfg.Config.
@@ -83,10 +88,15 @@ func LoadConfig(config *ucfgwrap.Config) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	dashboardLabelFilter := make([]string, 0)
+	if global.Dashboard.LabelFilter != nil {
+		dashboardLabelFilter = global.Dashboard.LabelFilter
+	}
 	return &Config{
-		RequeueInterval: global.Intervals.Requeue,
-		Profiles:        profileMap,
-		Registry:        registry,
+		RequeueInterval:      global.Intervals.Requeue,
+		Profiles:             profileMap,
+		Registry:             registry,
+		DashboardLabelFilter: dashboardLabelFilter,
 	}, nil
 }
 

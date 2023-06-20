@@ -101,9 +101,10 @@ type ProfileResult struct {
 }
 
 type NodeInfo struct {
-	Node     string          `json:"node"`
-	Profiles []ProfileResult `json:"profiles"`
-	Updated  time.Time       `json:"updated"`
+	Node     string            `json:"node"`
+	Profiles []ProfileResult   `json:"profiles"`
+	Labels   map[string]string `json:"labels"`
+	Updated  time.Time         `json:"updated"`
 }
 
 // PluginChains is a struct containing a plugin chain of each plugin type.
