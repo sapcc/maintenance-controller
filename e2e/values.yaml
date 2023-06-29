@@ -30,6 +30,10 @@ config: |
   intervals:
     requeue: 10s
     notify: 5h
+  dashboard:
+    labelFilter:
+    - "kubernetes.io/hostname"
+    - "kubernetes.io/os"
   instances:
       notify: null
       check:
