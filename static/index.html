@@ -7,21 +7,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Maintenance Controller</title>
     <link rel="stylesheet" type="text/css" href="purecss@3.0.0.css">
+    <link rel="stylesheet" type="text/css" href="purecss-responsive@3.0.0.css">
+    <style>
+        th {
+            background-color: #008FD3;
+            color: white;
+        }
+    </style>
     <script defer src="alpinejs@3.11.1.js"></script>
     <script>
         const nodeRequest = new Request("/api/v1/info");
         nodeRequest.method = "GET";
 
         function entries(info) {
-            return Object.entries(info)
+            return Object.entries(info);
         }
 
         function nodeByName(name, nodes) {
-            return nodes.filter((n) => n.node == name)[0]
+            return nodes.filter((n) => n.node == name)[0];
         }
 
         function groupByState(nodes) {
-            let result = {}
+            let result = {};
             for (const node of nodes) {
                 for (const profile of node.profiles) {
                     if (result[profile.name] === undefined) {
@@ -29,37 +36,49 @@
                             'operational': 0,
                             'maintenance-required': 0,
                             'in-maintenance': 0
-                        }
+                        };
                     }
-                    result[profile.name][profile.state] += 1
+                    result[profile.name][profile.state] += 1;
                 }
             }
-            return result
+            return result;
+        }
+
+        function allLabels(nodes) {
+            let labels = {};
+            for (const node of nodes) {
+                for (const label in node.labels) {
+                    labels[label] = 0;
+                }
+            }
+            return labels;
         }
     </script>
 </head>
 
 <body>
     <div x-data="{
-        nodes: null, selected: null, current: null, grouped: null, getNodes() {
+        nodes: null, selected: null, current: null, grouped: null, labels: null, getNodes() {
             fetch(nodeRequest)
                 .then((response) => response.json())
                 .then((json) => this.nodes = json.sort((a, b) => {
-                    if (a.node < b.node) {
-                        return -1;
-                    } else {
-                        return 1;
-                    }
+                        if (a.node < b.node) {
+                            return -1;
+                        } else {
+                            return 1;
+                        }
                     })
                 )
                 .then((nodes) => {
                     this.current = nodes[0];
                     this.grouped = entries(groupByState(nodes));
+                    this.labels = allLabels(nodes);
                 });
         }
     }" x-init="getNodes()" style="padding: 1em;">
         <h2>Overview</h2>
-        <table class="pure-table">
+        <a href="https://github.com/sapcc/maintenance-controller#readme">Documentation</a>
+        <table class="pure-table pure-table-striped">
             <thead>
                 <tr>
                     <th>Profile</th>
@@ -75,7 +94,7 @@
                             <td x-text="group[0]"></td>
                             <td x-text="group[1]['operational']"></td>
                             <td x-text="group[1]['maintenance-required']"></td>
-                            <td x-text="group[1]['in-maintenance']"></td> -->
+                            <td x-text="group[1]['in-maintenance']"></td>
                         </tr>
                     </template>
                 </template>
@@ -98,7 +117,7 @@
                 <span x-text="`Snapshot of checks at ${current.updated}`"></span>
                 <div class="pure-g">
                     <template x-for="profile in current.profiles">
-                        <div class="pure-u-1-3">
+                        <div class="pure-u-1 pure-u-lg-1-2 pure-u-xl-1-3">
                             <h3 x-text="`${profile.name}: ${profile.state}`"></h3>
                             <template x-for="transition in profile.applied.transitions">
                                 <div>
@@ -134,9 +153,36 @@
                 </div>
             </div>
         </template>
-        <p>
-            <a href="https://github.com/sapcc/maintenance-controller#readme">Documentation</a>
-        </p>
+        <h2>Node Labels</h2>
+        <table class="pure-table pure-table-striped">
+            <thead>
+                <tr>
+                    <th>Node</th>
+                    <template x-for="(val, key) in labels">
+                        <th x-text="key"></th>
+                    </template>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-if="nodes !== null">
+                    <template x-for="node in nodes">
+                        <tr>
+                            <td x-text="node.node"></td>
+                            <template x-for="(val, key) in labels">
+                                <td x-data="{get text() 
+                                    {
+                                        if (node.labels === undefined) {
+                                            return '';
+                                        }
+                                        return node.labels[key] === undefined ? '' : node.labels[key];
+                                    } 
+                                }" x-text="text"></td>
+                            </template>
+                        </tr>
+                    </template>
+                </template>
+            </tbody>
+        </table>
     </div>
 </body>
 
