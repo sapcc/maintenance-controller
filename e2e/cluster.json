@@ -5,7 +5,7 @@
       "routerID": "c7a8528b-0c86-4cb7-b6e2-c258d60bed47"
     },
     "backup": "off",
-    "version": "1.26.5",
+    "version": "1.26.6",
     "serviceCIDR": "198.18.192.0/18",
     "clusterCIDR": "100.100.0.0/17",
     "nodePools": [
