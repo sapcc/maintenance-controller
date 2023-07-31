@@ -298,6 +298,12 @@ Be careful about using it in an instance that is invoked during the `operational
 `{{ .Profile.Last }}` can be used instead, which refers to profile that caused the last state transition.
 
 ### Notification Schedules
+__oneshot__: Notifies once after a state change if the configured delay passes.
+```yaml
+type: oneshot
+config:
+  delay: a duration according to the rules of golangs time.ParseDuration(), defaults to 0, optional
+```
 __periodic__: Notifies after a state change and when the specified interval passed since the last notification if the node is currently not in the operational state.
 This reflects the old implicit notification behavior.
 ```yaml

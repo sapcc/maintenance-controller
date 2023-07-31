@@ -85,9 +85,8 @@ func RenderNotificationTemplate(templateStr string, params *Parameters) (string,
 // Data used to determine, whether to notify or not.
 type NotificationData struct {
 	// Technically state.NodeStateLabel, but that causes a cyclic import
-	State       string
-	Time        time.Time
-	StateChange time.Time
+	State string
+	Time  time.Time
 }
 
 // Used to log scheduling decisions.
@@ -237,6 +236,12 @@ func (no *NotifyOneshot) ShouldNotify(params ShouldNotifyParams) bool {
 	if params.Current.State == params.Last.State {
 		if log.LogDetails {
 			log.Log.Info("NotifyOneshot: no change in state")
+		}
+		return false
+	}
+	if params.Last.Time.After(params.StateChange) {
+		if log.LogDetails {
+			log.Log.Info("NotifyOneshot: already notified")
 		}
 		return false
 	}

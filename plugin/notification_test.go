@@ -317,12 +317,30 @@ var _ = Describe("NotifyOneshot", func() {
 			},
 			Last: NotificationData{
 				State: "in-maintenance",
-				Time:  now,
+				Time:  now.Add(-1 * time.Minute),
 			},
 			Log:         SchedLog,
 			StateChange: now,
 		})
 		Expect(result).To(BeTrue())
+	})
+
+	It("does not trigger when the state changed and the delay passes, but it already notified", func() {
+		schedule := NotifyOneshot{Delay: -5 * time.Minute}
+		now := time.Now()
+		result := schedule.ShouldNotify(ShouldNotifyParams{
+			Current: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Last: NotificationData{
+				State: "in-maintenance",
+				Time:  now.Add(-1 * time.Minute),
+			},
+			Log:         SchedLog,
+			StateChange: now.Add(-2 * time.Minute),
+		})
+		Expect(result).To(BeFalse())
 	})
 
 	It("does not trigger when the did not state change and the delay passes", func() {
