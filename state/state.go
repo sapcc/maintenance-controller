@@ -365,15 +365,20 @@ func notifyDefault(params plugin.Parameters, data *DataV2, chain *plugin.Notific
 				params.Profile,
 			)
 		}
-		shouldNotify := notifyInstance.Schedule.ShouldNotify(plugin.NotificationData{
-			State: string(currentState.Current),
-			Time:  now,
-		}, plugin.NotificationData{
-			State: string(currentState.Previous),
-			Time:  data.Notifications[notifyInstance.Name],
-		}, plugin.SchedulingLogger{
-			Log:        params.Log,
-			LogDetails: params.LogDetails,
+		shouldNotify := notifyInstance.Schedule.ShouldNotify(plugin.ShouldNotifyParams{
+			Current: plugin.NotificationData{
+				State: string(currentState.Current),
+				Time:  now,
+			},
+			Last: plugin.NotificationData{
+				State: string(currentState.Previous),
+				Time:  data.Notifications[notifyInstance.Name],
+			},
+			Log: plugin.SchedulingLogger{
+				Log:        params.Log,
+				LogDetails: params.LogDetails,
+			},
+			StateChange: currentState.Transition,
 		})
 		if !shouldNotify {
 			if params.LogDetails {

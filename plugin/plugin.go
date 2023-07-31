@@ -253,16 +253,15 @@ func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor 
 	switch strings.ToLower(descriptor.Schedule.Type) {
 	case "periodic":
 		schedule, err = newNotifyPeriodic(&scheduleConf)
-		if err != nil {
-			return err
-		}
 	case "scheduled":
 		schedule, err = newNotifyScheduled(&scheduleConf)
-		if err != nil {
-			return err
-		}
+	case "oneshot":
+		schedule, err = newNotifyOneshot(&scheduleConf)
 	default:
 		return fmt.Errorf("notification scheduler with name %s is unknown", descriptor.Schedule.Type)
+	}
+	if err != nil {
+		return err
 	}
 	r.NotificationInstances[instanceName] = NotificationInstance{
 		Name:     instanceName,

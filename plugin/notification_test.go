@@ -171,25 +171,33 @@ var _ = Describe("NotifyScheduled", func() {
 
 		It("should not trigger before 12:00", func() {
 			currentDate := time.Date(2022, time.February, 22, 11, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  currentDate.Add(-25 * time.Hour),
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  currentDate.Add(-25 * time.Hour),
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeFalse())
 		})
 
 		It("should not trigger after 12:00", func() {
 			currentDate := time.Date(2022, time.February, 22, 13, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  currentDate.Add(-25 * time.Hour),
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  currentDate.Add(-25 * time.Hour),
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeFalse())
 		})
 
@@ -199,52 +207,157 @@ var _ = Describe("NotifyScheduled", func() {
 
 		It("should not trigger before 12:00", func() {
 			currentDate := time.Date(2022, time.February, 21, 11, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  currentDate.Add(-25 * time.Hour),
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  currentDate.Add(-25 * time.Hour),
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeFalse())
 		})
 
 		It("should trigger after 12:00", func() {
 			currentDate := time.Date(2022, time.February, 21, 13, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  currentDate.Add(-25 * time.Hour),
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  currentDate.Add(-25 * time.Hour),
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeTrue())
 		})
 
 		It("should trigger after 12:00 with previous time being zero value", func() {
 			currentDate := time.Date(2022, time.February, 21, 13, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  time.Time{},
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  time.Time{},
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeTrue())
 		})
 
 		It("should not trigger more than once a day", func() {
 			currentDate := time.Date(2022, time.February, 21, 14, 0, 0, 0, time.UTC)
-			result := makeSchedule().ShouldNotify(NotificationData{
-				State: "operational",
-				Time:  currentDate,
-			}, NotificationData{
-				State: "operational",
-				Time:  currentDate.Add(-1 * time.Hour),
-			}, SchedLog)
+			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
+				Current: NotificationData{
+					State: "operational",
+					Time:  currentDate,
+				},
+				Last: NotificationData{
+					State: "operational",
+					Time:  currentDate.Add(-1 * time.Hour),
+				},
+				Log: SchedLog,
+			})
 			Expect(result).To(BeFalse())
 		})
 
+	})
+
+})
+
+var _ = Describe("NotifyOneshot", func() {
+
+	SchedLog := SchedulingLogger{
+		Log:        GinkgoLogr,
+		LogDetails: true,
+	}
+
+	It("can parse its configuration", func() {
+		configStr := "delay: 3h"
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
+		Expect(err).To(Succeed())
+		no, err := newNotifyOneshot(&config)
+		Expect(err).To(Succeed())
+		Expect(no.Delay).To(Equal(3 * time.Hour))
+	})
+
+	It("does not trigger when the state changed and the delay did not pass", func() {
+		schedule := NotifyOneshot{Delay: 5 * time.Minute}
+		now := time.Now()
+		result := schedule.ShouldNotify(ShouldNotifyParams{
+			Current: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Last: NotificationData{
+				State: "in-maintenance",
+				Time:  now,
+			},
+			Log:         SchedLog,
+			StateChange: now,
+		})
+		Expect(result).To(BeFalse())
+	})
+
+	It("does trigger when the state changed and the delay passes", func() {
+		schedule := NotifyOneshot{Delay: -5 * time.Minute}
+		now := time.Now()
+		result := schedule.ShouldNotify(ShouldNotifyParams{
+			Current: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Last: NotificationData{
+				State: "in-maintenance",
+				Time:  now,
+			},
+			Log:         SchedLog,
+			StateChange: now,
+		})
+		Expect(result).To(BeTrue())
+	})
+
+	It("does not trigger when the did not state change and the delay passes", func() {
+		schedule := NotifyOneshot{Delay: -5 * time.Minute}
+		now := time.Now()
+		result := schedule.ShouldNotify(ShouldNotifyParams{
+			Current: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Last: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Log:         SchedLog,
+			StateChange: now,
+		})
+		Expect(result).To(BeFalse())
+	})
+
+	It("does not trigger when StateChange is zero", func() {
+		schedule := NotifyOneshot{Delay: -5 * time.Minute}
+		now := time.Now()
+		result := schedule.ShouldNotify(ShouldNotifyParams{
+			Current: NotificationData{
+				State: "operational",
+				Time:  now,
+			},
+			Last: NotificationData{
+				State: "in-maintenance",
+				Time:  now,
+			},
+			Log: SchedLog,
+		})
+		Expect(result).To(BeFalse())
 	})
 
 })

@@ -85,8 +85,9 @@ func RenderNotificationTemplate(templateStr string, params *Parameters) (string,
 // Data used to determine, whether to notify or not.
 type NotificationData struct {
 	// Technically state.NodeStateLabel, but that causes a cyclic import
-	State string
-	Time  time.Time
+	State       string
+	Time        time.Time
+	StateChange time.Time
 }
 
 // Used to log scheduling decisions.
@@ -95,10 +96,17 @@ type SchedulingLogger struct {
 	LogDetails bool
 }
 
+type ShouldNotifyParams struct {
+	Current     NotificationData
+	Last        NotificationData
+	StateChange time.Time
+	Log         SchedulingLogger
+}
+
 // Interface notification schedulers need to implement.
 type Scheduler interface {
 	// Determines if a notification is required.
-	ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool
+	ShouldNotify(params ShouldNotifyParams) bool
 }
 
 // Notifies on state changes and after passing the interval since the
@@ -117,7 +125,10 @@ func newNotifyPeriodic(config *ucfgwrap.Config) (*NotifyPeriodic, error) {
 	return &NotifyPeriodic{Interval: conf.Interval}, nil
 }
 
-func (np *NotifyPeriodic) ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool {
+func (np *NotifyPeriodic) ShouldNotify(params ShouldNotifyParams) bool {
+	current := params.Current
+	last := params.Last
+	log := params.Log
 	if current.State != last.State {
 		return true
 	} else if log.LogDetails {
@@ -165,7 +176,10 @@ func newNotifyScheduled(config *ucfgwrap.Config) (*NotifyScheduled, error) {
 	return scheduled, nil
 }
 
-func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last NotificationData, log SchedulingLogger) bool {
+func (ns *NotifyScheduled) ShouldNotify(params ShouldNotifyParams) bool {
+	current := params.Current
+	last := params.Last
+	log := params.Log
 	// check that a notification can be triggered on the current weekday
 	containsWeekday := false
 	for _, weekday := range ns.Weekdays {
@@ -198,4 +212,33 @@ func (ns *NotifyScheduled) ShouldNotify(current NotificationData, last Notificat
 		return false
 	}
 	return true
+}
+
+type NotifyOneshot struct {
+	Delay time.Duration
+}
+
+func newNotifyOneshot(config *ucfgwrap.Config) (*NotifyOneshot, error) {
+	conf := struct {
+		Delay time.Duration
+	}{Delay: time.Minute}
+	if err := config.Unpack(&conf); err != nil {
+		return nil, err
+	}
+	return &NotifyOneshot{Delay: conf.Delay}, nil
+}
+
+func (no *NotifyOneshot) ShouldNotify(params ShouldNotifyParams) bool {
+	log := params.Log
+	if params.StateChange.IsZero() {
+		log.Log.Info("NotifyOneshot: StateChange is zero")
+		return false
+	}
+	if params.Current.State == params.Last.State {
+		if log.LogDetails {
+			log.Log.Info("NotifyOneshot: no change in state")
+		}
+		return false
+	}
+	return time.Since(params.StateChange) >= no.Delay
 }
