@@ -233,17 +233,13 @@ func (no *NotifyOneshot) ShouldNotify(params ShouldNotifyParams) bool {
 		log.Log.Info("NotifyOneshot: StateChange is zero")
 		return false
 	}
-	if params.Current.State == params.Last.State {
-		if log.LogDetails {
-			log.Log.Info("NotifyOneshot: no change in state")
-		}
-		return false
-	}
+	// already triggered for the current state
 	if params.Last.Time.After(params.StateChange) {
 		if log.LogDetails {
 			log.Log.Info("NotifyOneshot: already notified")
 		}
 		return false
 	}
+	// check that the current state is present for at least delay time
 	return time.Since(params.StateChange) >= no.Delay
 }

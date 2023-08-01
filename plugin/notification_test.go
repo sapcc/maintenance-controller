@@ -343,24 +343,6 @@ var _ = Describe("NotifyOneshot", func() {
 		Expect(result).To(BeFalse())
 	})
 
-	It("does not trigger when the did not state change and the delay passes", func() {
-		schedule := NotifyOneshot{Delay: -5 * time.Minute}
-		now := time.Now()
-		result := schedule.ShouldNotify(ShouldNotifyParams{
-			Current: NotificationData{
-				State: "operational",
-				Time:  now,
-			},
-			Last: NotificationData{
-				State: "operational",
-				Time:  now,
-			},
-			Log:         SchedLog,
-			StateChange: now,
-		})
-		Expect(result).To(BeFalse())
-	})
-
 	It("does not trigger when StateChange is zero", func() {
 		schedule := NotifyOneshot{Delay: -5 * time.Minute}
 		now := time.Now()
