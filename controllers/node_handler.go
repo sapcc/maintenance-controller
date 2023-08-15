@@ -20,10 +20,10 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -105,7 +105,7 @@ func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
 		Labels:   filterNodeLabels(params.node.Labels, params.config.DashboardLabelFilter),
 	})
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to apply current state: %s", common.ConcatErrors(errs))
+		return fmt.Errorf("failed to apply current state: %s", errors.Join(errs...))
 	}
 	for i, ps := range profileStates {
 		result := profileResults[i]

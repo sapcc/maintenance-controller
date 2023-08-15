@@ -21,12 +21,12 @@ package state
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	v1 "k8s.io/api/core/v1"
@@ -322,7 +322,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 		Infos: results,
 	}
 	if len(errs) > 0 {
-		return final, fmt.Errorf("had failed transition checks: %s", common.ConcatErrors(errs))
+		return final, fmt.Errorf("had failed transition checks: %s", errors.Join(errs...))
 	}
 	for i, result := range results {
 		if !result.Passed {
