@@ -105,7 +105,7 @@ func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
 		Labels:   filterNodeLabels(params.node.Labels, params.config.DashboardLabelFilter),
 	})
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to apply current state: %s", errors.Join(errs...))
+		return fmt.Errorf("failed to apply current state: %w", errors.Join(errs...))
 	}
 	for i, ps := range profileStates {
 		result := profileResults[i]

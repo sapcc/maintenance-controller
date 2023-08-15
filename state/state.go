@@ -322,7 +322,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 		Infos: results,
 	}
 	if len(errs) > 0 {
-		return final, fmt.Errorf("had failed transition checks: %s", errors.Join(errs...))
+		return final, fmt.Errorf("had failed transition checks: %w", errors.Join(errs...))
 	}
 	for i, result := range results {
 		if !result.Passed {
