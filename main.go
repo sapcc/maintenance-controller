@@ -41,6 +41,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/cache"
@@ -101,9 +103,13 @@ func main() {
 	leaderElectionRetry := 5 * time.Second //nolint:gomnd
 	shutdownTimeout := 70 * time.Second    //nolint:gomnd
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme:                     scheme,
-		MetricsBindAddress:         "0",  // disable inbuilt metrics server
-		Port:                       9443, //nolint:gomnd
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: "0", // disable inbuilt metrics server
+		},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port: 9443, //nolint:gomnd
+		}),
 		HealthProbeBindAddress:     probeAddr,
 		EventBroadcaster:           event.NewNodeBroadcaster(),
 		LeaderElectionResourceLock: "leases",
@@ -166,7 +172,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		Recorder:      mgr.GetEventRecorderFor("maintenance"),
 		NodeInfoCache: nodeInfoCache,
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("Failed to setup maintenance controller node reconciler: %w", err)
+		return fmt.Errorf("failed to setup maintenance controller node reconciler: %w", err)
 	}
 
 	// Required for affinity check plugin as well as kubernikus and ESX integration
@@ -178,7 +184,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 			return []string{pod.Spec.NodeName}
 		})
 	if err != nil {
-		return fmt.Errorf("Unable to create index spec.nodeName on pod resource: %w", err)
+		return fmt.Errorf("unable to create index spec.nodeName on pod resource: %w", err)
 	}
 
 	apiServer := api.Server{
@@ -190,7 +196,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		Client:        mgr.GetClient(),
 	}
 	if err := mgr.Add(&apiServer); err != nil {
-		return fmt.Errorf("Failed to attach prometheus metrics server: %w", err)
+		return fmt.Errorf("failed to attach prometheus metrics server: %w", err)
 	}
 
 	if cfg.enableKubernikusMaintenance {
@@ -201,7 +207,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 			Scheme: mgr.GetScheme(),
 			Conf:   mgr.GetConfig(),
 		}).SetupWithManager(mgr); err != nil {
-			return fmt.Errorf("Failed to setup kubernikus node reconciler: %w", err)
+			return fmt.Errorf("failed to setup kubernikus node reconciler: %w", err)
 		}
 	}
 
@@ -213,7 +219,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
 		}
 		if err := mgr.Add(&controller); err != nil {
-			return fmt.Errorf("Failed to create ESX reconciler: %w", err)
+			return fmt.Errorf("failed to create ESX reconciler: %w", err)
 		}
 	}
 	return nil

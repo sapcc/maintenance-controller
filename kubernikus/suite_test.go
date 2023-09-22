@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const cloudprovider string = `
@@ -93,10 +94,12 @@ var _ = BeforeSuite(func() {
 	// +kubebuilder:scaffold:scheme
 
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme.Scheme,
-		MetricsBindAddress: "0",
-		EventBroadcaster:   event.NewNodeBroadcaster(),
-		Logger:             GinkgoLogr,
+		Scheme: scheme.Scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+		EventBroadcaster: event.NewNodeBroadcaster(),
+		Logger:           GinkgoLogr,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
