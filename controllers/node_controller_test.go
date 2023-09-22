@@ -476,7 +476,8 @@ var _ = Describe("The slack thread plugin", func() {
 		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Text == "title" && msgs[1].Text == "msg"
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && //nolint:gosec
+				msgs[0].Text == "title" && msgs[1].Text == "msg" //nolint:gosec
 		})))
 		Eventually(func() error {
 			var lease coordinationv1.Lease
@@ -500,7 +501,7 @@ var _ = Describe("The slack thread plugin", func() {
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp //nolint:gosec
 		})))
 	})
 
@@ -520,7 +521,7 @@ var _ = Describe("The slack thread plugin", func() {
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp //nolint:gosec
 		})))
 	})
 })
@@ -648,21 +649,6 @@ var _ = Describe("The affinity plugin", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	Context("with transitions caused by different profiles", func() {
-
-		It("passes if one node has an affinity pod and the other has none", func() {
-			attachAffinityPod(firstNode.Name)
-
-			affinity := impl.Affinity{}
-			params := buildParams(firstNode)
-			params.Profile = "otherprofile"
-			result, err := affinity.Check(params)
-			Expect(err).To(Succeed())
-			Expect(result.Passed).To(BeTrue())
-		})
-
-	})
-
 	It("does not crash if a pod has no affinity set at all", func() {
 		pod := &corev1.Pod{}
 		pod.Namespace = metav1.NamespaceDefault
@@ -682,6 +668,52 @@ var _ = Describe("The affinity plugin", func() {
 		result, err = affinity.Check(buildParams(secondNode))
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeTrue())
+	})
+
+	Context("with transitions caused by different profiles", func() {
+
+		It("passes if one node has an affinity pod and the other has none", func() {
+			attachAffinityPod(firstNode.Name)
+
+			affinity := impl.Affinity{}
+			params := buildParams(firstNode)
+			params.Profile = "otherprofile"
+			result, err := affinity.Check(params)
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+		})
+
+	})
+
+	Context("with a third operational node and minOperational set to 1", func() {
+
+		var thirdNode *corev1.Node
+
+		BeforeEach(func() {
+			thirdNode = &corev1.Node{}
+			thirdNode.Name = "thirdnode"
+			thirdNode.Labels = map[string]string{constants.ProfileLabelKey: "block"}
+			err := k8sClient.Create(context.Background(), thirdNode)
+			Expect(err).To(Succeed())
+
+			Eventually(func(g Gomega) map[string]string {
+				g.Expect(k8sClient.Get(context.Background(), client.ObjectKeyFromObject(thirdNode), thirdNode)).To(Succeed())
+				return thirdNode.Annotations
+			}).Should(HaveKey(constants.DataAnnotationKey))
+		})
+
+		AfterEach(func() {
+			Expect(k8sClient.Delete(context.Background(), thirdNode)).To(Succeed())
+		})
+
+		It("passes if current has an affinity pod and the others don't", func() {
+			attachAffinityPod(firstNode.Name)
+			affinity := impl.Affinity{MinOperational: 1}
+			result, err := affinity.Check(buildParams(firstNode))
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+		})
+
 	})
 
 })

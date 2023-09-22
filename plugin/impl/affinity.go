@@ -30,13 +30,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type nodeStateMap = map[string]*state.ProfileData
+
 // Affinity does not pass if a node has at least one pod, which should be scheduled on operational nodes
 // and other nodes are in maintenance-required, which do not have such a pod.
-type Affinity struct{}
+type Affinity struct {
+	MinOperational int
+}
 
-// New creates a new Slack instance with the given config.
+// New creates a new Affinity instance with the given config.
 func (a *Affinity) New(config *ucfgwrap.Config) (plugin.Checker, error) {
-	return &Affinity{}, nil
+	conf := struct {
+		MinOperational int `config:"minOperational"`
+	}{}
+	if err := config.Unpack(&conf); err != nil {
+		return nil, err
+	}
+	return &Affinity{MinOperational: conf.MinOperational}, nil
 }
 
 func (a *Affinity) ID() string {
@@ -49,6 +59,19 @@ func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 			params.Node.Name, params.State)
 		return plugin.Failed(nil), err
 	}
+	nodeStates, err := buildNodeStates(&params)
+	if err != nil {
+		return plugin.Failed(nil), err
+	}
+	if a.MinOperational > 0 {
+		operationalCount, err := countOperational(&params, nodeStates)
+		if err != nil {
+			return plugin.Failed(nil), err
+		}
+		if operationalCount >= a.MinOperational {
+			return plugin.Passed(map[string]any{"reason": "minOperational exceeded"}), nil
+		}
+	}
 	currentAffinity, err := hasAffinityPod(params.Node.Name, &params)
 	if err != nil {
 		return plugin.Failed(nil), fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
@@ -57,10 +80,33 @@ func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if !currentAffinity {
 		return plugin.Passed(nil), nil
 	}
-	return checkOther(&params)
+	return checkOther(&params, nodeStates)
 }
 
-func checkOther(params *plugin.Parameters) (plugin.CheckResult, error) {
+func buildNodeStates(params *plugin.Parameters) (nodeStateMap, error) {
+	var nodes v1.NodeList
+	if err := params.Client.List(params.Ctx, &nodes); err != nil {
+		return nil, err
+	}
+	nodeStates := make(nodeStateMap)
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		nodeData, err := state.ParseMigrateDataV2(node, params.Log)
+		if err != nil {
+			params.Log.Error(err, "failed to parse node data")
+			continue
+		}
+		// skip nodes, which don't have the profile
+		otherState, ok := nodeData.Profiles[params.Profile]
+		if !ok || otherState == nil {
+			continue
+		}
+		nodeStates[node.Name] = otherState
+	}
+	return nodeStates, nil
+}
+
+func checkOther(params *plugin.Parameters, nodeStates nodeStateMap) (plugin.CheckResult, error) {
 	var nodeList v1.NodeList
 	err := params.Client.List(params.Ctx, &nodeList)
 	if err != nil {
@@ -75,18 +121,11 @@ func checkOther(params *plugin.Parameters) (plugin.CheckResult, error) {
 		// only consider nodes, when the transition into maintenance-required has been caused
 		// by the same profile being checked right now.
 		// Doing otherwise could cause unnecessary block due to nodes being in maintenance-required
-		// caused by other profiles without affinity pods
-		nodeData, err := state.ParseMigrateDataV2(node, params.Log)
-		if err != nil {
-			return plugin.Failed(nil), err
-		}
-		// skip nodes, which don't have the profile
-		otherState, ok := nodeData.Profiles[params.Profile]
-		if !ok || otherState == nil {
-			continue
-		}
-		// skip nodes, that are not in maintenance-required
-		if otherState.Current != state.Required {
+		// caused by other profiles without affinity pods.
+		// Accessing nodeStates implicitly skips nodes, which don't have the profile.
+		// Also skip nodes, that are not in maintenance-required.
+		otherState, ok := nodeStates[node.Name]
+		if !ok || otherState.Current != state.Required {
 			continue
 		}
 		// some other node in the cluster does not have any relevant pods, so block
@@ -133,6 +172,23 @@ func hasOperationalAffinity(pod *v1.Pod) bool {
 		}
 	}
 	return false
+}
+
+func countOperational(params *plugin.Parameters, nodeStates nodeStateMap) (int, error) {
+	var nodes v1.NodeList
+	if err := params.Client.List(params.Ctx, &nodes); err != nil {
+		return 0, err
+	}
+	var count int
+	for _, node := range nodes.Items {
+		// accessing nodeStates skips nodes, which don't have the profile
+		otherState, ok := nodeStates[node.Name]
+		// count the nodes, that have the same profile and are operational
+		if ok && otherState.Current == state.Operational {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (a *Affinity) OnTransition(params plugin.Parameters) error {

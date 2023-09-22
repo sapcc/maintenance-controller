@@ -242,7 +242,8 @@ The affinity check plugin prefers to send nodes into maintenance, which do not h
 This is not perfect, because nodes enter the maintenance-required over a certain duration, but better than ignoring such scheduling issues at all.
 __An instance of this check plugin can only be used for the maintenance-required state.__
 ```yaml
-config: null
+config:
+  minOperational: minimum count of nodes that need to operational in the same profile to pass, ignoring the logic outlined above, setting it to zero (default) disables this, optional
 ```
 ```yaml
 nodeAffinity:
