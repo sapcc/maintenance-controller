@@ -22,7 +22,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           # always uses the latest patch version.
-          version: v1.52
+          version: v1.54
           args: "--timeout 5m"
   
   vulncheck:
