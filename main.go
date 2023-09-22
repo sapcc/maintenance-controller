@@ -103,13 +103,9 @@ func main() {
 	leaderElectionRetry := 5 * time.Second //nolint:gomnd
 	shutdownTimeout := 70 * time.Second    //nolint:gomnd
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: "0", // disable inbuilt metrics server
-		},
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: 9443, //nolint:gomnd
-		}),
+		Scheme:                     scheme,
+		Metrics:                    server.Options{BindAddress: "0"},               // disable inbuilt metrics server
+		WebhookServer:              webhook.NewServer(webhook.Options{Port: 9443}), //nolint:gomnd
 		HealthProbeBindAddress:     probeAddr,
 		EventBroadcaster:           event.NewNodeBroadcaster(),
 		LeaderElectionResourceLock: "leases",
