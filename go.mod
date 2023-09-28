@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.12.3
-	github.com/vmware/govmomi v0.31.0
+	github.com/vmware/govmomi v0.32.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	gopkg.in/ini.v1 v1.67.0
