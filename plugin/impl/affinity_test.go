@@ -22,6 +22,7 @@ package impl
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 )
 
@@ -52,6 +53,20 @@ var _ = Describe("The Affinity plugin", func() {
 		plugin, err := base.New(nil)
 		Expect(err).To(Succeed())
 		Expect(plugin.(*Affinity).MinOperational).To(Equal(0))
+	})
+
+	It("loads correctly into registry when config is nil", func() {
+		configStr := "check:\n- type: affinity\n  name: check_affinity\n  config: null"
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
+		Expect(err).To(Succeed())
+		var instance plugin.InstancesDescriptor
+		Expect(config.Unpack(&instance)).To(Succeed())
+		registry := plugin.NewRegistry()
+		addChecker := func(checker plugin.Checker) {
+			registry.CheckPlugins[checker.ID()] = checker
+		}
+		addChecker(&Affinity{})
+		Expect(registry.LoadInstances(&config, &instance)).To(Succeed())
 	})
 
 })

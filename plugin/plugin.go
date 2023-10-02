@@ -221,8 +221,15 @@ func (r *Registry) loadCheckInstance(config *ucfgwrap.Config, descriptor Instanc
 	if !ok {
 		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := config.Wrap(subConfig)
-	plugin, err := basePlugin.New(&commonConf)
+	// don't warp nil configs
+	var commonConf *ucfgwrap.Config
+	if subConfig != nil {
+		localConf := config.Wrap(subConfig)
+		commonConf = &localConf
+	} else {
+		commonConf = nil
+	}
+	plugin, err := basePlugin.New(commonConf)
 	if err != nil {
 		return err
 	}
@@ -240,8 +247,15 @@ func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor 
 	if !ok {
 		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := config.Wrap(subConfig)
-	plugin, err := basePlugin.New(&commonConf)
+	// don't warp nil configs
+	var commonConf *ucfgwrap.Config
+	if subConfig != nil {
+		localConf := config.Wrap(subConfig)
+		commonConf = &localConf
+	} else {
+		commonConf = nil
+	}
+	plugin, err := basePlugin.New(commonConf)
 	if err != nil {
 		return err
 	}
@@ -278,8 +292,15 @@ func (r *Registry) loadTriggerInstance(config *ucfgwrap.Config, descriptor Insta
 	if !ok {
 		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	commonConf := config.Wrap(subConfig)
-	plugin, err := basePlugin.New(&commonConf)
+	// don't warp nil configs
+	var commonConf *ucfgwrap.Config
+	if subConfig != nil {
+		localConf := config.Wrap(subConfig)
+		commonConf = &localConf
+	} else {
+		commonConf = nil
+	}
+	plugin, err := basePlugin.New(commonConf)
 	if err != nil {
 		return err
 	}
