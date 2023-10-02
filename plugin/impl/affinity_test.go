@@ -47,4 +47,11 @@ var _ = Describe("The Affinity plugin", func() {
 		Expect(plugin.(*Affinity).MinOperational).To(Equal(0))
 	})
 
+	It("can initialize when config is nil", func() {
+		var base Affinity
+		plugin, err := base.New(nil)
+		Expect(err).To(Succeed())
+		Expect(plugin.(*Affinity).MinOperational).To(Equal(0))
+	})
+
 })

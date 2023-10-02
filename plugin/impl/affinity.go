@@ -40,6 +40,9 @@ type Affinity struct {
 
 // New creates a new Affinity instance with the given config.
 func (a *Affinity) New(config *ucfgwrap.Config) (plugin.Checker, error) {
+	if config == nil {
+		return &Affinity{}, nil
+	}
 	conf := struct {
 		MinOperational int `config:"minOperational"`
 	}{}
