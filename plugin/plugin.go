@@ -216,15 +216,14 @@ func (r *Registry) LoadInstances(config *ucfgwrap.Config, descriptor *InstancesD
 
 func (r *Registry) loadCheckInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
 	instanceName := descriptor.Name
-	subConfig := descriptor.Config
 	basePlugin, ok := r.CheckPlugins[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
 	// don't warp nil configs
 	var commonConf *ucfgwrap.Config
-	if subConfig != nil {
-		localConf := config.Wrap(subConfig)
+	if descriptor.Config != nil {
+		localConf := config.Wrap(descriptor.Config)
 		commonConf = &localConf
 	} else {
 		commonConf = nil
@@ -242,15 +241,14 @@ func (r *Registry) loadCheckInstance(config *ucfgwrap.Config, descriptor Instanc
 
 func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor NotificationDescriptor) error {
 	instanceName := descriptor.Name
-	subConfig := descriptor.Config
 	basePlugin, ok := r.NotificationPlugins[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("the requested notification plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
 	// don't warp nil configs
 	var commonConf *ucfgwrap.Config
-	if subConfig != nil {
-		localConf := config.Wrap(subConfig)
+	if descriptor.Config != nil {
+		localConf := config.Wrap(descriptor.Config)
 		commonConf = &localConf
 	} else {
 		commonConf = nil
@@ -287,15 +285,14 @@ func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor 
 
 func (r *Registry) loadTriggerInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
 	instanceName := descriptor.Name
-	subConfig := descriptor.Config
 	basePlugin, ok := r.TriggerPlugins[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
 	// don't warp nil configs
 	var commonConf *ucfgwrap.Config
-	if subConfig != nil {
-		localConf := config.Wrap(subConfig)
+	if descriptor.Config != nil {
+		localConf := config.Wrap(descriptor.Config)
 		commonConf = &localConf
 	} else {
 		commonConf = nil
