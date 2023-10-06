@@ -56,14 +56,6 @@ jobs:
           go-version: '1.21'
           check-latest: true
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
       - name: Cache testbin binaries
         id: cache-testbin
         uses: actions/cache@v3
