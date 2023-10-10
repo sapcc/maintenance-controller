@@ -41,7 +41,12 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
+
+// According to https://pkg.go.dev/k8s.io/client-go/util/workqueue
+// the same node is never reconciled more than once concurrently.
+const ConcurrentReconciles = 5
 
 type Config struct {
 	Intervals struct {
@@ -247,6 +252,11 @@ func deleteVM(ctx context.Context, nodeName string) error {
 // SetupWithManager attaches the controller to the given manager.
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		WithOptions(controller.Options{
+			// According to https://pkg.go.dev/k8s.io/client-go/util/workqueue
+			// the same node is never reconciled more than once concurrently.
+			MaxConcurrentReconciles: ConcurrentReconciles,
+		}).
 		For(&v1.Node{}).
 		Complete(r)
 }

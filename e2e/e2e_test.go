@@ -53,7 +53,7 @@ func leadingPodName() string {
 	var leaderLease coordiantionv1.Lease
 	err := k8sClient.Get(context.Background(), types.NamespacedName{
 		Namespace: "kube-system",
-		Name:      "maintenance-controller-leader-election.cloud.sap",
+		Name:      constants.LeaderElectionID,
 	}, &leaderLease)
 	Expect(err).To(Succeed())
 	Expect(leaderLease.Spec.HolderIdentity).ToNot(BeNil())
@@ -214,7 +214,7 @@ var _ = Describe("The maintenance controller", func() {
 
 	It("should recreate nodes with the kubernikus controller", func() {
 		By("fetch node names")
-		nodes := &v1.NodeList{}
+		nodes := &corev1.NodeList{}
 		Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 		nodeNames := make([]string, 0)
 		for _, node := range nodes.Items {
@@ -227,7 +227,7 @@ var _ = Describe("The maintenance controller", func() {
 		Expect(k8sClient.Patch(context.Background(), toDelete, client.MergeFrom(unmodified))).To(Succeed())
 		By("assert node gets deleted")
 		Eventually(func(g Gomega) []string {
-			nodes := &v1.NodeList{}
+			nodes := &corev1.NodeList{}
 			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 			nodeNames := make([]string, 0)
 			for _, node := range nodes.Items {
@@ -237,7 +237,7 @@ var _ = Describe("The maintenance controller", func() {
 		}, 5*time.Minute).Should(HaveLen(1))
 		By("assert an other node gets added")
 		Eventually(func(g Gomega) []string {
-			nodes := &v1.NodeList{}
+			nodes := &corev1.NodeList{}
 			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 			nodeNames := make([]string, 0)
 			for _, node := range nodes.Items {
@@ -247,11 +247,11 @@ var _ = Describe("The maintenance controller", func() {
 		}, 5*time.Minute).ShouldNot(Equal(nodeNames))
 		By("assert that all nodes become ready")
 		Eventually(func(g Gomega) bool {
-			nodes := &v1.NodeList{}
+			nodes := &corev1.NodeList{}
 			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
 			for _, node := range nodes.Items {
 				for _, condition := range node.Status.Conditions {
-					if condition.Type == v1.NodeReady && condition.Status != v1.ConditionTrue {
+					if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
 						return false
 					}
 				}
