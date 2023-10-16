@@ -34,22 +34,29 @@ import (
 // MaxMaintenance is a check plugin that checks whether the amount
 // of nodes with the in-maintenance state does not exceed the specified amount.
 type MaxMaintenance struct {
-	MaxNodes  int
-	Profile   string
-	SkipAfter time.Duration
+	MaxNodes   int
+	Profile    string
+	GroupLabel string
+	SkipAfter  time.Duration
 }
 
 // New creates a new MaxMaintenance instance with the given config.
 func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
-		Max       int           `config:"max" validate:"required"`
-		Profile   string        `config:"profile"`
-		SkipAfter time.Duration `config:"skipAfter"`
+		Max        int           `config:"max" validate:"required"`
+		Profile    string        `config:"profile"`
+		GroupLabel string        `config:"groupLabel"`
+		SkipAfter  time.Duration `config:"skipAfter"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &MaxMaintenance{MaxNodes: conf.Max, Profile: conf.Profile, SkipAfter: conf.SkipAfter}, nil
+	return &MaxMaintenance{
+		MaxNodes:   conf.Max,
+		Profile:    conf.Profile,
+		GroupLabel: conf.GroupLabel,
+		SkipAfter:  conf.SkipAfter,
+	}, nil
 }
 
 func (m *MaxMaintenance) ID() string {
@@ -65,10 +72,10 @@ func (m *MaxMaintenance) Check(params plugin.Parameters) (plugin.CheckResult, er
 	if err != nil {
 		return plugin.Failed(nil), err
 	}
-	return m.checkInternal(nodeList.Items, params.Log)
+	return m.checkInternal(params, nodeList.Items)
 }
 
-func (m *MaxMaintenance) checkInternal(nodes []corev1.Node, log logr.Logger) (plugin.CheckResult, error) {
+func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.Node) (plugin.CheckResult, error) {
 	// profile == "" && skipAfter == nil => count all in-maintenance
 	// profile == "abc" && skipAfter == nil => count all containing "abc" profile
 	// profile == "" && skipAfter != nil => count all which most recent transition does not exceed skipAfter
@@ -76,8 +83,13 @@ func (m *MaxMaintenance) checkInternal(nodes []corev1.Node, log logr.Logger) (pl
 	if m.Profile != "" {
 		nodes = m.filterProfileName(nodes)
 	}
+	if m.GroupLabel != "" {
+		if groupValue, ok := params.Node.Labels[m.GroupLabel]; ok {
+			nodes = m.filterGroupLabel(nodes, m.GroupLabel, groupValue)
+		}
+	}
 	if int64(m.SkipAfter) != 0 {
-		filtered, err := m.filterRecentTransition(nodes, log)
+		filtered, err := m.filterRecentTransition(nodes, params.Log)
 		if err != nil {
 			return plugin.Failed(nil), err
 		}
@@ -126,6 +138,21 @@ func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node, log logr.Lo
 		}
 	}
 	return matching, nil
+}
+
+func (m *MaxMaintenance) filterGroupLabel(nodes []corev1.Node, label, value string) []corev1.Node {
+	if label == "" || value == "" {
+		return nodes
+	}
+	matching := make([]corev1.Node, 0)
+	for _, node := range nodes {
+		if val, ok := node.Labels[label]; ok {
+			if value == val {
+				matching = append(matching, node)
+			}
+		}
+	}
+	return matching
 }
 
 func (m *MaxMaintenance) OnTransition(params plugin.Parameters) error {

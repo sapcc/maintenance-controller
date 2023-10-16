@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
@@ -34,8 +35,17 @@ import (
 
 var _ = Describe("The MaxMaintenance plugin", func() {
 
+	groupLabel := "group"
+
+	makeParams := func(node *corev1.Node) plugin.Parameters {
+		return plugin.Parameters{
+			Log:  GinkgoLogr,
+			Node: node,
+		}
+	}
+
 	It("can parse its configuration", func() {
-		configStr := "max: 296\nprofile: kappa\nskipAfter: 20s"
+		configStr := "max: 296\nprofile: kappa\nskipAfter: 20s\ngroupLabel: " + groupLabel
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
 		var base MaxMaintenance
@@ -45,18 +55,19 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		Expect(maxMaintenance.MaxNodes).To(Equal(296))
 		Expect(maxMaintenance.Profile).To(Equal("kappa"))
 		Expect(maxMaintenance.SkipAfter).To(Equal(20 * time.Second))
+		Expect(maxMaintenance.GroupLabel).To(Equal(groupLabel))
 	})
 
 	It("passes if the returned nodes are less the max value", func() {
 		plugin := MaxMaintenance{MaxNodes: 2}
-		result, err := plugin.checkInternal([]corev1.Node{{}}, GinkgoLogr)
+		result, err := plugin.checkInternal(makeParams(nil), []corev1.Node{{}})
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeTrue())
 	})
 
 	It("fails if the returned nodes equal the max value", func() {
 		plugin := MaxMaintenance{MaxNodes: 2}
-		result, err := plugin.checkInternal([]corev1.Node{{}, {}}, GinkgoLogr)
+		result, err := plugin.checkInternal(makeParams(nil), []corev1.Node{{}, {}})
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeFalse())
 	})
@@ -71,7 +82,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 			{},
 		}
 		plugin := MaxMaintenance{MaxNodes: 1, Profile: "profile"}
-		result, err := plugin.checkInternal(nodes, GinkgoLogr)
+		result, err := plugin.checkInternal(makeParams(nil), nodes)
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeFalse())
 	})
@@ -101,28 +112,72 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 		It("skips counting nodes that exceed the duration for all profiles", func() {
 			plugin := MaxMaintenance{MaxNodes: 1, SkipAfter: 5 * time.Second}
-			result, err := plugin.checkInternal(nodes, GinkgoLogr)
+			result, err := plugin.checkInternal(makeParams(nil), nodes)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("does not skip counting nodes that satisfy the duration for all profiles", func() {
 			plugin := MaxMaintenance{MaxNodes: 1, SkipAfter: 50 * time.Second}
-			result, err := plugin.checkInternal(nodes, GinkgoLogr)
+			result, err := plugin.checkInternal(makeParams(nil), nodes)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 		})
 
 		It("skips counting nodes that exceed the duration for a specific profile", func() {
 			plugin := MaxMaintenance{MaxNodes: 1, SkipAfter: 5 * time.Second, Profile: "profile"}
-			result, err := plugin.checkInternal(nodes, GinkgoLogr)
+			result, err := plugin.checkInternal(makeParams(nil), nodes)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
 		})
 
 		It("does not skip counting nodes that satisfy the duration for a specific profile", func() {
 			plugin := MaxMaintenance{MaxNodes: 1, SkipAfter: 50 * time.Second, Profile: "profile"}
-			result, err := plugin.checkInternal(nodes, GinkgoLogr)
+			result, err := plugin.checkInternal(makeParams(nil), nodes)
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeFalse())
+		})
+
+	})
+
+	Context("with groupLabel", func() {
+
+		makeNodes := func(group1, group2 string) []corev1.Node {
+			var node1 corev1.Node
+			node1.Labels = map[string]string{groupLabel: group1}
+			var node2 corev1.Node
+			node2.Labels = map[string]string{groupLabel: group2}
+			return []corev1.Node{node1, node2}
+		}
+
+		It("blocks when nodes within the same group are in-maintenance", func() {
+			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			nodes := makeNodes("a", "a")
+			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeFalse())
+		})
+
+		It("passes when nodes within the same group are out of maintenance", func() {
+			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			nodes := makeNodes("a", "a")
+			result, err := plugin.checkInternal(makeParams(&nodes[0]), []corev1.Node{{}})
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("passes when nodes with the other groups are in-maintenance", func() {
+			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			nodes := makeNodes("b", "c")
+			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("matches against the whole cluster when the label value is empty", func() {
+			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			nodes := makeNodes("", "d")
+			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 		})

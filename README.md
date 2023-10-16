@@ -201,6 +201,7 @@ config:
   max: the limit of nodes that are in-maintenance, required
   profile: if set only consider nodes which do have the specified profile, optional
   skipAfter: if set only considers nodes, for which the time since the last transition does not exceed the specified duration, optional
+  groupLabel: if set only considers nodes, which have the same value for the specified label, optional
 ```
 __prometheusInstant__: Checks that the most recent value of a prometheus query satisfies a given expression.
 ```yaml
