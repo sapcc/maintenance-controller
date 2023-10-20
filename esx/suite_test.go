@@ -62,7 +62,7 @@ const configTemplate = `
 intervals:
   check:
     jitter: 0.1
-    period: 200ms
+    period: 400ms
   podDeletion:
     period: 1s
     timeout: 4s
