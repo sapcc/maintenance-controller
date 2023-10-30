@@ -50,6 +50,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 
 		var server http.Server
 		const addr string = "127.0.0.1:29572"
+		const url = "http://" + addr
 
 		BeforeAll(func() {
 			mux := http.NewServeMux()
@@ -95,7 +96,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 
 		It("passes if the expression is satisfied", func() {
 			prom := PrometheusInstant{
-				URL:   "http://" + addr,
+				URL:   url,
 				Query: "cool_metric",
 				Expr:  "value == 1",
 			}
@@ -106,7 +107,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 
 		It("fails if the expression is not satisfied", func() {
 			prom := PrometheusInstant{
-				URL:   "http://" + addr,
+				URL:   url,
 				Query: "cool_metric",
 				Expr:  "value < 1",
 			}
@@ -117,7 +118,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 
 		It("fails if the server cannot be reached", func() {
 			prom := PrometheusInstant{
-				URL:   "http://" + addr + "/unreachable",
+				URL:   url + "/unreachable",
 				Query: "cool_metric",
 				Expr:  "value == 1",
 			}
@@ -128,7 +129,7 @@ var _ = Describe("The prometheusInstant plugin", func() {
 
 		It("fails if the metric does not exist", func() {
 			prom := PrometheusInstant{
-				URL:   "http://" + addr,
+				URL:   url,
 				Query: "not_so_cool_metric",
 				Expr:  "value == 1",
 			}

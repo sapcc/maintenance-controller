@@ -61,7 +61,7 @@ var _ = Describe("ensureVmOn", func() {
 
 	It("starts a VM", func() {
 		vCenters := &VCenters{
-			Template: "http://" + AvailabilityZoneReplacer,
+			Template: TemplateUrl,
 			Credentials: map[string]Credential{
 				vcServer.URL.Host: {
 					Username: "user",

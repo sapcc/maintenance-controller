@@ -476,8 +476,8 @@ var _ = Describe("The slack thread plugin", func() {
 		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && //nolint:gosec
-				msgs[0].Text == "title" && msgs[1].Text == "msg" //nolint:gosec
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp &&
+				msgs[0].Text == "title" && msgs[1].Text == "msg"
 		})))
 		Eventually(func() error {
 			var lease coordinationv1.Lease
@@ -501,7 +501,7 @@ var _ = Describe("The slack thread plugin", func() {
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp //nolint:gosec
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp
 		})))
 	})
 
@@ -521,7 +521,7 @@ var _ = Describe("The slack thread plugin", func() {
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.Msg) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp //nolint:gosec
+			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
 		})))
 	})
 })

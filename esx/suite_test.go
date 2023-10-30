@@ -54,6 +54,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const ESXName string = "DC0_H0"
+const TemplateUrl = "http://" + AvailabilityZoneReplacer
 
 // The availability "parser" only considers the last character of the region string.
 // To get the required credentials the one char AZ needs to be part of the hostname.
