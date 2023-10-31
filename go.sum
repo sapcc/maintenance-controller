@@ -159,6 +159,8 @@ github.com/vmware/govmomi v0.32.0 h1:Rsdi/HAX5Ebf9Byp/FvBir4sfM7yP5DBUeRlbC6vLBo
 github.com/vmware/govmomi v0.32.0/go.mod h1:JA63Pg0SgQcSjk+LuPzjh3rJdcWBo/ZNCIwbb1qf2/0=
 github.com/vmware/govmomi v0.33.0 h1:fCkDfgyNgAwmHAtEMgqlLIjBsSJqWPk0YYhuAdXBVrE=
 github.com/vmware/govmomi v0.33.0/go.mod h1:QuzWGiEMA/FYlu5JXKjytiORQoxv2hTHdS2lWnIqKMM=
+github.com/vmware/govmomi v0.33.1 h1:qS2VpEBd/WLbzLO5McI6h5o5zaKsrezUxRY5r9jkW8A=
+github.com/vmware/govmomi v0.33.1/go.mod h1:QuzWGiEMA/FYlu5JXKjytiORQoxv2hTHdS2lWnIqKMM=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
