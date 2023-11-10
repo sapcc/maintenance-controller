@@ -17,7 +17,7 @@ require (
 	github.com/slack-go/slack v0.12.3
 	github.com/vmware/govmomi v0.33.1
 	go.uber.org/zap v1.26.0
-	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
