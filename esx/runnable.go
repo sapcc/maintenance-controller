@@ -113,7 +113,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 			continue
 		}
 		r.StartNodes(ctx, &conf.VCenters, esx)
-		err = r.ShutdownNodes(ctx, &conf.VCenters, esx, &conf)
+		err = r.ShutdownNodes(ctx, &conf, esx)
 		if err != nil {
 			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
 			continue
@@ -163,7 +163,7 @@ func (r *Runnable) FetchVersion(ctx context.Context, vCenters *VCenters, esx *Ho
 }
 
 // Shuts down nodes on the given ESX, if the ESX has a maintenance and a node is labelled accordingly.
-func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *Host, conf *Config) error {
+func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) error {
 	for i := range esx.Nodes {
 		node := &esx.Nodes[i]
 		if !ShouldShutdownNode(node) {
@@ -201,7 +201,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, vCenters *VCenters, esx *H
 		}
 		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
 		err = EnsureVMOff(ctx, ShutdownParams{
-			VCenters: vCenters,
+			VCenters: &conf.VCenters,
 			Info:     esx.HostInfo,
 			NodeName: node.Name,
 			Period:   conf.Intervals.VMShutdown.Period,

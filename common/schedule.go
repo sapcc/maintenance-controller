@@ -86,6 +86,7 @@ type DrainParameters struct {
 
 // Drains Pods from the given node, if required.
 func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
+	checkReady(node, log)
 	deletable, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
 		return fmt.Errorf("failed to fetch deletable pods: %w", err)
@@ -118,6 +119,14 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		return fmt.Errorf("failed to await pod deletions: %w", err)
 	}
 	return nil
+}
+
+func checkReady(node *corev1.Node, log logr.Logger) {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status != corev1.ConditionTrue {
+			log.Info("Node is not ready before drain", "node", node.Name, "ready", condition.Status)
+		}
+	}
 }
 
 // Gets a list of pods to be deleted for a node to be considered drained.
