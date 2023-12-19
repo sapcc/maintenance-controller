@@ -198,28 +198,31 @@ func (e *eventBroadcasterImpl) StartEventWatcher(eventHandler func(*v1.Event)) w
 }
 
 // NewRecorder returns an EventRecorder that records events with the given event source.
-func (e *eventBroadcasterImpl) NewRecorder(scheme *runtime.Scheme, source v1.EventSource) record.EventRecorder {
-	return &NodeRecorder{scheme, source, e.Broadcaster, clock.RealClock{}}
+func (e *eventBroadcasterImpl) NewRecorder(scheme *runtime.Scheme, source v1.EventSource) record.EventRecorderLogger {
+	return &NodeRecorder{scheme, source, e.Broadcaster, clock.RealClock{}, klog.Background()}
 }
 
 type NodeRecorder struct {
 	scheme *runtime.Scheme
 	source v1.EventSource
 	*watch.Broadcaster
-	clock clock.Clock
+	clock  clock.Clock
+	logger klog.Logger
 }
 
 func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations map[string]string,
 	source *v1.EventSource, eventtype, reason, message string) {
 	ref, err := ref.GetReference(recorder.scheme, object)
 	if err != nil {
-		klog.Errorf("Could not construct reference to: '%#v' due to: '%v'. Will not report event: '%v' '%v' '%v'",
-			object, err, eventtype, reason, message)
+		recorder.logger.Error(
+			err,
+			fmt.Sprintf("Could not construct reference to: '%#v' due to: '%v'. Will not report event: '%v' '%v' '%v'",
+				object, err, eventtype, reason, message))
 		return
 	}
 
 	if !util.ValidateEventType(eventtype) {
-		klog.Errorf("Unsupported event type: '%v'", eventtype)
+		recorder.logger.Error(nil, fmt.Sprintf("Unsupported event type: '%v'", eventtype))
 		return
 	}
 
@@ -235,7 +238,7 @@ func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations m
 		defer utilruntime.HandleCrash()
 		err = recorder.Action(watch.Added, event)
 		if err != nil {
-			klog.Errorf("error for recorder.Action in eventBroadcasterImpl: %s", err)
+			recorder.logger.Error(err, "error for recorder.Action in NodeRecorder")
 		}
 	}()
 }
@@ -252,6 +255,16 @@ func (recorder *NodeRecorder) Eventf(object runtime.Object,
 func (recorder *NodeRecorder) AnnotatedEventf(object runtime.Object,
 	annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
 	recorder.generateEvent(object, annotations, nil, eventtype, reason, fmt.Sprintf(messageFmt, args...))
+}
+
+func (recorder *NodeRecorder) WithLogger(logger klog.Logger) record.EventRecorderLogger {
+	return &NodeRecorder{
+		scheme:      recorder.scheme,
+		source:      recorder.source,
+		clock:       recorder.clock,
+		logger:      logger,
+		Broadcaster: recorder.Broadcaster,
+	}
 }
 
 func (recorder *NodeRecorder) makeEvent(ref *v1.ObjectReference, annotations map[string]string,
