@@ -51,7 +51,9 @@ func (n *NodeCount) Check(params plugin.Parameters) (plugin.CheckResult, error) 
 	if err != nil {
 		return plugin.Failed(nil), err
 	}
-	return plugin.CheckResult{Passed: len(nodeList.Items) >= n.Count}, nil
+	current := len(nodeList.Items)
+	info := map[string]any{"current": current, "expected": n.Count}
+	return plugin.CheckResult{Passed: current >= n.Count, Info: info}, nil
 }
 
 func (n *NodeCount) OnTransition(params plugin.Parameters) error {

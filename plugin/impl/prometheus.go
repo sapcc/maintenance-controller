@@ -82,6 +82,7 @@ func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult
 		return plugin.Failed(info), fmt.Errorf("result does not contain exactly one element")
 	}
 	value := float64(vector[0].Value)
+	info["value"] = value
 	evaluable, err := gval.Full().NewEvaluable(pi.Expr)
 	if err != nil {
 		return plugin.Failed(info), err

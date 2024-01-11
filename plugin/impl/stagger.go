@@ -71,17 +71,20 @@ func (s *Stagger) ID() string {
 // Check asserts that since the last successful check is a certain time has passed.
 func (s *Stagger) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	s.grabIndex = noGrab
+	availableIn := make([]time.Duration, 0)
 	for i := 0; i < s.Parallel; i++ {
 		lease, err := s.getOrCreateLease(i, &params)
 		if err != nil {
 			return plugin.Failed(nil), err
 		}
-		if time.Since(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+		leaseDuration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
+		if time.Since(lease.Spec.RenewTime.Time) > leaseDuration {
 			s.grabIndex = i
 			return plugin.Passed(nil), nil
 		}
+		availableIn = append(availableIn, leaseDuration-time.Since(lease.Spec.RenewTime.Time))
 	}
-	return plugin.Failed(nil), nil
+	return plugin.Failed(map[string]any{"availableIn": availableIn}), nil
 }
 
 func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordinationv1.Lease, error) {

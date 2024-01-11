@@ -133,6 +133,7 @@
                                                     <th>Instance</th>
                                                     <th>Type</th>
                                                     <th>Passed</th>
+                                                    <th>Notes</th>
                                                 </tr>
                                             </thead>
                                             <tbody x-data="{get plugins() { return entries(transition.chain.info); }}">
@@ -141,6 +142,7 @@
                                                         <td x-text="plugin[0]"></td>
                                                         <td x-text="plugin[1].id"></td>
                                                         <td x-text="plugin[1].passed"></td>
+                                                        <td x-text="JSON.stringify(plugin[1].info)"></td>
                                                     </tr>
                                                 </template>
                                             </tbody>

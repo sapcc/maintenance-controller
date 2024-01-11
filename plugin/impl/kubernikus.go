@@ -76,9 +76,9 @@ func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, 
 		specCount += nodePool.Size
 	}
 	if len(nodeList.Items) >= specCount {
-		return plugin.Passed(nil), nil
+		return plugin.PassedWithReason("found equal or more nodes than specified by nodepool"), nil
 	}
-	return plugin.Failed(nil), nil
+	return plugin.FailedWithReason("found less nodes than specified by nodepool"), nil
 }
 
 func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, error) {

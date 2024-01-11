@@ -105,7 +105,7 @@ func (tw *TimeWindow) checkInternal(current time.Time) plugin.CheckResult {
 		}
 	}
 	if !containsWeekday {
-		return plugin.Failed(nil)
+		return plugin.FailedWithReason("current day of week forbidden")
 	}
 	isExcluded := false
 	for _, exclude := range tw.Exclude {
@@ -115,7 +115,7 @@ func (tw *TimeWindow) checkInternal(current time.Time) plugin.CheckResult {
 		}
 	}
 	if isExcluded {
-		return plugin.Failed(nil)
+		return plugin.FailedWithReason("day/month forbidden")
 	}
 	// It is required to set the date to the configured values only keeping the time
 	compare := time.Date(tw.Start.Year(), tw.Start.Month(), tw.Start.Day(), current.Hour(),

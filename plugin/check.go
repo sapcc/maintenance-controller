@@ -37,8 +37,16 @@ func Passed(info map[string]any) CheckResult {
 	return CheckResult{Passed: true, Info: info}
 }
 
+func PassedWithReason(reason string) CheckResult {
+	return CheckResult{Passed: true, Info: map[string]any{"reason": reason}}
+}
+
 func Failed(info map[string]any) CheckResult {
 	return CheckResult{Passed: false, Info: info}
+}
+
+func FailedWithReason(reason string) CheckResult {
+	return CheckResult{Passed: false, Info: map[string]any{"reason": reason}}
 }
 
 // Checker is the interface that check plugins need to implement.

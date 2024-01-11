@@ -20,6 +20,8 @@
 package impl
 
 import (
+	"fmt"
+
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
@@ -51,7 +53,7 @@ func (h *HasLabel) ID() string {
 func (h *HasLabel) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	val, ok := params.Node.Labels[h.Key]
 	if !ok {
-		return plugin.Failed(nil), nil
+		return plugin.FailedWithReason(fmt.Sprintf("label %s not present", h.Key)), nil
 	}
 	if h.Value == "" {
 		return plugin.Passed(nil), nil

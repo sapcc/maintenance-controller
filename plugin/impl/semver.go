@@ -87,7 +87,8 @@ func (cs *ClusterSemver) Check(params plugin.Parameters) (plugin.CheckResult, er
 			maxVersion = version
 		}
 	}
-	return plugin.CheckResult{Passed: ownVersion.LT(maxVersion)}, nil
+	info := map[string]any{"own": ownVersion.String(), "max": maxVersion.String()}
+	return plugin.CheckResult{Passed: ownVersion.LT(maxVersion), Info: info}, nil
 }
 
 func filterByProfile(nodes []v1.Node, profile string) []v1.Node {

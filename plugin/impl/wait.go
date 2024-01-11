@@ -55,7 +55,7 @@ func (w *Wait) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if time.Since(params.LastTransition) > w.Duration {
 		return plugin.Passed(nil), nil
 	}
-	return plugin.Failed(nil), nil
+	return plugin.Failed(map[string]any{"available_in": w.Duration - time.Since(params.LastTransition)}), nil
 }
 
 func (w *Wait) OnTransition(params plugin.Parameters) error {
@@ -137,7 +137,7 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) p
 	if since > we.Duration {
 		return plugin.Passed(nil)
 	}
-	return plugin.Failed(nil)
+	return plugin.Failed(map[string]any{"available_in": we.Duration - since})
 }
 
 func (we *WaitExclude) isExcluded(weekday time.Weekday) bool {

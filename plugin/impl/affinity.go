@@ -72,7 +72,7 @@ func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 			return plugin.Failed(nil), err
 		}
 		if operationalCount >= a.MinOperational {
-			return plugin.Passed(map[string]any{"reason": "minOperational exceeded"}), nil
+			return plugin.PassedWithReason("minOperational exceeded"), nil
 		}
 	}
 	currentAffinity, err := hasAffinityPod(params.Node.Name, &params)
@@ -81,7 +81,7 @@ func (a *Affinity) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	}
 	// current node does not have any relevant pods, so pass
 	if !currentAffinity {
-		return plugin.Passed(nil), nil
+		return plugin.PassedWithReason("no pods with affinity"), nil
 	}
 	return checkOther(&params, nodeStates)
 }
@@ -137,7 +137,7 @@ func checkOther(params *plugin.Parameters, nodeStates nodeStateMap) (plugin.Chec
 			return plugin.Failed(nil), fmt.Errorf("failed to check if node %v has affinity pods: %w", params.Node.Name, err)
 		}
 		if !nodeAffinity {
-			return plugin.Failed(nil), nil
+			return plugin.FailedWithReason("pods without affinity on: " + node.Name), nil
 		}
 	}
 	// all other nodes have relevant pods as well, so pass

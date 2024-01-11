@@ -95,10 +95,11 @@ func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.
 		}
 		nodes = filtered
 	}
+	info := map[string]any{"maintained": len(nodes), "max": m.MaxNodes}
 	if len(nodes) >= m.MaxNodes {
-		return plugin.Failed(nil), nil
+		return plugin.Failed(info), nil
 	}
-	return plugin.Passed(nil), nil
+	return plugin.Passed(info), nil
 }
 
 func (m *MaxMaintenance) filterProfileName(nodes []corev1.Node) []corev1.Node {

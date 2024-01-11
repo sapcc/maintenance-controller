@@ -20,6 +20,8 @@
 package impl
 
 import (
+	"fmt"
+
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
@@ -55,7 +57,7 @@ func (c *Condition) Check(params plugin.Parameters) (plugin.CheckResult, error) 
 			return plugin.CheckResult{Passed: condition.Status == v1.ConditionStatus(c.Status)}, nil
 		}
 	}
-	return plugin.Failed(nil), nil
+	return plugin.FailedWithReason(fmt.Sprintf("condition %s not present", c.Type)), nil
 }
 
 func (c *Condition) OnTransition(params plugin.Parameters) error {

@@ -20,6 +20,8 @@
 package impl
 
 import (
+	"fmt"
+
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 )
@@ -51,7 +53,7 @@ func (h *HasAnnotation) ID() string {
 func (h *HasAnnotation) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	val, ok := params.Node.Annotations[h.Key]
 	if !ok {
-		return plugin.Failed(nil), nil
+		return plugin.FailedWithReason(fmt.Sprintf("annotation %s not present", h.Key)), nil
 	}
 	if h.Value == "" {
 		return plugin.Passed(nil), nil
