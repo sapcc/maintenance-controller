@@ -127,7 +127,7 @@
                                     <div x-show="transition.chain.passed && !transition.passed">Advancing is likely
                                         blocked by an other profile being in-maintenance.</div>
                                     <div>
-                                        <table class="pure-table">
+                                        <table class="pure-table" style="table-layout: fixed; width: 98%;">
                                             <thead>
                                                 <tr>
                                                     <th>Instance</th>
@@ -138,7 +138,7 @@
                                             </thead>
                                             <tbody x-data="{get plugins() { return entries(transition.chain.info); }}">
                                                 <template x-for="plugin in plugins">
-                                                    <tr>
+                                                    <tr style="word-wrap: break-word; font-size: 90%;">
                                                         <td x-text="plugin[0]"></td>
                                                         <td x-text="plugin[1].id"></td>
                                                         <td x-text="plugin[1].passed"></td>

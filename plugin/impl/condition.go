@@ -54,7 +54,8 @@ func (c *Condition) ID() string {
 func (c *Condition) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	for _, condition := range params.Node.Status.Conditions {
 		if condition.Type == v1.NodeConditionType(c.Type) {
-			return plugin.CheckResult{Passed: condition.Status == v1.ConditionStatus(c.Status)}, nil
+			info := map[string]any{"current": condition.Status, "expected": c.Status}
+			return plugin.CheckResult{Passed: condition.Status == v1.ConditionStatus(c.Status), Info: info}, nil
 		}
 	}
 	return plugin.FailedWithReason(fmt.Sprintf("condition %s not present", c.Type)), nil
