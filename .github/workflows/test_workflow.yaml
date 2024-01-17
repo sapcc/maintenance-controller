@@ -58,7 +58,7 @@ jobs:
 
       - name: Cache testbin binaries
         id: cache-testbin
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: testbin
           # Use SHA-256 hash of the Makefile file as the key.
