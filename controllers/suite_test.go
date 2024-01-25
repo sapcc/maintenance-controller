@@ -180,6 +180,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
+		defer GinkgoRecover()
 		stopCtx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
 		stopController = cancel
 		err = k8sManager.Start(stopCtx)

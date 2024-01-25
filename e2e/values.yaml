@@ -41,12 +41,12 @@ config: |
         name: reboot_needed
         config:
           key: flatcar-linux-update.v1.flatcar-linux.net/reboot-needed
-          value: "true"
+          value: ${TRUE}
       - type: hasAnnotation
         name: check_approval
         config:
           key: cloud.sap/maintenance-approved
-          value: "true"
+          value: ${TRUE}
       - type: kubernikusCount
         name: check_kubernikus
         config:
@@ -56,7 +56,7 @@ config: |
         name: reboot-ok
         config:
           key: flatcar-linux-update.v1.flatcar-linux.net/reboot-ok
-          value: "true"
+          value: ${TRUE}
       - type: alterAnnotation
         name: remove_approval
         config:
@@ -83,3 +83,6 @@ config: |
       - check: "!reboot_needed"
         trigger: remove_reboot_ok
         next: operational
+# to test interpolation
+secrets:
+  "TRUE": "true"
