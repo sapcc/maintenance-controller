@@ -19,7 +19,7 @@ jobs:
           check-latest: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           # always uses the latest patch version.
           version: v1.55
