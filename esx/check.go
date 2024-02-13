@@ -119,7 +119,7 @@ func fetchHost(ctx context.Context, client *vim25.Client, hostname string, filte
 	}
 	var hss []mo.HostSystem
 	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, filter,
-		&hss, property.Filter{"name": hostname})
+		&hss, property.Match{"name": hostname})
 	if err != nil {
 		return mo.HostSystem{}, fmt.Errorf("failed to fetch runtime information for esx host %v: %w",
 			hostname, err)

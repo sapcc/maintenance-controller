@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/common v0.46.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.12.3
-	github.com/vmware/govmomi v0.34.2
+	github.com/vmware/govmomi v0.35.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3
 	gopkg.in/ini.v1 v1.67.0
@@ -47,14 +47,13 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
-	github.com/google/uuid v1.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect

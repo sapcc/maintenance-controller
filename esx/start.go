@@ -60,7 +60,7 @@ func ensureVMOn(ctx context.Context, vCenters *VCenters, info HostInfo, nodeName
 	if err != nil {
 		return fmt.Errorf("failed to create poweron task for VM %v", nodeName)
 	}
-	taskResult, err := task.WaitForResult(ctx)
+	taskResult, err := task.WaitForResultEx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to await poweron task for VM %v", nodeName)
 	}

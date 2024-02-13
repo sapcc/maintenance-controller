@@ -123,7 +123,7 @@ var _ = Describe("The ESX controller", func() {
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 	})
 
@@ -176,7 +176,7 @@ var _ = Describe("The ESX controller", func() {
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 
 		Eventually(func(g Gomega) string {
@@ -208,7 +208,7 @@ var _ = Describe("The ESX controller", func() {
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 
 		allowMaintenance := func(node *corev1.Node) error {
@@ -245,7 +245,7 @@ var _ = Describe("The ESX controller", func() {
 			g.Expect(err).To(Succeed())
 			var vms []mo.VirtualMachine
 			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+				[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 			g.Expect(err).To(Succeed())
 			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
 		}).Should(BeTrue())
@@ -258,12 +258,12 @@ var _ = Describe("The ESX controller", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "thirdvm"})
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "thirdvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "fourthvm"})
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "fourthvm"})
 		Expect(err).To(Succeed())
 		result = vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())
@@ -302,7 +302,7 @@ var _ = Describe("The ESX controller", func() {
 			g.Expect(err).To(Succeed())
 			var vms []mo.VirtualMachine
 			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-				[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+				[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 			g.Expect(err).To(Succeed())
 			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		}).Should(BeTrue())

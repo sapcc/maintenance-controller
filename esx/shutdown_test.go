@@ -192,12 +192,12 @@ var _ = Describe("ensureVmOff", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		vm := object.NewVirtualMachine(client.Client, vms[0].Self)
 		task, err := vm.PowerOn(context.Background())
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 	})
 
@@ -224,7 +224,7 @@ var _ = Describe("ensureVmOff", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
 		Expect(result).To(BeTrue())

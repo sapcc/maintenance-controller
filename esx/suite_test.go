@@ -130,12 +130,12 @@ var _ = BeforeSuite(func() {
 	renameVM := func(view *view.ContainerView, oldName, newName string) {
 		var vms []mo.VirtualMachine
 		err := view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"}, []string{"summary.runtime"},
-			&vms, property.Filter{"name": oldName})
+			&vms, property.Match{"name": oldName})
 		Expect(err).To(Succeed())
 		vm := object.NewVirtualMachine(vcClient.Client, vms[0].Self)
 		task, err := vm.Rename(context.Background(), newName)
 		Expect(err).To(Succeed())
-		Expect(task.Wait(context.Background())).To(Succeed())
+		Expect(task.WaitEx(context.Background())).To(Succeed())
 	}
 	mgr := view.NewManager(vcClient.Client)
 	view, err := mgr.CreateContainerView(context.Background(),

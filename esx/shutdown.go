@@ -111,7 +111,7 @@ func shutdownVM(ctx context.Context, log logr.Logger, vm *object.VirtualMachine,
 	if err != nil {
 		return fmt.Errorf("failed to create poweroff task for VM %v", params.nodeName)
 	}
-	taskResult, err := task.WaitForResult(ctx)
+	taskResult, err := task.WaitForResultEx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to await poweroff task for VM %v", params.nodeName)
 	}

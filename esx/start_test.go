@@ -94,7 +94,7 @@ var _ = Describe("ensureVmOn", func() {
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
 		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-			[]string{"summary.runtime"}, &vms, property.Filter{"name": "firstvm"})
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())

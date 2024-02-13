@@ -38,7 +38,7 @@ func RetrieveVM(ctx context.Context, client *govmomi.Client, name string) (mo.Vi
 	}
 	var vms []mo.VirtualMachine
 	err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"summary.runtime"},
-		&vms, property.Filter{"name": name})
+		&vms, property.Match{"name": name})
 	if err != nil {
 		return mo.VirtualMachine{}, fmt.Errorf("failed to retrieve VM %v", name)
 	}

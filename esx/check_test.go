@@ -53,7 +53,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 	})
 
@@ -67,7 +67,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 	})
 
@@ -91,7 +91,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &types.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
-		err = task.Wait(context.Background())
+		err = task.WaitEx(context.Background())
 		Expect(err).To(Succeed())
 
 		result, err := CheckForMaintenance(context.Background(), CheckParameters{vCenters, HostInfo{
