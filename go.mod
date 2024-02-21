@@ -16,7 +16,7 @@ require (
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.12.4
 	github.com/vmware/govmomi v0.35.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.29.2
