@@ -11,7 +11,7 @@ require (
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
-	github.com/prometheus/client_golang v1.18.0
+	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.48.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.12.5
