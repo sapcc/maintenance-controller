@@ -49,7 +49,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		Expect(err).To(Succeed())
 		host := object.NewHostSystem(client.Client, types.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
@@ -63,7 +63,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		Expect(err).To(Succeed())
 		host := object.NewHostSystem(client.Client, types.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
@@ -87,7 +87,7 @@ var _ = Describe("CheckForMaintenance", func() {
 		// set host in maintenance
 		host := object.NewHostSystem(client.Client, types.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &types.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
@@ -125,7 +125,7 @@ var _ = Describe("FetchVersion", func() {
 			Name:             HostSystemName,
 		}, GinkgoLogr})
 		Expect(err).To(Succeed())
-		Expect(version).To(Equal("6.5.0"))
+		Expect(version).To(Equal("8.0.2"))
 	})
 
 })

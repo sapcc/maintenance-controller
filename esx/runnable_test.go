@@ -119,7 +119,7 @@ var _ = Describe("The ESX controller", func() {
 		// set host out of maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
 		Expect(err).To(Succeed())
@@ -154,7 +154,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[constants.EsxVersionLabelKey]
 			return val
-		}).Should(Equal("6.5.0"))
+		}).Should(Equal("8.0.2"))
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
@@ -162,7 +162,7 @@ var _ = Describe("The ESX controller", func() {
 
 			val := node.Labels[constants.EsxVersionLabelKey]
 			return val
-		}).Should(Equal("6.5.0"))
+		}).Should(Equal("8.0.2"))
 	})
 
 	It("labels all nodes on a single EXS host in case of changes to the maintenance state", func() {
@@ -172,7 +172,7 @@ var _ = Describe("The ESX controller", func() {
 		// set host in maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
@@ -204,7 +204,7 @@ var _ = Describe("The ESX controller", func() {
 		// set host in maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-21",
+			Value: "host-20",
 		})
 		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
