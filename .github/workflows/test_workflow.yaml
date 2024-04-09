@@ -20,11 +20,6 @@ jobs:
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
-        with:
-          # always uses the latest patch version.
-          version: v1.55
-          args: "--timeout 5m"
-  
   vulncheck:
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +37,7 @@ jobs:
 
       - name: Run govulncheck
         run: govulncheck ./...
-  
+
   test:
     # This job runs on Linux
     runs-on: ubuntu-latest
