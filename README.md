@@ -208,7 +208,7 @@ __prometheusInstant__: Checks that the most recent value of a prometheus query s
 config:
   url: prometheus url
   query: prometheus query, that yields a vector with exactly a single value
-  expr: comparision where 'value' is fetched from prometheus, e.g. 'value <= 1'
+  expr: comparison where 'value' is fetched from prometheus, e.g. 'value <= 1'
 ```
 __stagger__: Checks that a certain duration has passed since a previous node passed. This is implemented with `coordination.k8s.io/Lease`s, which needs to be manually removed when the maintenance controller is removed from a cluster.
 ```yaml
