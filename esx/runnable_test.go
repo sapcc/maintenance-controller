@@ -25,7 +25,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -35,6 +34,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 const DefaultNamespace string = "default"
@@ -197,6 +198,22 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(InMaintenance)))
 	})
 
+	fetchPowerState := func(vcClient *govmomi.Client) (vctypes.VirtualMachinePowerState, error) {
+		mgr := view.NewManager(vcClient.Client)
+		view, err := mgr.CreateContainerView(context.Background(),
+			vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+		if err != nil {
+			return "", err
+		}
+		var vms []mo.VirtualMachine
+		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
+		if err != nil {
+			return "", nil
+		}
+		return vms[0].Summary.Runtime.PowerState, nil
+	}
+
 	It("shuts down nodes on an ESX host if it is in-maintenance and reboots are allowed", func() {
 		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
 		Expect(err).To(Succeed())
@@ -236,18 +253,11 @@ var _ = Describe("The ESX controller", func() {
 			err = k8sClient.List(context.Background(), &podList)
 			g.Expect(err).To(Succeed())
 			return podList.Items
-		}, 10*time.Second).Should(HaveLen(0))
+		}, 10*time.Second).Should(BeEmpty())
 		Eventually(func(g Gomega) bool {
-			mgr := view.NewManager(vcClient.Client)
+			powerState, err := fetchPowerState(vcClient)
 			g.Expect(err).To(Succeed())
-			view, err := mgr.CreateContainerView(context.Background(),
-				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
-			g.Expect(err).To(Succeed())
-			var vms []mo.VirtualMachine
-			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-				[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
-			g.Expect(err).To(Succeed())
-			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff
+			return powerState == vctypes.VirtualMachinePowerStatePoweredOff
 		}).Should(BeTrue())
 
 		// ensure VM's on different host are not affected
@@ -295,16 +305,9 @@ var _ = Describe("The ESX controller", func() {
 			return node.Annotations
 		}).ShouldNot(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
 		Eventually(func(g Gomega) bool {
-			mgr := view.NewManager(vcClient.Client)
+			powerState, err := fetchPowerState(vcClient)
 			g.Expect(err).To(Succeed())
-			view, err := mgr.CreateContainerView(context.Background(),
-				vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
-			g.Expect(err).To(Succeed())
-			var vms []mo.VirtualMachine
-			err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
-				[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
-			g.Expect(err).To(Succeed())
-			return vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
+			return powerState == vctypes.VirtualMachinePowerStatePoweredOn
 		}).Should(BeTrue())
 	})
 

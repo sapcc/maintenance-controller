@@ -72,8 +72,10 @@ var _ = Describe("The Timewindow plugin", func() {
 
 	Context("with every monday and tuesday between 10:30 and 15:20", func() {
 
-		start, _ := time.Parse(timeFormat, "10:30")
-		end, _ := time.Parse(timeFormat, "15:20")
+		start, err := time.Parse(timeFormat, "10:30")
+		Expect(err).To(Succeed())
+		end, err := time.Parse(timeFormat, "15:20")
+		Expect(err).To(Succeed())
 
 		plugin := TimeWindow{
 			Start:    start,
@@ -119,9 +121,12 @@ var _ = Describe("The Timewindow plugin", func() {
 
 		Context("and an exclusion for february 2nd", func() {
 
-			start, _ := time.Parse(timeFormat, "10:30")
-			end, _ := time.Parse(timeFormat, "15:20")
-			exclude, _ := time.Parse(dayMonthFormat, "Feb 2")
+			start, err := time.Parse(timeFormat, "10:30")
+			Expect(err).To(Succeed())
+			end, err := time.Parse(timeFormat, "15:20")
+			Expect(err).To(Succeed())
+			exclude, err := time.Parse(dayMonthFormat, "Feb 2")
+			Expect(err).To(Succeed())
 
 			plugin := TimeWindow{
 				Start:    start,

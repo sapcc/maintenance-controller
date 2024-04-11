@@ -6,6 +6,7 @@
 *.dylib
 maintenance-controller
 bin/
+build/
 testbin/
 
 # local config file

@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -45,6 +46,7 @@ var _ = Describe("Operational State", func() {
 
 	})
 
+	//nolint:dupl
 	Context("with initialized chains", func() {
 
 		var chains PluginChains

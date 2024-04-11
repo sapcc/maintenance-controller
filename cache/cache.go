@@ -24,8 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sapcc/maintenance-controller/state"
 	"golang.org/x/exp/maps"
+
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 type NodeInfoCache interface {

@@ -25,8 +25,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
@@ -36,65 +34,46 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 var _ = Describe("ShouldShutdown", func() {
-	It("should pass if all nodes require ESX maintenance and are allowed to reboot", func() {
+
+	makeEsx := func(m1 Maintenance, v1 string, m2 Maintenance, v2 string) Host { //nolint:unparam
 		nodes := make([]corev1.Node, 2)
 		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
+		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(m1)
+		nodes[0].Labels[constants.EsxRebootOkLabelKey] = v1
 		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
-		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		esx := Host{
+		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(m2)
+		nodes[1].Labels[constants.EsxRebootOkLabelKey] = v2
+		return Host{
 			Nodes: nodes,
 		}
+	}
+
+	It("should pass if all nodes require ESX maintenance and are allowed to reboot", func() {
+		esx := makeEsx(InMaintenance, constants.TrueStr, InMaintenance, constants.TrueStr)
 		result := ShouldShutdown(&esx)
 		Expect(result).To(BeTrue())
 	})
 
 	It("should pass if all nodes have an ESX alarm and are allowed to reboot", func() {
-		nodes := make([]corev1.Node, 2)
-		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(AlarmMaintenance)
-		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(AlarmMaintenance)
-		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		esx := Host{
-			Nodes: nodes,
-		}
+		esx := makeEsx(AlarmMaintenance, constants.TrueStr, AlarmMaintenance, constants.TrueStr)
 		result := ShouldShutdown(&esx)
 		Expect(result).To(BeTrue())
 	})
 
 	It("should not pass if at least one node does not require maintenance", func() {
-		nodes := make([]corev1.Node, 2)
-		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(NoMaintenance)
-		nodes[1].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		esx := Host{
-			Nodes: nodes,
-		}
+		esx := makeEsx(InMaintenance, constants.TrueStr, NoMaintenance, constants.TrueStr)
 		result := ShouldShutdown(&esx)
 		Expect(result).To(BeFalse())
 	})
 
 	It("should not pass if at least one node does not have approval", func() {
-		nodes := make([]corev1.Node, 2)
-		nodes[0].Labels = make(map[string]string)
-		nodes[0].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
-		nodes[0].Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-		nodes[1].Labels = make(map[string]string)
-		nodes[1].Labels[constants.EsxMaintenanceLabelKey] = string(InMaintenance)
-		nodes[1].Labels[constants.EsxRebootOkLabelKey] = "thisisfine"
-		esx := Host{
-			Nodes: nodes,
-		}
+		esx := makeEsx(InMaintenance, constants.TrueStr, InMaintenance, "thisisfine")
 		result := ShouldShutdown(&esx)
 		Expect(result).To(BeFalse())
 	})
@@ -171,7 +150,7 @@ var _ = Describe("ensureVmOff", func() {
 
 	BeforeEach(func() {
 		vCenters = &VCenters{
-			Template: TemplateUrl,
+			Template: TemplateURL,
 			Credentials: map[string]Credential{
 				vcServer.URL.Host: {
 					Username: "user",

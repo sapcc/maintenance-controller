@@ -29,14 +29,14 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
 	coordiantionv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 func TestE2E(t *testing.T) {
@@ -86,7 +86,7 @@ var _ = BeforeSuite(func() {
 
 	clientset, err := kubernetes.NewForConfig(cfg)
 	Expect(err).To(Succeed())
-	req := clientset.CoreV1().Pods("kube-system").GetLogs(leadingPodName(), &v1.PodLogOptions{})
+	req := clientset.CoreV1().Pods("kube-system").GetLogs(leadingPodName(), &corev1.PodLogOptions{})
 	logs, err := req.Stream(context.Background())
 	Expect(err).To(Succeed())
 	defer logs.Close()
@@ -229,21 +229,21 @@ var _ = Describe("The maintenance controller", func() {
 		Eventually(func(g Gomega) []string {
 			nodes := &corev1.NodeList{}
 			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
-			nodeNames := make([]string, 0)
+			names := make([]string, 0)
 			for _, node := range nodes.Items {
-				nodeNames = append(nodeNames, node.Name)
+				names = append(names, node.Name)
 			}
-			return nodeNames
+			return names
 		}, 5*time.Minute).Should(HaveLen(1))
 		By("assert an other node gets added")
 		Eventually(func(g Gomega) []string {
 			nodes := &corev1.NodeList{}
 			g.Expect(k8sClient.List(context.Background(), nodes)).To(Succeed())
-			nodeNames := make([]string, 0)
+			names := make([]string, 0)
 			for _, node := range nodes.Items {
-				nodeNames = append(nodeNames, node.Name)
+				names = append(names, node.Name)
 			}
-			return nodeNames
+			return names
 		}, 5*time.Minute).ShouldNot(Equal(nodeNames))
 		By("assert that all nodes become ready")
 		Eventually(func(g Gomega) bool {

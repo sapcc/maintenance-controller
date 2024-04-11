@@ -112,13 +112,13 @@ func FetchVersion(ctx context.Context, params CheckParameters) (string, error) {
 
 func fetchHost(ctx context.Context, client *vim25.Client, hostname string, filter []string) (mo.HostSystem, error) {
 	mgr := view.NewManager(client)
-	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
+	containerView, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
 		[]string{"HostSystem"}, true)
 	if err != nil {
 		return mo.HostSystem{}, fmt.Errorf("failed to create container view: %w", err)
 	}
 	var hss []mo.HostSystem
-	err = view.RetrieveWithFilter(ctx, []string{"HostSystem"}, filter,
+	err = containerView.RetrieveWithFilter(ctx, []string{"HostSystem"}, filter,
 		&hss, property.Match{"name": hostname})
 	if err != nil {
 		return mo.HostSystem{}, fmt.Errorf("failed to fetch runtime information for esx host %v: %w",

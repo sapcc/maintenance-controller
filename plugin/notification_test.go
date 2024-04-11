@@ -62,6 +62,7 @@ func (n *failingNotification) ID() string {
 	return "fail"
 }
 
+//nolint:dupl
 var _ = Describe("NotificationChain", func() {
 
 	emptyParams := Parameters{Log: GinkgoLogr}

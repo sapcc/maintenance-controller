@@ -28,10 +28,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/cache"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/event"
-	"github.com/sapcc/maintenance-controller/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -41,6 +37,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/event"
+	"github.com/sapcc/maintenance-controller/metrics"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -162,7 +163,10 @@ var _ = BeforeSuite(func() {
 		&corev1.Pod{},
 		"spec.nodeName",
 		func(o client.Object) []string {
-			pod := o.(*corev1.Pod)
+			pod, ok := o.(*corev1.Pod)
+			if !ok {
+				return []string{}
+			}
 			return []string{pod.Spec.NodeName}
 		})
 	Expect(err).To(Succeed())

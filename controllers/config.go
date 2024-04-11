@@ -22,11 +22,12 @@ package controllers
 import (
 	"time"
 
+	"github.com/sapcc/ucfgwrap"
+
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/plugin/impl"
 	"github.com/sapcc/maintenance-controller/state"
-	"github.com/sapcc/ucfgwrap"
 )
 
 type ProfileDescriptor struct {

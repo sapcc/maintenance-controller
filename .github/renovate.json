@@ -41,6 +41,12 @@
         ".*"
       ],
       "groupName": "External dependencies"
+    },
+    {
+      "matchPackagePrefixes": [
+        "k8s.io/"
+      ],
+      "allowedVersions": "0.28.x"
     }
   ],
   "prHourlyLimit": 0,

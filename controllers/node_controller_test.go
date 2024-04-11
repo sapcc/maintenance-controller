@@ -29,11 +29,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/api"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/plugin/impl"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slacktest"
@@ -43,6 +38,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/api"
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/plugin/impl"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 const targetNodeName = "targetnode"
@@ -120,13 +121,13 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
-		data, err := state.ParseDataV2(&node)
+		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["test"].Current).To(Equal(state.Required))
 		events := &corev1.EventList{}
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
-		Expect(events.Items).ToNot(HaveLen(0))
+		Expect(events.Items).ToNot(BeEmpty())
 		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo(targetNodeName))
 	})
 
@@ -146,7 +147,7 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseDataV2(&node)
+		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
 		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
@@ -165,18 +166,18 @@ var _ = Describe("The controller", func() {
 		Expect(err).To(Succeed())
 
 		Eventually(func(g Gomega) string {
-			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
+			var n corev1.Node
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &n)
 			g.Expect(err).To(Succeed())
 
-			val := node.Labels[constants.StateLabelKey]
+			val := n.Labels[constants.StateLabelKey]
 			return val
 		}).Should(Equal(string(state.InMaintenance)))
 
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseDataV2(&node)
+		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
 		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
@@ -190,7 +191,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseDataV2(&node)
+			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			return data.Profiles
 		}).Should(SatisfyAll(
@@ -213,7 +214,7 @@ var _ = Describe("The controller", func() {
 		Consistently(func(g Gomega) int {
 			var node corev1.Node
 			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)).To(Succeed())
-			data, err := state.ParseDataV2(&node)
+			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			var maintenanceCounter int
 			for _, val := range data.Profiles {
@@ -233,7 +234,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseDataV2(&node)
+			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			return data.Profiles
 		}).Should(HaveLen(1))
@@ -249,16 +250,16 @@ var _ = Describe("The controller", func() {
 		Expect(profile.Name).To(Equal("count"))
 		operational := profile.Chains[state.Operational]
 		Expect(operational.Transitions[0].Check.Plugins).To(HaveLen(1))
-		Expect(operational.Notification.Plugins).To(HaveLen(0))
+		Expect(operational.Notification.Plugins).To(BeEmpty())
 		Expect(operational.Transitions[0].Trigger.Plugins).To(HaveLen(1))
 		required := profile.Chains[state.Required]
 		Expect(required.Transitions[0].Check.Plugins).To(HaveLen(2))
-		Expect(required.Notification.Plugins).To(HaveLen(0))
-		Expect(required.Transitions[0].Trigger.Plugins).To(HaveLen(0))
+		Expect(required.Notification.Plugins).To(BeEmpty())
+		Expect(required.Transitions[0].Trigger.Plugins).To(BeEmpty())
 		maintenance := profile.Chains[state.InMaintenance]
 		Expect(maintenance.Transitions[0].Check.Plugins).To(HaveLen(3))
-		Expect(maintenance.Notification.Plugins).To(HaveLen(0))
-		Expect(maintenance.Transitions[0].Trigger.Plugins).To(HaveLen(0))
+		Expect(maintenance.Notification.Plugins).To(BeEmpty())
+		Expect(maintenance.Transitions[0].Trigger.Plugins).To(BeEmpty())
 	})
 
 })
@@ -300,7 +301,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	// The test below requires a connection to an api server,
 	// which is not simulated within the plugin/impl package
-	It("should should fail if a node is in maintenance", func() {
+	It("should fail if a node is in maintenance", func() {
 		max := impl.MaxMaintenance{MaxNodes: 1}
 		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
@@ -1056,7 +1057,7 @@ var _ = Describe("The api server", func() {
 			nodes := make([]any, 0)
 			Expect(json.Unmarshal(data, &nodes)).To(Succeed())
 			return nodes
-		}).ShouldNot(HaveLen(0))
+		}).ShouldNot(BeEmpty())
 	})
 
 	It("should serve the dashboard", func() {

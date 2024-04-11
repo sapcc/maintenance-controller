@@ -23,12 +23,13 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 // Collects all values of the given Label key

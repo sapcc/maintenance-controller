@@ -37,7 +37,7 @@ var _ = Describe("filterNodeLabels", func() {
 	It("filters key-value pairs not specified by the keys parameter", func() {
 		labels := map[string]string{"x": "y"}
 		result := filterNodeLabels(labels, nil)
-		Expect(result).To(HaveLen(0))
+		Expect(result).To(BeEmpty())
 	})
 
 })

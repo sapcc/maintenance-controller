@@ -174,6 +174,7 @@ func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod,
 
 func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
 	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
+
 	if len(pods) == 0 {
 		return nil
 	}
@@ -195,6 +196,7 @@ type WaitParameters struct {
 
 func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
 	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
+
 	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) { //nolint:staticcheck,lll
 		var err error
 		if version == v1beta1 {
@@ -219,7 +221,7 @@ func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
 }
 
 // Deletes the given pods and awaits there deletion.
-func WaitForPodDeletions(ctx context.Context, client client.Client, pods []corev1.Pod, params WaitParameters) error {
+func WaitForPodDeletions(ctx context.Context, k8sClient client.Client, pods []corev1.Pod, params WaitParameters) error {
 	if len(pods) == 0 {
 		return nil
 	}
@@ -228,7 +230,7 @@ func WaitForPodDeletions(ctx context.Context, client client.Client, pods []corev
 	for i := range pods {
 		pod := pods[i]
 		waiters = append(waiters, func() error {
-			return waitForPodDeletion(ctx, client, pod, params)
+			return waitForPodDeletion(ctx, k8sClient, pod, params)
 		})
 	}
 	return waitParallel(waiters)
@@ -262,10 +264,10 @@ func waitParallel(waiters []WaitFunc) error {
 }
 
 // Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/agent/agent.go#L470
-func waitForPodDeletion(ctx context.Context, client client.Client, pod corev1.Pod, params WaitParameters) error {
+func waitForPodDeletion(ctx context.Context, k8sClient client.Client, pod corev1.Pod, params WaitParameters) error {
 	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) { //nolint:staticcheck
 		var p corev1.Pod
-		err := client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
 		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) {
 			return true, nil
 		} else if err != nil {

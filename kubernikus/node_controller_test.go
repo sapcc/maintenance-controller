@@ -25,11 +25,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/constants"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 var _ = Describe("The kubernikus controller", func() {
@@ -89,7 +90,7 @@ var _ = Describe("The kubernikus controller", func() {
 	})
 
 	It("marks an up-to-date node as not needing an update", func() {
-		initNode("v1.25.0")
+		initNode("v1.29.3")
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
@@ -123,7 +124,7 @@ var _ = Describe("The kubernikus controller", func() {
 			pods := &v1.PodList{}
 			g.Expect(k8sClient.List(context.Background(), pods)).To(Succeed())
 			return pods.Items
-		}, 10*time.Second).Should(HaveLen(0))
+		}, 10*time.Second).Should(BeEmpty())
 		// don't check for VM deletion here, won't spin up an Openstack setup
 	})
 

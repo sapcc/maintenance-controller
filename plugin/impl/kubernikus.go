@@ -27,10 +27,11 @@ import (
 	"strings"
 
 	"github.com/gophercloud/utils/openstack/clientconfig"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 type KubernikusCount struct {
@@ -62,7 +63,7 @@ func (kc *KubernikusCount) ID() string {
 }
 
 func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, error) {
-	kluster, err := kc.fetchKluster(&params)
+	cluster, err := kc.fetchKluster(&params)
 	if err != nil {
 		return plugin.Failed(nil), err
 	}
@@ -72,7 +73,7 @@ func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, 
 		return plugin.Failed(nil), err
 	}
 	specCount := 0
-	for _, nodePool := range kluster.Spec.NodePools {
+	for _, nodePool := range cluster.Spec.NodePools {
 		specCount += nodePool.Size
 	}
 	if len(nodeList.Items) >= specCount {

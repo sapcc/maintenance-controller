@@ -20,6 +20,7 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 )
 
-type NodeHandler = func(params reconcileParameters, data *state.DataV2) error
+type NodeHandler = func(ctx context.Context, params reconcileParameters, data *state.DataV2) error
 
 var handlers []NodeHandler = []NodeHandler{
 	EnsureLabelMap,
@@ -39,16 +40,16 @@ var handlers []NodeHandler = []NodeHandler{
 	UpdateMaintenanceStateLabel,
 }
 
-func HandleNode(params reconcileParameters, data *state.DataV2) error {
+func HandleNode(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
 	for _, handler := range handlers {
-		if err := handler(params, data); err != nil {
+		if err := handler(ctx, params, data); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func EnsureLabelMap(params reconcileParameters, data *state.DataV2) error {
+func EnsureLabelMap(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
 	if params.node.Labels == nil {
 		params.node.Labels = make(map[string]string)
 	}
@@ -56,19 +57,19 @@ func EnsureLabelMap(params reconcileParameters, data *state.DataV2) error {
 }
 
 // ensure a profile is assigned beforehand.
-func MaintainProfileStates(params reconcileParameters, data *state.DataV2) error {
+func MaintainProfileStates(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	data.MaintainProfileStates(profilesStr, params.config.Profiles)
 	return nil
 }
 
 // ensure a profile is assigned and profile states have been maintained beforehand.
-func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
+func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
 	for _, ps := range profileStates {
-		err := metrics.TouchShuffles(params.ctx, params.client, params.node, ps.Profile.Name)
+		err := metrics.TouchShuffles(ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
 			params.log.Info("failed to touch shuffle metrics", "profile", ps.Profile.Name, "error", err)
 		}
@@ -84,7 +85,7 @@ func ApplyProfiles(params reconcileParameters, data *state.DataV2) error {
 			logDetails = true
 		}
 		// build plugin arguments
-		pluginParams := plugin.Parameters{Client: params.client, Ctx: params.ctx, Log: params.log,
+		pluginParams := plugin.Parameters{Client: params.client, Ctx: ctx, Log: params.log,
 			Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),
 			State: string(ps.State), LastTransition: data.Profiles[ps.Profile.Name].Transition,
 			Recorder: params.recorder, LogDetails: logDetails}
@@ -140,7 +141,7 @@ func filterNodeLabels(nodeLabels map[string]string, keys []string) map[string]st
 	return result
 }
 
-func UpdateMaintenanceStateLabel(params reconcileParameters, data *state.DataV2) error {
+func UpdateMaintenanceStateLabel(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	if params.node.Labels == nil {

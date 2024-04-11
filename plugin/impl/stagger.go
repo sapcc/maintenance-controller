@@ -23,13 +23,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 const noGrab int = -1
@@ -72,7 +73,7 @@ func (s *Stagger) ID() string {
 func (s *Stagger) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	s.grabIndex = noGrab
 	availableIn := make([]time.Duration, 0)
-	for i := 0; i < s.Parallel; i++ {
+	for i := range s.Parallel {
 		lease, err := s.getOrCreateLease(i, &params)
 		if err != nil {
 			return plugin.Failed(nil), err

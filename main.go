@@ -74,20 +74,20 @@ type reconcilerConfig struct {
 }
 
 func main() {
-	var reconcilerConfig reconcilerConfig
+	var reconcilerCfg reconcilerConfig
 	var kubecontext, probeAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&reconcilerConfig.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&reconcilerCfg.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
 	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&reconcilerConfig.enableESXMaintenance, "enable-esx-maintenance", false,
+	flag.BoolVar(&reconcilerCfg.enableESXMaintenance, "enable-esx-maintenance", false,
 		"Enables an additional controller, which will indicate ESX host maintenance using labels.")
-	flag.BoolVar(&reconcilerConfig.enableKubernikusMaintenance, "enable-kubernikus-maintenance", false,
+	flag.BoolVar(&reconcilerCfg.enableKubernikusMaintenance, "enable-kubernikus-maintenance", false,
 		"Enables an additional controller, which will indicate outdated kubelets and enable VM deletions.")
-	flag.DurationVar(&reconcilerConfig.metricsTimeout, "metrics-timeout", 65*time.Second, //nolint:gomnd
+	flag.DurationVar(&reconcilerCfg.metricsTimeout, "metrics-timeout", 65*time.Second, //nolint:gomnd
 		"Maximum delay between SIGTERM and actual shutdown to scrape metrics one last time.")
 	opts := zap.Options{
 		Development: true,
@@ -121,7 +121,7 @@ func main() {
 
 	metrics.RegisterMaintenanceMetrics()
 	setupChecks(mgr)
-	err = setupReconcilers(mgr, &reconcilerConfig)
+	err = setupReconcilers(mgr, &reconcilerCfg)
 	if err != nil {
 		setupLog.Error(err, "problem setting up reconcilers")
 		os.Exit(1)
@@ -176,7 +176,10 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		&v1.Pod{},
 		"spec.nodeName",
 		func(o client.Object) []string {
-			pod := o.(*v1.Pod) //nolint:forcetypeassert
+			pod, ok := o.(*v1.Pod) //nolint:forcetypeassert
+			if !ok {
+				return []string{}
+			}
 			return []string{pod.Spec.NodeName}
 		})
 	if err != nil {

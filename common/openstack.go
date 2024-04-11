@@ -22,8 +22,9 @@ package common
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/constants"
 	"gopkg.in/ini.v1"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 type OpenStackConfig struct {

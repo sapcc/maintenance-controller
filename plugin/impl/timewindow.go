@@ -24,9 +24,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sapcc/ucfgwrap"
+
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/ucfgwrap"
 )
 
 const timeFormat = "15:04"

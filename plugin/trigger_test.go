@@ -61,6 +61,7 @@ func (n *failingTrigger) ID() string {
 	return "fail"
 }
 
+//nolint:dupl
 var _ = Describe("TriggerChain", func() {
 
 	emptyParams := Parameters{Log: GinkgoLogr}

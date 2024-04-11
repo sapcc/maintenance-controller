@@ -20,6 +20,7 @@
 package impl
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,8 +28,9 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // HasLabel is a check plugin that queries a prometheus for the most recent
@@ -76,10 +78,10 @@ func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult
 	}
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return plugin.Failed(info), fmt.Errorf("result from prometheus is not a vector")
+		return plugin.Failed(info), errors.New("result from prometheus is not a vector")
 	}
 	if len(vector) != 1 {
-		return plugin.Failed(info), fmt.Errorf("result does not contain exactly one element")
+		return plugin.Failed(info), errors.New("result does not contain exactly one element")
 	}
 	value := float64(vector[0].Value)
 	info["value"] = value

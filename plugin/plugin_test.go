@@ -66,15 +66,16 @@ var _ = Describe("Registry", func() {
 		It("should find plugins", func() {
 			registry := NewRegistry()
 			// a new registry should not have any instances
-			Expect(registry.CheckInstances).To(HaveLen(0))
-			Expect(registry.NotificationInstances).To(HaveLen(0))
-			Expect(registry.TriggerInstances).To(HaveLen(0))
+			Expect(registry.CheckInstances).To(BeEmpty())
+			Expect(registry.NotificationInstances).To(BeEmpty())
+			Expect(registry.TriggerInstances).To(BeEmpty())
 			// the lengths below need to be update when plugins are actually added to the registry
-			Expect(registry.CheckPlugins).To(HaveLen(0))
-			Expect(registry.NotificationPlugins).To(HaveLen(0))
-			Expect(registry.TriggerPlugins).To(HaveLen(0))
+			Expect(registry.CheckPlugins).To(BeEmpty())
+			Expect(registry.NotificationPlugins).To(BeEmpty())
+			Expect(registry.TriggerPlugins).To(BeEmpty())
 		})
 
+		//nolint:dupl
 		Context("gets a valid configuration", func() {
 
 			It("loads check plugin instances", func() {
@@ -373,7 +374,7 @@ var _ = Describe("Registry", func() {
 			It("should create an empty CheckChain from an empty config", func() {
 				chain, err := registry.NewCheckChain("")
 				Expect(err).To(Succeed())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 			It("should create CheckChains", func() {
@@ -384,20 +385,20 @@ var _ = Describe("Registry", func() {
 			})
 
 			It("should create CheckChains using all possible operators", func() {
-				config := "instance && !(instance || instance)"
-				chain, err := registry.NewCheckChain(config)
+				cfg := "instance && !(instance || instance)"
+				chain, err := registry.NewCheckChain(cfg)
 				Expect(err).To(Succeed())
 				Expect(chain.Plugins).To(HaveLen(3))
 				Expect(chain.Plugins[0].Name).To(Equal("instance"))
 				Expect(chain.Plugins[1].Name).To(Equal("instance"))
 				Expect(chain.Plugins[2].Name).To(Equal("instance"))
-				Expect(chain.Expression).To(Equal(config))
+				Expect(chain.Expression).To(Equal(cfg))
 			})
 
 			It("should create an empty NotificationChain from an empty config", func() {
 				chain, err := registry.NewNotificationChain("")
 				Expect(err).To(Succeed())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 			It("should create NotificationChains", func() {
@@ -409,7 +410,7 @@ var _ = Describe("Registry", func() {
 			It("should create an empty TriggerChain from an empty config", func() {
 				chain, err := registry.NewTriggerChain("")
 				Expect(err).To(Succeed())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 			It("should create TriggerChains", func() {
@@ -435,19 +436,19 @@ var _ = Describe("Registry", func() {
 			It("should not create CheckChains", func() {
 				chain, err := registry.NewCheckChain(config)
 				Expect(err).To(HaveOccurred())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 			It("should not create NotificationChains", func() {
 				chain, err := registry.NewNotificationChain(config)
 				Expect(err).To(HaveOccurred())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 			It("should not create TriggerChains", func() {
 				chain, err := registry.NewTriggerChain(config)
 				Expect(err).To(HaveOccurred())
-				Expect(chain.Plugins).To(HaveLen(0))
+				Expect(chain.Plugins).To(BeEmpty())
 			})
 
 		})

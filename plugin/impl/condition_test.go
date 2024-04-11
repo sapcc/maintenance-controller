@@ -22,9 +22,10 @@ package impl
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 var _ = Describe("The Condition plugin", func() {

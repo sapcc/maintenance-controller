@@ -31,18 +31,18 @@ import (
 
 func RetrieveVM(ctx context.Context, client *govmomi.Client, name string) (mo.VirtualMachine, error) {
 	mgr := view.NewManager(client.Client)
-	view, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
+	containerView, err := mgr.CreateContainerView(ctx, client.ServiceContent.RootFolder,
 		[]string{"VirtualMachine"}, true)
 	if err != nil {
 		return mo.VirtualMachine{}, fmt.Errorf("failed to create container view: %w", err)
 	}
 	var vms []mo.VirtualMachine
-	err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"summary.runtime"},
+	err = containerView.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"summary.runtime"},
 		&vms, property.Match{"name": name})
 	if err != nil {
 		return mo.VirtualMachine{}, fmt.Errorf("failed to retrieve VM %v", name)
 	}
-	err = view.Destroy(ctx)
+	err = containerView.Destroy(ctx)
 	if err != nil {
 		return mo.VirtualMachine{}, fmt.Errorf("failed to destroy ContainerView: %w", err)
 	}

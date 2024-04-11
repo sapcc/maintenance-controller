@@ -23,12 +23,13 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 // MaxMaintenance is a check plugin that checks whether the amount
@@ -77,7 +78,7 @@ func (m *MaxMaintenance) Check(params plugin.Parameters) (plugin.CheckResult, er
 
 func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.Node) (plugin.CheckResult, error) {
 	// profile == "" && skipAfter == nil => count all in-maintenance
-	// profile == "abc" && skipAfter == nil => count all containing "abc" profile
+	// profile == "abc" && skipAfter == nil => count all profiles containing "abc"
 	// profile == "" && skipAfter != nil => count all which most recent transition does not exceed skipAfter
 	// profile == "abc" && skipAfter != nil => count all where the transition of "abc" does not exceed skipAfter
 	if m.Profile != "" {
@@ -120,7 +121,8 @@ func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node, log logr.Lo
 	matching := make([]corev1.Node, 0)
 	for i := range nodes {
 		node := nodes[i]
-		stateData, err := state.ParseMigrateDataV2(&node, log)
+		dataStr := node.Annotations[constants.DataAnnotationKey]
+		stateData, err := state.ParseMigrateDataV2(dataStr, log)
 		if err != nil {
 			return nil, err
 		}

@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/vmware/govmomi"
 )
 
@@ -114,21 +115,24 @@ func (vc *VCenters) Client(ctx context.Context, availabilityZone string) (*govmo
 }
 
 func (vc *VCenters) makeClient(ctx context.Context, availabilityZone string) (*govmomi.Client, error) {
-	url, err := vc.URL(availabilityZone)
+	vcURL, err := vc.URL(availabilityZone)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render vCenter URL: %w", err)
 	}
-	client, err := govmomi.NewClient(ctx, url, vc.Insecure)
+	client, err := govmomi.NewClient(ctx, vcURL, vc.Insecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vCenter client: %w", err)
 	}
 	return client, nil
 }
 
-func (vc *VCenters) ClearCache(ctx context.Context) {
+func (vc *VCenters) ClearCache(ctx context.Context, log logr.Logger) {
 	for _, client := range vc.cache {
 		// try logout, which should clean some resources on the vCenter
-		_ = client.Logout(ctx)
+		err := client.Logout(ctx)
+		if err != nil {
+			log.Error(err, "failed to logout of vCenter")
+		}
 	}
 	vc.cache = make(map[string]*govmomi.Client)
 }

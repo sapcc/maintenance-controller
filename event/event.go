@@ -113,6 +113,7 @@ func recordToSink(sink record.EventSink, event *v1.Event,
 //nolint:cyclop
 func recordEvent(sink record.EventSink, event *v1.Event, patch []byte,
 	updateExistingEvent bool, eventCorrelator *record.EventCorrelator) bool {
+
 	var newEvent *v1.Event
 	var err error
 	if updateExistingEvent {
@@ -212,7 +213,8 @@ type NodeRecorder struct {
 
 func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations map[string]string,
 	source *v1.EventSource, eventtype, reason, message string) {
-	ref, err := ref.GetReference(recorder.scheme, object)
+
+	objRef, err := ref.GetReference(recorder.scheme, object)
 	if err != nil {
 		recorder.logger.Error(
 			err,
@@ -226,7 +228,7 @@ func (recorder *NodeRecorder) generateEvent(object runtime.Object, annotations m
 		return
 	}
 
-	event := recorder.makeEvent(ref, annotations, eventtype, reason, message)
+	event := recorder.makeEvent(objRef, annotations, eventtype, reason, message)
 	if source == nil {
 		event.Source = recorder.source
 	} else {
@@ -249,11 +251,13 @@ func (recorder *NodeRecorder) Event(object runtime.Object, eventtype, reason, me
 
 func (recorder *NodeRecorder) Eventf(object runtime.Object,
 	eventtype, reason, messageFmt string, args ...interface{}) {
+
 	recorder.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
 func (recorder *NodeRecorder) AnnotatedEventf(object runtime.Object,
 	annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+
 	recorder.generateEvent(object, annotations, nil, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
@@ -267,22 +271,23 @@ func (recorder *NodeRecorder) WithLogger(logger klog.Logger) record.EventRecorde
 	}
 }
 
-func (recorder *NodeRecorder) makeEvent(ref *v1.ObjectReference, annotations map[string]string,
+func (recorder *NodeRecorder) makeEvent(objRef *v1.ObjectReference, annotations map[string]string,
 	eventtype, reason, message string) *v1.Event {
+
 	t := metav1.Time{Time: recorder.clock.Now()}
 	// this makes the event appear in kubectl describe node.
-	ref.UID = types.UID(ref.Name)
-	namespace := ref.Namespace
+	objRef.UID = types.UID(objRef.Name)
+	namespace := objRef.Namespace
 	if namespace == "" {
 		namespace = metav1.NamespaceDefault
 	}
 	return &v1.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%v.%x", ref.Name, t.UnixNano()),
+			Name:        fmt.Sprintf("%v.%x", objRef.Name, t.UnixNano()),
 			Namespace:   namespace,
 			Annotations: annotations,
 		},
-		InvolvedObject: *ref,
+		InvolvedObject: *objRef,
 		Reason:         reason,
 		Message:        message,
 		FirstTimestamp: t,

@@ -24,8 +24,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 var _ = Describe("The wait plugin", func() {

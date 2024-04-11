@@ -22,12 +22,13 @@ package impl
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 type nodeStateMap = map[string]*state.ProfileData
@@ -94,7 +95,8 @@ func buildNodeStates(params *plugin.Parameters) (nodeStateMap, error) {
 	nodeStates := make(nodeStateMap)
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
-		nodeData, err := state.ParseMigrateDataV2(node, params.Log)
+		dataStr := node.Annotations[constants.DataAnnotationKey]
+		nodeData, err := state.ParseMigrateDataV2(dataStr, params.Log)
 		if err != nil {
 			params.Log.Error(err, "failed to parse node data")
 			continue

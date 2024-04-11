@@ -25,13 +25,14 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/soap"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 // Checks, if all Nodes on an ESX need maintenance and are allowed to be shutdown.

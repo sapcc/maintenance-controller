@@ -56,7 +56,6 @@ type shuffleRecord struct {
 }
 
 type fetchParams struct {
-	ctx    context.Context
 	client client.Client
 	ref    types.NamespacedName
 }
@@ -73,7 +72,6 @@ func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node,
 	for _, pod := range podList.Items {
 		for _, ownerRef := range pod.OwnerReferences {
 			params := fetchParams{
-				ctx:    ctx,
 				client: k8sClient,
 				ref: types.NamespacedName{
 					Namespace: pod.Namespace,
@@ -83,11 +81,11 @@ func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node,
 			var record shuffleRecord
 			switch ownerRef.Kind {
 			case "DaemonSet":
-				record, err = fetchShuffleDaemonSet(params)
+				record, err = fetchShuffleDaemonSet(ctx, params)
 			case "ReplicaSet":
-				record, err = fetchShuffleDeployment(params)
+				record, err = fetchShuffleDeployment(ctx, params)
 			case "StatefulSet":
-				record, err = fetchShuffleStatefulSet(params)
+				record, err = fetchShuffleStatefulSet(ctx, params)
 			default:
 				continue
 			}
@@ -106,9 +104,9 @@ func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node,
 	return nil
 }
 
-func fetchShuffleDaemonSet(params fetchParams) (shuffleRecord, error) {
+func fetchShuffleDaemonSet(ctx context.Context, params fetchParams) (shuffleRecord, error) {
 	var daemonSet appsv1.DaemonSet
-	err := params.client.Get(params.ctx, params.ref, &daemonSet)
+	err := params.client.Get(ctx, params.ref, &daemonSet)
 	if err != nil {
 		return shuffleRecord{}, err
 	}
@@ -116,9 +114,9 @@ func fetchShuffleDaemonSet(params fetchParams) (shuffleRecord, error) {
 	return shuffleRecord{owner: "daemon_set_" + daemonSet.Name, perReplica: 1 / float64(replicas)}, nil
 }
 
-func fetchShuffleDeployment(params fetchParams) (shuffleRecord, error) {
+func fetchShuffleDeployment(ctx context.Context, params fetchParams) (shuffleRecord, error) {
 	var replicaSet appsv1.ReplicaSet
-	err := params.client.Get(params.ctx, params.ref, &replicaSet)
+	err := params.client.Get(ctx, params.ref, &replicaSet)
 	if err != nil {
 		return shuffleRecord{}, err
 	}
@@ -132,7 +130,7 @@ func fetchShuffleDeployment(params fetchParams) (shuffleRecord, error) {
 	for _, ownerRef := range replicaSet.OwnerReferences {
 		if ownerRef.Kind == "Deployment" {
 			var deployment appsv1.Deployment
-			err := params.client.Get(params.ctx,
+			err := params.client.Get(ctx,
 				types.NamespacedName{
 					Namespace: replicaSet.Namespace,
 					Name:      ownerRef.Name,
@@ -151,9 +149,9 @@ func fetchShuffleDeployment(params fetchParams) (shuffleRecord, error) {
 	return shuffleRecord{}, fmt.Errorf("owner of replicaSet %s is not a deployment", replicaSet.Name)
 }
 
-func fetchShuffleStatefulSet(params fetchParams) (shuffleRecord, error) {
+func fetchShuffleStatefulSet(ctx context.Context, params fetchParams) (shuffleRecord, error) {
 	var statefulSet appsv1.StatefulSet
-	err := params.client.Get(params.ctx, params.ref, &statefulSet)
+	err := params.client.Get(ctx, params.ref, &statefulSet)
 	if err != nil {
 		return shuffleRecord{}, err
 	}
@@ -181,8 +179,7 @@ func TouchShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, 
 			case "StatefulSet":
 				labels = makeLabels("stateful_set_"+ownerRef.Name, currentProfile)
 			case "ReplicaSet":
-				owner, err := fetchTouchReplicaSet(fetchParams{
-					ctx:    ctx,
+				owner, err := fetchTouchReplicaSet(ctx, fetchParams{
 					client: k8sClient,
 					ref: types.NamespacedName{
 						Name:      ownerRef.Name,
@@ -203,9 +200,9 @@ func TouchShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, 
 	return nil
 }
 
-func fetchTouchReplicaSet(params fetchParams) (string, error) {
+func fetchTouchReplicaSet(ctx context.Context, params fetchParams) (string, error) {
 	var replicaSet appsv1.ReplicaSet
-	err := params.client.Get(params.ctx, params.ref, &replicaSet)
+	err := params.client.Get(ctx, params.ref, &replicaSet)
 	if err != nil {
 		return "", err
 	}
@@ -220,7 +217,7 @@ func fetchTouchReplicaSet(params fetchParams) (string, error) {
 	return "", fmt.Errorf("owner of replicaSet %s is not a deployment", replicaSet.Name)
 }
 
-func makeLabels(owner string, profile string) prometheus.Labels {
+func makeLabels(owner, profile string) prometheus.Labels {
 	return prometheus.Labels{
 		"owner":   owner,
 		"profile": profile,

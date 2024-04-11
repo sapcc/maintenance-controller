@@ -21,6 +21,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -95,7 +96,7 @@ type Parameters struct {
 	// whether to log failing checks, notifications, ...
 	LogDetails     bool
 	Client         client.Client
-	Ctx            context.Context
+	Ctx            context.Context //nolint: containedctx
 	Log            logr.Logger
 	Recorder       record.EventRecorder
 	LastTransition time.Time
@@ -215,25 +216,16 @@ func (r *Registry) LoadInstances(config *ucfgwrap.Config, descriptor *InstancesD
 }
 
 func (r *Registry) loadCheckInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
-	instanceName := descriptor.Name
-	basePlugin, ok := r.CheckPlugins[descriptor.Type]
+	baseChecker, ok := r.CheckPlugins[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("the requested check plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	// don't warp nil configs
-	var commonConf *ucfgwrap.Config
-	if descriptor.Config != nil {
-		localConf := config.Wrap(descriptor.Config)
-		commonConf = &localConf
-	} else {
-		commonConf = nil
-	}
-	plugin, err := basePlugin.New(commonConf)
+	plugin, err := baseChecker.New(wrapConfig(config, descriptor))
 	if err != nil {
 		return err
 	}
-	r.CheckInstances[instanceName] = CheckInstance{
-		Name:   instanceName,
+	r.CheckInstances[descriptor.Name] = CheckInstance{
+		Name:   descriptor.Name,
 		Plugin: plugin,
 	}
 	return nil
@@ -259,7 +251,7 @@ func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor 
 	}
 	var schedule Scheduler
 	if descriptor.Schedule.Config == nil {
-		return fmt.Errorf("a notification instance does not have a schedule assigned")
+		return errors.New("a notification instance does not have a schedule assigned")
 	}
 	scheduleConf := config.Wrap(descriptor.Schedule.Config)
 	switch strings.ToLower(descriptor.Schedule.Type) {
@@ -284,26 +276,26 @@ func (r *Registry) loadNotificationInstance(config *ucfgwrap.Config, descriptor 
 }
 
 func (r *Registry) loadTriggerInstance(config *ucfgwrap.Config, descriptor InstanceDescriptor) error {
-	instanceName := descriptor.Name
-	basePlugin, ok := r.TriggerPlugins[descriptor.Type]
+	baseTrigger, ok := r.TriggerPlugins[descriptor.Type]
 	if !ok {
 		return fmt.Errorf("the requested trigger plugin type \"%v\" is not known to the registry", descriptor.Type)
 	}
-	// don't warp nil configs
-	var commonConf *ucfgwrap.Config
-	if descriptor.Config != nil {
-		localConf := config.Wrap(descriptor.Config)
-		commonConf = &localConf
-	} else {
-		commonConf = nil
-	}
-	plugin, err := basePlugin.New(commonConf)
+	plugin, err := baseTrigger.New(wrapConfig(config, descriptor))
 	if err != nil {
 		return err
 	}
-	r.TriggerInstances[instanceName] = TriggerInstance{
-		Name:   instanceName,
+	r.TriggerInstances[descriptor.Name] = TriggerInstance{
+		Name:   descriptor.Name,
 		Plugin: plugin,
 	}
 	return nil
+}
+
+func wrapConfig(original *ucfgwrap.Config, descriptor InstanceDescriptor) *ucfgwrap.Config {
+	// don't warp nil configs
+	if descriptor.Config == nil {
+		return nil
+	}
+	localConf := original.Wrap(descriptor.Config)
+	return &localConf
 }

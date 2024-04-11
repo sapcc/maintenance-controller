@@ -27,8 +27,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 const promReply string = "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[{\"metric\":{\"__name__\":\"cool_metric\"},\"value\":[1680600891.782,\"1\"]}]}}" //nolint:lll

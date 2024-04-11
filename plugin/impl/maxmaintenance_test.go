@@ -25,12 +25,13 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 var _ = Describe("The MaxMaintenance plugin", func() {
@@ -51,7 +52,8 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		var base MaxMaintenance
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		maxMaintenance := plugin.(*MaxMaintenance)
+		maxMaintenance, ok := plugin.(*MaxMaintenance)
+		Expect(ok).To(BeTrue())
 		Expect(maxMaintenance.MaxNodes).To(Equal(296))
 		Expect(maxMaintenance.Profile).To(Equal("kappa"))
 		Expect(maxMaintenance.SkipAfter).To(Equal(20 * time.Second))

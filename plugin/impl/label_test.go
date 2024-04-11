@@ -22,12 +22,14 @@ package impl
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
+//nolint:dupl
 var _ = Describe("The HasLabel plugin", func() {
 
 	It("can parse its config", func() {
@@ -102,6 +104,7 @@ var _ = Describe("The AnyLabel plugin", func() {
 
 })
 
+//nolint:dupl
 var _ = Describe("The AlterLabel plugin", func() {
 
 	It("can parse its config", func() {
@@ -137,7 +140,7 @@ var _ = Describe("The AlterLabel plugin", func() {
 			plugin := AlterLabel{Key: "key", Remove: true, Value: "value"}
 			err := plugin.Trigger(params)
 			Expect(err).To(Succeed())
-			Expect(params.Node.Labels).To(HaveLen(0))
+			Expect(params.Node.Labels).To(BeEmpty())
 		})
 
 		It("adds a new label if key is not 'key' and remove is false", func() {

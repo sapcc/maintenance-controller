@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	"github.com/slack-go/slack"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -36,6 +35,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // SlackWebhook is a notification plugin that uses a slack webhook and a channel
@@ -174,7 +175,7 @@ func (st *SlackThread) Notify(params plugin.Parameters) error {
 	if time.Since(lease.Spec.RenewTime.Time) <= time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
 		// post into thread
 		if lease.Spec.HolderIdentity == nil {
-			return fmt.Errorf("slack thread leases has no holder")
+			return errors.New("slack thread leases has no holder")
 		}
 		err := st.replyMessage(&params, api, *lease.Spec.HolderIdentity)
 		if err != nil {

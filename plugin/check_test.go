@@ -131,16 +131,19 @@ var _ = Describe("CheckChain", func() {
 			}
 		})
 
-		It("should return true if all plugins of an and chain pass", func() {
-			expr := "True && True && True"
+		makeChain := func(expr string, instances ...CheckInstance) CheckChain {
 			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance, trueInstance, trueInstance},
+			ExpectWithOffset(1, err).To(Succeed())
+			return CheckChain{
+				Plugins:    instances,
 				Evaluable:  eval,
 				Expression: expr,
 			}
+		}
+
+		It("should return true if all plugins of an and chain pass", func() {
+			expr := "True && True && True"
+			chain := makeChain(expr, trueInstance, trueInstance, trueInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
@@ -150,14 +153,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should return false if at least one check of an and chain does not pass", func() {
 			expr := "True && False && True && False"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance, falseInstance, trueInstance, falseInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, trueInstance, falseInstance, trueInstance, falseInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
@@ -168,14 +164,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should return true if all plugins of an or chain pass", func() {
 			expr := "True || True || True"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance, trueInstance, trueInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, trueInstance, trueInstance, trueInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
@@ -185,14 +174,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should return true if one plugin of an or chain does not pass", func() {
 			expr := "True || False || True"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance, falseInstance, trueInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, trueInstance, falseInstance, trueInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
@@ -202,14 +184,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should return false if a passing plugin is negated", func() {
 			expr := "!True"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, trueInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
@@ -230,14 +205,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should collect check infos", func() {
 			expr := "True"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{trueInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, trueInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
@@ -248,14 +216,7 @@ var _ = Describe("CheckChain", func() {
 
 		It("should collect error infos", func() {
 			expr := "Error"
-			eval, err := gval.Full().NewEvaluable(expr)
-			Expect(err).To(Succeed())
-
-			chain := CheckChain{
-				Plugins:    []CheckInstance{errorInstance},
-				Evaluable:  eval,
-				Expression: expr,
-			}
+			chain := makeChain(expr, errorInstance)
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(HaveOccurred())
 			Expect(result.Passed).To(BeFalse())

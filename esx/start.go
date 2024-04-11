@@ -23,10 +23,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/object"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 // Checks if the controller initiated the maintenance and the underlying ESX is not in maintenance.

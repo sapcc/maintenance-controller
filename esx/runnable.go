@@ -25,14 +25,15 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -119,7 +120,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 			continue
 		}
 	}
-	conf.VCenters.ClearCache(ctx)
+	conf.VCenters.ClearCache(ctx, r.Log)
 }
 
 // Checks the maintenance mode of the given ESX and attaches the according Maintenance label.
@@ -304,7 +305,7 @@ func parseHostInfo(node *v1.Node) (HostInfo, error) {
 }
 
 // Updates the given label on all nodes belonging to the given ESX host.
-func (r *Runnable) ensureLabel(ctx context.Context, esx *Host, key string, value string) error {
+func (r *Runnable) ensureLabel(ctx context.Context, esx *Host, key, value string) error {
 	for i := range esx.Nodes {
 		oneNode := &esx.Nodes[i]
 		if oneNode.Labels == nil {

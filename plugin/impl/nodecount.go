@@ -20,9 +20,10 @@
 package impl
 
 import (
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 type NodeCount struct {

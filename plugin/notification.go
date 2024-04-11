@@ -27,8 +27,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/common"
 )
 
 // Notifier is the interface that notification plugins need to implement.

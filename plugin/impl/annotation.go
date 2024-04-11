@@ -22,8 +22,9 @@ package impl
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // HasAnnotation is a check plugin that checks whether a node has an annotation or an annotation with a certain value.

@@ -24,6 +24,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -34,14 +35,15 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sapcc/maintenance-controller/cache"
-	"github.com/sapcc/maintenance-controller/constants"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 type Server struct {
@@ -110,14 +112,20 @@ func (s *Server) Start(ctx context.Context) error {
 		ReadHeaderTimeout: 32 * time.Second, //nolint:gomnd
 	}
 	go func() {
-		_ = server.Serve(listener)
+		err = server.Serve(listener)
+		if err != nil {
+			s.Log.Error(err, "failed to serve api")
+		}
 	}()
 	<-ctx.Done()
 	last := s.counter
 	s.Log.Info("Awaiting an other metrics scrape", "timeout", s.WaitTimeout)
-	_ = wait.PollImmediate(1*time.Second, s.WaitTimeout, func() (bool, error) { //nolint:staticcheck
+	err = wait.PollImmediate(1*time.Second, s.WaitTimeout, func() (bool, error) { //nolint:staticcheck
 		return s.counter > last, nil
 	})
+	if err != nil {
+		s.Log.Error(err, "failed to await metrics scrape")
+	}
 	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gomnd
 	defer cancel()
 	if err := server.Shutdown(timeout); err != nil {
@@ -163,7 +171,7 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 		return
 	}
 	if lease.Spec.HolderIdentity == nil {
-		s.writeError(fmt.Errorf("no maintenance-controller is leading"), w)
+		s.writeError(errors.New("no maintenance-controller is leading"), w)
 		return
 	}
 	holder := *lease.Spec.HolderIdentity
@@ -176,7 +184,7 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 	}
 	addr := net.JoinHostPort(pod.Status.PodIP, "8080")
 	url := fmt.Sprintf("http://%s/api/v1/info", addr)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		s.writeError(err, w)
 		return
@@ -207,7 +215,7 @@ func (s *Server) getNamespace() (string, error) {
 	// Check whether the namespace file exists.
 	// If not, we are not running in cluster so can't guess the namespace.
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return "", fmt.Errorf("namespace file does not exist")
+		return "", errors.New("namespace file does not exist")
 	} else if err != nil {
 		return "", fmt.Errorf("error checking namespace file: %w", err)
 	}

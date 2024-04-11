@@ -25,12 +25,13 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	vctypes "github.com/vmware/govmomi/vim25/types"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 var _ = Describe("ShouldStart", func() {
@@ -61,7 +62,7 @@ var _ = Describe("ensureVmOn", func() {
 
 	It("starts a VM", func() {
 		vCenters := &VCenters{
-			Template: TemplateUrl,
+			Template: TemplateURL,
 			Credentials: map[string]Credential{
 				vcServer.URL.Host: {
 					Username: "user",

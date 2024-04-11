@@ -28,11 +28,11 @@ import (
 	"github.com/PaesslerAG/gval"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 func TestState(t *testing.T) {
@@ -48,7 +48,7 @@ type mockTrigger struct {
 func (n *mockTrigger) Trigger(params plugin.Parameters) error {
 	n.Invoked++
 	if n.Fail {
-		return fmt.Errorf("mocked fail")
+		return errors.New("mocked fail")
 	}
 	return nil
 }
@@ -81,7 +81,7 @@ type mockNotificaiton struct {
 func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
 	n.Invoked++
 	if n.Fail {
-		return fmt.Errorf("mocked fail")
+		return errors.New("mocked fail")
 	}
 	return nil
 }
@@ -100,7 +100,7 @@ func mockNotificationChain(instanceCount int) (plugin.NotificationChain, *mockNo
 	}
 	p := &mockNotificaiton{}
 	instances := make([]plugin.NotificationInstance, 0)
-	for i := 0; i < instanceCount; i++ {
+	for i := range instanceCount {
 		instances = append(instances, plugin.NotificationInstance{
 			Schedule: &plugin.NotifyPeriodic{Interval: time.Hour},
 			Plugin:   p,
@@ -156,16 +156,20 @@ func mockCheckChain() (plugin.CheckChain, *mockCheck) {
 
 var _ = Describe("NotifyDefault", func() {
 
+	makeProfileMap := func(current, previous NodeStateLabel) map[string]*ProfileData {
+		return map[string]*ProfileData{
+			"p": {
+				Transition: time.Now().UTC(),
+				Current:    current,
+				Previous:   previous,
+			},
+		}
+	}
+
 	It("should not execute the notification chain if the interval has not passed", func() {
 		chain, notification := mockNotificationChain(1)
 		data := DataV2{
-			Profiles: map[string]*ProfileData{
-				"p": {
-					Transition: time.Now().UTC(),
-					Current:    Operational,
-					Previous:   Operational,
-				},
-			},
+			Profiles:      makeProfileMap(Operational, Operational),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
 		err := notifyDefault(plugin.Parameters{Profile: "p"}, &data, &chain)
@@ -173,16 +177,11 @@ var _ = Describe("NotifyDefault", func() {
 		Expect(notification.Invoked).To(Equal(0))
 	})
 
+	//nolint:dupl
 	It("should execute the notification chain if the interval has passed", func() {
 		chain, notification := mockNotificationChain(1)
 		data := DataV2{
-			Profiles: map[string]*ProfileData{
-				"p": {
-					Transition: time.Now().UTC(),
-					Current:    Operational,
-					Previous:   InMaintenance,
-				},
-			},
+			Profiles:      makeProfileMap(Operational, InMaintenance),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
@@ -192,16 +191,11 @@ var _ = Describe("NotifyDefault", func() {
 		Expect(notification.Invoked).To(Equal(1))
 	})
 
+	//nolint:dupl
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
 		chain, notification := mockNotificationChain(1)
 		data := DataV2{
-			Profiles: map[string]*ProfileData{
-				"p": {
-					Transition: time.Now().UTC(),
-					Current:    Operational,
-					Previous:   Operational,
-				},
-			},
+			Profiles:      makeProfileMap(Operational, Operational),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
 		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
@@ -214,13 +208,7 @@ var _ = Describe("NotifyDefault", func() {
 	It("should execute each notification instance once", func() {
 		chain, notification := mockNotificationChain(3)
 		data := DataV2{
-			Profiles: map[string]*ProfileData{
-				"p": {
-					Transition: time.Now().UTC(),
-					Current:    InMaintenance,
-					Previous:   InMaintenance,
-				},
-			},
+			Profiles: makeProfileMap(InMaintenance, InMaintenance),
 			Notifications: map[string]time.Time{
 				"mock0": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
 				"mock1": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
@@ -257,7 +245,7 @@ var _ = Describe("Apply", func() {
 		result, err := Apply(&nodeState, &v1.Node{}, &DataV2{Notifications: make(map[string]time.Time)}, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
-		Expect(result.Transitions).To(HaveLen(0))
+		Expect(result.Transitions).To(BeEmpty())
 		Expect(result.Error).ToNot(BeEmpty())
 	})
 
@@ -313,17 +301,13 @@ var _ = Describe("Apply", func() {
 var _ = Describe("ParseData", func() {
 
 	It("should initialize the notification times map", func() {
-		var node v1.Node
-		node.Annotations = map[string]string{constants.DataAnnotationKey: "{}"}
-		data, err := ParseData(&node)
+		data, err := ParseData("{}")
 		Expect(err).To(Succeed())
 		Expect(data.LastNotificationTimes).ToNot(BeNil())
 	})
 
 	It("should fail with invalid json", func() {
-		var node v1.Node
-		node.Annotations = map[string]string{constants.DataAnnotationKey: "{{}"}
-		_, err := ParseData(&node)
+		_, err := ParseData("{{}")
 		Expect(err).ToNot(Succeed())
 	})
 
@@ -332,17 +316,13 @@ var _ = Describe("ParseData", func() {
 var _ = Describe("ParseDataV2", func() {
 
 	It("should initialize the notification times map", func() {
-		var node v1.Node
-		node.Annotations = map[string]string{constants.DataAnnotationKey: "{}"}
-		data, err := ParseDataV2(&node)
+		data, err := ParseDataV2("{}")
 		Expect(err).To(Succeed())
 		Expect(data.Notifications).ToNot(BeNil())
 	})
 
 	It("should fail with invalid json", func() {
-		var node v1.Node
-		node.Annotations = map[string]string{constants.DataAnnotationKey: "{{}"}
-		_, err := ParseDataV2(&node)
+		_, err := ParseDataV2("{{}")
 		Expect(err).ToNot(Succeed())
 	})
 
@@ -351,16 +331,13 @@ var _ = Describe("ParseDataV2", func() {
 var _ = Describe("ParseMigrateDataV2", func() {
 
 	It("should migrate data", func() {
-		var node v1.Node
-		node.Annotations = map[string]string{
-			constants.DataAnnotationKey: `{
-				"LastTransition":"2023-06-01T14:00:00Z",
-				"LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},
-				"ProfileStates":{"p":"operational"},
-				"PreviousStates":{"p":"in-maintenance"}
-			}`,
-		}
-		data, err := ParseMigrateDataV2(&node, GinkgoLogr)
+		content := `{
+			"LastTransition":"2023-06-01T14:00:00Z",
+			"LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},
+			"ProfileStates":{"p":"operational"},
+			"PreviousStates":{"p":"in-maintenance"}
+		}`
+		data, err := ParseMigrateDataV2(content, GinkgoLogr)
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["p"].Current).To(Equal(Operational))
 		Expect(data.Profiles["p"].Previous).To(Equal(InMaintenance))

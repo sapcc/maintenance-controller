@@ -31,7 +31,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
@@ -47,6 +46,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/sapcc/maintenance-controller/constants"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -54,7 +55,7 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const ESXName string = "DC0_H0"
-const TemplateUrl = "http://" + AvailabilityZoneReplacer
+const TemplateURL = "http://" + AvailabilityZoneReplacer
 
 // The availability "parser" only considers the last character of the region string.
 // To get the required credentials the one char AZ needs to be part of the hostname.
@@ -172,7 +173,10 @@ var _ = BeforeSuite(func() {
 		&corev1.Pod{},
 		"spec.nodeName",
 		func(o client.Object) []string {
-			pod := o.(*corev1.Pod)
+			pod, ok := o.(*corev1.Pod)
+			if !ok {
+				return []string{}
+			}
 			return []string{pod.Spec.NodeName}
 		})
 	Expect(err).To(Succeed())

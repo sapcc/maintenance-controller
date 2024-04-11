@@ -31,8 +31,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/utils/openstack/clientconfig"
-	"github.com/sapcc/maintenance-controller/common"
-	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +40,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	"github.com/sapcc/maintenance-controller/common"
+	"github.com/sapcc/maintenance-controller/constants"
 )
 
 // According to https://pkg.go.dev/k8s.io/client-go/util/workqueue
@@ -173,11 +174,11 @@ func (r *NodeReconciler) needsKubeletUpdate(node *v1.Node) (bool, error) {
 }
 
 func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
-	client, err := kubernetes.NewForConfig(conf)
+	clientset, err := kubernetes.NewForConfig(conf)
 	if err != nil {
 		return semver.Version{}, fmt.Errorf("failed to create API Server client: %w", err)
 	}
-	return common.GetAPIServerVersion(client)
+	return common.GetAPIServerVersion(clientset)
 }
 
 func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.DrainParameters) error {

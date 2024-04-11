@@ -23,8 +23,9 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // Mail is a notification plugins that sends an e-mail.

@@ -35,7 +35,7 @@ var _ = Describe("CheckForMaintenance", func() {
 
 	BeforeEach(func() {
 		vCenters = &VCenters{
-			Template: TemplateUrl,
+			Template: TemplateURL,
 			Credentials: map[string]Credential{
 				vcServer.URL.Host: {
 					Username: "user",
@@ -109,7 +109,7 @@ var _ = Describe("FetchVersion", func() {
 
 	BeforeEach(func() {
 		vCenters = &VCenters{
-			Template: TemplateUrl,
+			Template: TemplateURL,
 			Credentials: map[string]Credential{
 				vcServer.URL.Host: {
 					Username: "user",

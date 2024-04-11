@@ -28,11 +28,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 var _ = Describe("The slack webhook plugin", func() {
@@ -51,13 +52,15 @@ var _ = Describe("The slack webhook plugin", func() {
 
 	It("should send a message", func() {
 		// construct a http server, that accepts the slack request
+		mux := http.NewServeMux()
 		server := http.Server{
 			Addr:              "localhost:25566",
 			ReadTimeout:       60 * time.Second,
 			ReadHeaderTimeout: 60 * time.Second,
+			Handler:           mux,
 		}
 		requestChan := make(chan string, 1)
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			requestBytes, err := io.ReadAll(r.Body)
 			Expect(err).To(Succeed())
 			requestChan <- string(requestBytes)
@@ -96,7 +99,7 @@ var _ = Describe("The slack webhook plugin", func() {
 		err = json.Unmarshal([]byte(resultStr), &result)
 		Expect(err).To(Succeed())
 		Expect(result.Channel).To(Equal("thechannel"))
-		Expect(len(result.Text) > 0).To(BeTrue())
+		Expect(result.Text).ToNot(BeEmpty())
 	})
 
 })

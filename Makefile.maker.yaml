@@ -1,0 +1,30 @@
+# Configuration file for <https://github.com/sapcc/go-makefile-maker>
+
+metadata:
+  url: https://github.com/sapcc/maintenance-controller
+
+binaries:
+  - name:        maintenance-controller
+    fromPackage: .
+    installTo:   bin/
+
+golang:
+  setGoModVersion: true
+
+golangciLint:
+  createConfig: true
+
+githubWorkflow:
+  ci:
+    enabled: true
+  global:
+    defaultBranch: master
+
+renovate:
+  enabled: true
+  assignees:
+    - Nuckal777
+    - SuperSandro2000
+
+testPackages:
+  except: e2e

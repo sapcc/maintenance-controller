@@ -27,9 +27,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
-	v1 "k8s.io/api/core/v1"
 )
 
 // NodeStateLabel reprensents labels which nodes a marked with.
@@ -142,8 +143,8 @@ type DataV2 struct {
 	Notifications map[string]time.Time
 }
 
-func ParseData(node *v1.Node) (Data, error) {
-	dataStr := node.Annotations[constants.DataAnnotationKey]
+func ParseData(dataStr string) (Data, error) {
+	// dataStr := node.Annotations[constants.DataAnnotationKey]
 	var data Data
 	if dataStr != "" {
 		decoder := json.NewDecoder(strings.NewReader(dataStr))
@@ -162,8 +163,8 @@ func ParseData(node *v1.Node) (Data, error) {
 	return data, nil
 }
 
-func ParseDataV2(node *v1.Node) (DataV2, error) {
-	dataStr := node.Annotations[constants.DataAnnotationKey]
+func ParseDataV2(dataStr string) (DataV2, error) {
+	// dataStr := node.Annotations[constants.DataAnnotationKey]
 	var data DataV2
 	if dataStr != "" {
 		decoder := json.NewDecoder(strings.NewReader(dataStr))
@@ -179,17 +180,17 @@ func ParseDataV2(node *v1.Node) (DataV2, error) {
 	return data, nil
 }
 
-func ParseMigrateDataV2(node *v1.Node, log logr.Logger) (DataV2, error) {
-	dataStr := node.Annotations[constants.DataAnnotationKey]
+func ParseMigrateDataV2(dataStr string, log logr.Logger) (DataV2, error) {
+	// dataStr := node.Annotations[constants.DataAnnotationKey]
 	if dataStr == "" {
 		return DataV2{}, nil
 	}
-	data2, err := ParseDataV2(node)
+	data2, err := ParseDataV2(dataStr)
 	if err == nil {
 		return data2, nil
 	}
 	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
-	data, err := ParseData(node)
+	data, err := ParseData(dataStr)
 	if err != nil {
 		return DataV2{}, err
 	}

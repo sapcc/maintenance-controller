@@ -28,9 +28,6 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/sapcc/maintenance-controller/cache"
-	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/state"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -41,6 +38,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/state"
 )
 
 // NodeReconciler reconciles a Node object.
@@ -55,7 +56,6 @@ type NodeReconciler struct {
 type reconcileParameters struct {
 	client        client.Client
 	config        *Config
-	ctx           context.Context
 	log           logr.Logger
 	recorder      record.EventRecorder
 	node          *corev1.Node
@@ -96,7 +96,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	unmodifiedNode := theNode.DeepCopy()
 
 	// perform the reconciliation
-	err = reconcileInternal(r.makeParams(ctx, config, &theNode))
+	err = reconcileInternal(ctx, r.makeParams(config, &theNode))
 	if err != nil {
 		r.Log.Error(err, "Failed to reconcile. Skipping node patching.", "node", req.NamespacedName)
 		return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
@@ -124,11 +124,10 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return ctrl.Result{RequeueAfter: config.RequeueInterval}, nil
 }
 
-func (r *NodeReconciler) makeParams(ctx context.Context, config *Config, node *corev1.Node) reconcileParameters {
+func (r *NodeReconciler) makeParams(config *Config, node *corev1.Node) reconcileParameters {
 	return reconcileParameters{
 		client:        r.Client,
 		config:        config,
-		ctx:           ctx,
 		log:           r.Log.WithValues("node", types.NamespacedName{Name: node.Name, Namespace: node.Namespace}),
 		node:          node,
 		recorder:      r.Recorder,
@@ -137,10 +136,10 @@ func (r *NodeReconciler) makeParams(ctx context.Context, config *Config, node *c
 }
 
 // Ensures a new version of the specified resources arrives in the cache made by controller-runtime.
-func pollCacheUpdate(ctx context.Context, client client.Client, ref types.NamespacedName, targetVersion string) error {
+func pollCacheUpdate(ctx context.Context, k8sClient client.Client, ref types.NamespacedName, targetVersion string) error {
 	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:gomnd,staticcheck
 		var nextNode corev1.Node
-		if err := client.Get(ctx, ref, &nextNode); err != nil {
+		if err := k8sClient.Get(ctx, ref, &nextNode); err != nil {
 			return false, err
 		}
 		nextVersion, err := strconv.Atoi(nextNode.ResourceVersion)
@@ -155,12 +154,13 @@ func pollCacheUpdate(ctx context.Context, client client.Client, ref types.Namesp
 	})
 }
 
-func reconcileInternal(params reconcileParameters) error {
-	data, err := state.ParseMigrateDataV2(params.node, params.log)
+func reconcileInternal(ctx context.Context, params reconcileParameters) error {
+	dataStr := params.node.Annotations[constants.DataAnnotationKey]
+	data, err := state.ParseMigrateDataV2(dataStr, params.log)
 	if err != nil {
 		return err
 	}
-	err = HandleNode(params, &data)
+	err = HandleNode(ctx, params, &data)
 	if err != nil {
 		return err
 	}

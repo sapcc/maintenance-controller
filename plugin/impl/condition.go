@@ -22,9 +22,10 @@ package impl
 import (
 	"fmt"
 
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 // Condition is a check plugin that checks if a node

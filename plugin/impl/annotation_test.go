@@ -22,12 +22,14 @@ package impl
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/sapcc/maintenance-controller/plugin"
 )
 
+//nolint:dupl
 var _ = Describe("The HasAnnotation plugin", func() {
 
 	It("can parse its config", func() {
@@ -86,6 +88,7 @@ var _ = Describe("The HasAnnotation plugin", func() {
 
 })
 
+//nolint:dupl
 var _ = Describe("The AlterAnnotation plugin", func() {
 
 	It("can parse its config", func() {
@@ -121,7 +124,7 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 			plugin := AlterAnnotation{Key: "key", Remove: true, Value: "value"}
 			err := plugin.Trigger(params)
 			Expect(err).To(Succeed())
-			Expect(params.Node.Annotations).To(HaveLen(0))
+			Expect(params.Node.Annotations).To(BeEmpty())
 		})
 
 		It("adds a new annotation if key is not 'key' and remove is false", func() {
