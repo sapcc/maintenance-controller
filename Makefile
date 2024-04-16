@@ -51,6 +51,9 @@ install: FORCE build/maintenance-controller
 
 # which packages to test with test runner
 GO_TESTPKGS := $(shell go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.Dir}}{{end}}' ./... | grep -Ev 'e2e')
+ifeq ($(GO_TESTPKGS),)
+GO_TESTPKGS := ./...
+endif
 # which packages to measure coverage for
 GO_COVERPKGS := $(shell go list ./...)
 # to get around weird Makefile syntax restrictions, we need variables containing nothing, a space and comma
