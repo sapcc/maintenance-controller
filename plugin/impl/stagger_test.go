@@ -28,7 +28,6 @@ import (
 )
 
 var _ = Describe("The Stagger plugin", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "duration: 1m\nleaseName: mc-lease\nleaseNamespace: default"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -41,5 +40,4 @@ var _ = Describe("The Stagger plugin", func() {
 		Expect(plugin.(*Stagger).LeaseName).To(Equal("mc-lease"))
 		Expect(plugin.(*Stagger).LeaseNamespace).To(Equal("default"))
 	})
-
 })

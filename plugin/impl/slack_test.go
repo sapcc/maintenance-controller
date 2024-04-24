@@ -37,7 +37,6 @@ import (
 )
 
 var _ = Describe("The slack webhook plugin", func() {
-
 	It("should parse its config", func() {
 		configStr := "hook: http://example.com\nchannel: thechannel\nmessage: msg"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))

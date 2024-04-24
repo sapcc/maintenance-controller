@@ -29,7 +29,6 @@ import (
 )
 
 var _ = Describe("Operational State", func() {
-
 	It("should have Operational Label", func() {
 		op := newOperational(PluginChains{})
 		Expect(op.Label()).To(Equal(Operational))
@@ -46,9 +45,7 @@ var _ = Describe("Operational State", func() {
 
 	})
 
-	//nolint:dupl
 	Context("with initialized chains", func() {
-
 		var chains PluginChains
 		var trigger *mockTrigger
 		var notification *mockNotificaiton

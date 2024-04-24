@@ -28,7 +28,6 @@ import (
 )
 
 var _ = Describe("The nodecount plugin", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "count: 154"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -43,5 +42,4 @@ var _ = Describe("The nodecount plugin", func() {
 		var count NodeCount
 		Expect(count.OnTransition(plugin.Parameters{})).To(Succeed())
 	})
-
 })

@@ -62,9 +62,7 @@ func (n *failingNotification) ID() string {
 	return "fail"
 }
 
-//nolint:dupl
 var _ = Describe("NotificationChain", func() {
-
 	emptyParams := Parameters{Log: GinkgoLogr}
 
 	Context("is empty", func() {
@@ -78,7 +76,6 @@ var _ = Describe("NotificationChain", func() {
 	})
 
 	Context("contains plugins", func() {
-
 		var (
 			success NotificationInstance
 			failing NotificationInstance
@@ -113,13 +110,10 @@ var _ = Describe("NotificationChain", func() {
 			Expect(success.Plugin.(*successfulNotification).Invoked).To(Equal(1))
 			Expect(failing.Plugin.(*failingNotification).Invoked).To(Equal(1))
 		})
-
 	})
-
 })
 
 var _ = Describe("The notification", func() {
-
 	It("should render its template", func() {
 		result, err := RenderNotificationTemplate("{{.State}}", &Parameters{State: "def"})
 		Expect(err).To(Succeed())
@@ -129,7 +123,6 @@ var _ = Describe("The notification", func() {
 })
 
 var _ = Describe("NotifyPeriodic", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "interval: 5m"
 		conf, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -142,7 +135,6 @@ var _ = Describe("NotifyPeriodic", func() {
 })
 
 var _ = Describe("NotifyScheduled", func() {
-
 	SchedLog := SchedulingLogger{
 		Log:        GinkgoLogr,
 		LogDetails: true,
@@ -169,7 +161,6 @@ var _ = Describe("NotifyScheduled", func() {
 	})
 
 	Context("on tuesdays", func() {
-
 		It("should not trigger before 12:00", func() {
 			currentDate := time.Date(2022, time.February, 22, 11, 0, 0, 0, time.UTC)
 			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
@@ -201,11 +192,9 @@ var _ = Describe("NotifyScheduled", func() {
 			})
 			Expect(result).To(BeFalse())
 		})
-
 	})
 
 	Context("on mondays", func() {
-
 		It("should not trigger before 12:00", func() {
 			currentDate := time.Date(2022, time.February, 21, 11, 0, 0, 0, time.UTC)
 			result := makeSchedule().ShouldNotify(ShouldNotifyParams{
@@ -275,7 +264,6 @@ var _ = Describe("NotifyScheduled", func() {
 })
 
 var _ = Describe("NotifyOneshot", func() {
-
 	SchedLog := SchedulingLogger{
 		Log:        GinkgoLogr,
 		LogDetails: true,
@@ -360,5 +348,4 @@ var _ = Describe("NotifyOneshot", func() {
 		})
 		Expect(result).To(BeFalse())
 	})
-
 })

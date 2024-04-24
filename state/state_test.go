@@ -177,7 +177,6 @@ var _ = Describe("NotifyDefault", func() {
 		Expect(notification.Invoked).To(Equal(0))
 	})
 
-	//nolint:dupl
 	It("should execute the notification chain if the interval has passed", func() {
 		chain, notification := mockNotificationChain(1)
 		data := DataV2{
@@ -191,7 +190,6 @@ var _ = Describe("NotifyDefault", func() {
 		Expect(notification.Invoked).To(Equal(1))
 	})
 
-	//nolint:dupl
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
 		chain, notification := mockNotificationChain(1)
 		data := DataV2{
@@ -314,7 +312,6 @@ var _ = Describe("ParseData", func() {
 })
 
 var _ = Describe("ParseDataV2", func() {
-
 	It("should initialize the notification times map", func() {
 		data, err := ParseDataV2("{}")
 		Expect(err).To(Succeed())
@@ -325,11 +322,9 @@ var _ = Describe("ParseDataV2", func() {
 		_, err := ParseDataV2("{{}")
 		Expect(err).ToNot(Succeed())
 	})
-
 })
 
 var _ = Describe("ParseMigrateDataV2", func() {
-
 	It("should migrate data", func() {
 		content := `{
 			"LastTransition":"2023-06-01T14:00:00Z",
@@ -344,14 +339,11 @@ var _ = Describe("ParseMigrateDataV2", func() {
 		Expect(data.Profiles["p"].Transition).To(Equal(time.Date(2023, 6, 1, 14, 0, 0, 0, time.UTC)))
 		Expect(data.Notifications["n"]).To(Equal(time.Date(2023, 6, 1, 15, 0, 0, 0, time.UTC)))
 	})
-
 })
 
 var _ = Describe("ValidateLabel", func() {
-
 	It("fails on invalid input", func() {
 		_, err := ValidateLabel("hello")
 		Expect(err).ToNot(Succeed())
 	})
-
 })

@@ -30,7 +30,6 @@ import (
 )
 
 var _ = Describe("The wait plugin", func() {
-
 	It("can parse its config", func() {
 		base := Wait{}
 		configStr := "duration: 0h12m"
@@ -58,11 +57,9 @@ var _ = Describe("The wait plugin", func() {
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeFalse())
 	})
-
 })
 
 var _ = Describe("The waitExclude plugin", func() {
-
 	It("can parse its config", func() {
 		base := WaitExclude{}
 		configStr := "duration: 17m\nexclude: [\"tue\"]"
@@ -79,7 +76,6 @@ var _ = Describe("The waitExclude plugin", func() {
 	}
 
 	Context("with a duration of one hour and no exclusions", func() {
-
 		It("fails between 10:00 and 10:30", func() {
 			we := WaitExclude{Duration: 1 * time.Hour, Exclude: make([]time.Weekday, 0)}
 			lastTransition := time.Date(2022, time.March, 15, 10, 00, 00, 00, time.UTC)
@@ -95,11 +91,9 @@ var _ = Describe("The waitExclude plugin", func() {
 			result := checkWaitExclude(&we, lastTransition, now)
 			Expect(result).To(BeTrue())
 		})
-
 	})
 
 	Context("with a duration of 30 hours and exclusions on monday and wednesday", func() {
-
 		It("fails between sun 12:00 and tue 17:00", func() {
 			we := WaitExclude{Duration: 30 * time.Hour, Exclude: []time.Weekday{time.Monday, time.Wednesday}}
 			lastTransition := time.Date(2022, time.March, 6, 12, 00, 00, 00, time.UTC)
@@ -139,11 +133,9 @@ var _ = Describe("The waitExclude plugin", func() {
 			result := checkWaitExclude(&we, lastTransition, now)
 			Expect(result).To(BeFalse())
 		})
-
 	})
 
 	Context("with a duration of 1 second and exclusions on monday and wednesday", func() {
-
 		It("passes on sunday after a second", func() {
 			we := WaitExclude{Duration: 1 * time.Second, Exclude: []time.Weekday{time.Monday, time.Wednesday}}
 			lastTransition := time.Date(2022, time.March, 6, 12, 00, 00, 00, time.UTC)
@@ -151,7 +143,5 @@ var _ = Describe("The waitExclude plugin", func() {
 			result := checkWaitExclude(&we, lastTransition, now)
 			Expect(result).To(BeTrue())
 		})
-
 	})
-
 })

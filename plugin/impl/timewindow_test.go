@@ -28,7 +28,6 @@ import (
 )
 
 var _ = Describe("The Timewindow plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "weekdays: [mon]\nstart: \"11:00\"\nend: \"19:30\"\nexclude: [\"Feb 3\"]"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -140,9 +139,6 @@ var _ = Describe("The Timewindow plugin", func() {
 				result := plugin.checkInternal(targetDate)
 				Expect(result.Passed).To(BeFalse())
 			})
-
 		})
-
 	})
-
 })

@@ -26,7 +26,6 @@ import (
 )
 
 var _ = Describe("The ClusterSemver plugin", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "key: alge\nprofileScoped: yes"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -37,5 +36,4 @@ var _ = Describe("The ClusterSemver plugin", func() {
 		Expect(plugin.(*ClusterSemver).Key).To(Equal("alge"))
 		Expect(plugin.(*ClusterSemver).ProfileScoped).To(BeTrue())
 	})
-
 })

@@ -32,7 +32,6 @@ import (
 )
 
 var _ = Describe("The mail plugin", func() {
-
 	It("should parse its config", func() {
 		configStr := "auth: true\naddress: addr\nfrom: from\nidentity: ident\nmessage: msg\n"
 		configStr += "password: pw\nto: to\nuser: user\nsubject: sub"
@@ -133,5 +132,4 @@ var _ = Describe("The mail plugin", func() {
 		Expect(<-messageArrived).To(BeTrue())
 		Eventually(done, 1).Should(BeClosed())
 	})
-
 })

@@ -61,9 +61,7 @@ func (n *failingTrigger) ID() string {
 	return "fail"
 }
 
-//nolint:dupl
 var _ = Describe("TriggerChain", func() {
-
 	emptyParams := Parameters{Log: GinkgoLogr}
 
 	Context("is empty", func() {
@@ -77,7 +75,6 @@ var _ = Describe("TriggerChain", func() {
 	})
 
 	Context("contains plugins", func() {
-
 		var (
 			success TriggerInstance
 			failing TriggerInstance
@@ -112,7 +109,5 @@ var _ = Describe("TriggerChain", func() {
 			Expect(success.Plugin.(*successfulTrigger).Invoked).To(Equal(1))
 			Expect(failing.Plugin.(*failingTrigger).Invoked).To(Equal(1))
 		})
-
 	})
-
 })

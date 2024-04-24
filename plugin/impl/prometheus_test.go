@@ -35,7 +35,6 @@ import (
 const promReply string = "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[{\"metric\":{\"__name__\":\"cool_metric\"},\"value\":[1680600891.782,\"1\"]}]}}" //nolint:lll
 
 var _ = Describe("The prometheusInstant plugin", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "url: http://abc.de\nquery: q\nexpr: value > 0"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -138,7 +137,5 @@ var _ = Describe("The prometheusInstant plugin", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(result.Passed).To(BeFalse())
 		})
-
 	})
-
 })

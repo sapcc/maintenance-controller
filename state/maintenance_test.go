@@ -29,7 +29,6 @@ import (
 )
 
 var _ = Describe("InMaintenance State", func() {
-
 	It("should have InMaintenance Label", func() {
 		im := newInMaintenance(PluginChains{})
 		Expect(im.Label()).To(Equal(InMaintenance))
@@ -46,9 +45,7 @@ var _ = Describe("InMaintenance State", func() {
 
 	})
 
-	//nolint:dupl
 	Context("with initialized chains", func() {
-
 		var chains PluginChains
 		var trigger *mockTrigger
 		var notification *mockNotificaiton
@@ -132,7 +129,5 @@ var _ = Describe("InMaintenance State", func() {
 			Expect(result.Infos[0].Error).ToNot(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
-
 	})
-
 })

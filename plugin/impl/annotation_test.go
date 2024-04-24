@@ -29,9 +29,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-//nolint:dupl
 var _ = Describe("The HasAnnotation plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -45,7 +43,6 @@ var _ = Describe("The HasAnnotation plugin", func() {
 	})
 
 	Context("with annotation key=value", func() {
-
 		params := plugin.Parameters{
 			Node: &corev1.Node{
 				ObjectMeta: v1.ObjectMeta{
@@ -88,9 +85,7 @@ var _ = Describe("The HasAnnotation plugin", func() {
 
 })
 
-//nolint:dupl
 var _ = Describe("The AlterAnnotation plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value\nremove: true"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -105,7 +100,6 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 	})
 
 	Context("with annotation key=value", func() {
-
 		var params plugin.Parameters
 
 		BeforeEach(func() {
@@ -142,7 +136,5 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 			Expect(params.Node.Annotations).To(HaveLen(1))
 			Expect(params.Node.Annotations["key"]).To(Equal("abc"))
 		})
-
 	})
-
 })

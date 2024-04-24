@@ -29,7 +29,6 @@ import (
 )
 
 var _ = Describe("The Condition plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "type: Ready\nstatus: \"True\""
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -43,7 +42,6 @@ var _ = Describe("The Condition plugin", func() {
 	})
 
 	Context("with node Ready=True", func() {
-
 		params := plugin.Parameters{
 			Node: &corev1.Node{
 				Status: corev1.NodeStatus{
@@ -79,6 +77,5 @@ var _ = Describe("The Condition plugin", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 		})
-
 	})
 })

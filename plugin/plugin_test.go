@@ -52,7 +52,6 @@ var _ = Describe("CheckError", func() {
 })
 
 var _ = Describe("Registry", func() {
-
 	var emptyConfig *ucfgwrap.Config
 
 	BeforeEach(func() {
@@ -62,7 +61,6 @@ var _ = Describe("Registry", func() {
 	})
 
 	Context("is uninitialized", func() {
-
 		It("should find plugins", func() {
 			registry := NewRegistry()
 			// a new registry should not have any instances
@@ -75,9 +73,7 @@ var _ = Describe("Registry", func() {
 			Expect(registry.TriggerPlugins).To(BeEmpty())
 		})
 
-		//nolint:dupl
 		Context("gets a valid configuration", func() {
-
 			It("loads check plugin instances", func() {
 				var configStr = `check:
                 - type: someCheckPlugin
@@ -340,15 +336,11 @@ var _ = Describe("Registry", func() {
 				err = registry.LoadInstances(emptyConfig, &descriptor)
 				Expect(err).ToNot(Succeed())
 			})
-
 		})
-
 	})
 
 	Context("is initialized", func() {
-
 		Context("gets valid config strings", func() {
-
 			var (
 				config   string
 				registry Registry
@@ -450,9 +442,6 @@ var _ = Describe("Registry", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(chain.Plugins).To(BeEmpty())
 			})
-
 		})
-
 	})
-
 })

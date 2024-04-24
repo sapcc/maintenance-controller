@@ -26,7 +26,6 @@ import (
 )
 
 var _ = Describe("The KubernikusCount plugin", func() {
-
 	It("can parse its configuration", func() {
 		configStr := "cluster: aCluster"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -36,5 +35,4 @@ var _ = Describe("The KubernikusCount plugin", func() {
 		Expect(err).To(Succeed())
 		Expect(plugin.(*KubernikusCount).Cluster).To(Equal("aCluster"))
 	})
-
 })

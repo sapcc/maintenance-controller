@@ -35,7 +35,6 @@ import (
 )
 
 var _ = Describe("The MaxMaintenance plugin", func() {
-
 	groupLabel := "group"
 
 	makeParams := func(node *corev1.Node) plugin.Parameters {
@@ -183,7 +182,5 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 		})
-
 	})
-
 })

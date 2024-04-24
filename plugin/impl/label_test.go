@@ -29,9 +29,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-//nolint:dupl
 var _ = Describe("The HasLabel plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -45,7 +43,6 @@ var _ = Describe("The HasLabel plugin", func() {
 	})
 
 	Context("with label key=value", func() {
-
 		params := plugin.Parameters{
 			Node: &corev1.Node{
 				ObjectMeta: v1.ObjectMeta{
@@ -89,7 +86,6 @@ var _ = Describe("The HasLabel plugin", func() {
 })
 
 var _ = Describe("The AnyLabel plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: test"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -104,9 +100,7 @@ var _ = Describe("The AnyLabel plugin", func() {
 
 })
 
-//nolint:dupl
 var _ = Describe("The AlterLabel plugin", func() {
-
 	It("can parse its config", func() {
 		configStr := "key: key\nvalue: value\nremove: true"
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
@@ -121,7 +115,6 @@ var _ = Describe("The AlterLabel plugin", func() {
 	})
 
 	Context("with label key=value", func() {
-
 		var params plugin.Parameters
 
 		BeforeEach(func() {
@@ -158,7 +151,5 @@ var _ = Describe("The AlterLabel plugin", func() {
 			Expect(params.Node.Labels).To(HaveLen(1))
 			Expect(params.Node.Labels["key"]).To(Equal("abc"))
 		})
-
 	})
-
 })

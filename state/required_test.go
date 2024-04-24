@@ -31,7 +31,6 @@ import (
 )
 
 var _ = Describe("MaintenanceRequired State", func() {
-
 	It("should have Required Label", func() {
 		mr := newMaintenanceRequired(PluginChains{})
 		Expect(mr.Label()).To(Equal(Required))
@@ -49,7 +48,6 @@ var _ = Describe("MaintenanceRequired State", func() {
 	})
 
 	Context("with initialized chains", func() {
-
 		var chains PluginChains
 		var trigger *mockTrigger
 		var notification *mockNotificaiton
@@ -137,7 +135,5 @@ var _ = Describe("MaintenanceRequired State", func() {
 			Expect(result.Infos[0].Error).ToNot(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
-
 	})
-
 })

@@ -94,11 +94,9 @@ func (c *errorCheck) ID() string {
 }
 
 var _ = Describe("CheckChain", func() {
-
 	var emptyParams Parameters
 
 	Context("is empty", func() {
-
 		var chain CheckChain
 		It("should not error", func() {
 			result, err := chain.Execute(emptyParams)
@@ -109,7 +107,6 @@ var _ = Describe("CheckChain", func() {
 	})
 
 	Context("contains plugins", func() {
-
 		var (
 			trueInstance  CheckInstance
 			falseInstance CheckInstance
@@ -225,6 +222,5 @@ var _ = Describe("CheckChain", func() {
 			Expect(result.Info["Error"].Info[invokedKey]).To(Equal(1))
 			Expect(result.Info["Error"].Info).To(HaveKey("error"))
 		})
-
 	})
 })
