@@ -1,6 +1,6 @@
 module github.com/sapcc/maintenance-controller
 
-go 1.22
+go 1.22.0
 
 require (
 	github.com/PaesslerAG/gval v1.2.2
