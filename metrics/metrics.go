@@ -24,6 +24,10 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,10 +48,28 @@ var (
 			"that were likely shuffled by a node send into maintenance, " +
 			"divided by the replica count when the event occurred",
 	}, []string{"owner", "profile"})
+
+	maintenanceMeter       metric.Meter
+	otelShuffleCount       metric.Int64Counter
+	otelShufflesPerReplica metric.Float64Counter
 )
 
-func RegisterMaintenanceMetrics() {
+func RegisterMaintenanceMetrics() error {
 	metrics.Registry.MustRegister(shuffleCount, shufflesPerReplica)
+	maintenanceMeter = otel.Meter("maintenance-controller")
+	err := runtime.Start()
+	if err != nil {
+		return err
+	}
+	otelShuffleCount, err = maintenanceMeter.Int64Counter("maintenance_controller_pod_shuffle_count")
+	if err != nil {
+		return err
+	}
+	otelShufflesPerReplica, err = maintenanceMeter.Float64Counter("maintenance_controller_pod_shuffles_per_replica")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type shuffleRecord struct {
@@ -100,6 +122,10 @@ func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node,
 		labels := makeLabels(record.owner, currentProfile)
 		shuffleCount.With(labels).Inc()
 		shufflesPerReplica.With(labels).Add(record.perReplica)
+
+		set := attribute.NewSet(attribute.String("owner", record.owner), attribute.String("profile", currentProfile))
+		otelShuffleCount.Add(ctx, 1, metric.WithAttributeSet(set))
+		otelShufflesPerReplica.Add(ctx, record.perReplica, metric.WithAttributeSet(set))
 	}
 	return nil
 }

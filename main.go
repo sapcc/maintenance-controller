@@ -26,6 +26,11 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -44,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/go-logr/logr"
 	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/constants"
@@ -119,7 +125,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	metrics.RegisterMaintenanceMetrics()
+	ctx := ctrl.SetupSignalHandler()
+	otelShutdown, err := setupOtel(ctx, ctrl.Log.WithName("otel"))
+	if err != nil {
+		setupLog.Error(err, "unable to setup open telemetry export")
+		os.Exit(1)
+	}
+	if err = metrics.RegisterMaintenanceMetrics(); err != nil {
+		setupLog.Error(err, "unable to setup metrics")
+		os.Exit(1)
+	}
 	setupChecks(mgr)
 	err = setupReconcilers(mgr, &reconcilerCfg)
 	if err != nil {
@@ -129,10 +144,11 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+	otelShutdown()
 	setupLog.Info("Received SIGTERM or SIGINT. See you later.")
 }
 
@@ -222,4 +238,38 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		}
 	}
 	return nil
+}
+
+func setupOtel(ctx context.Context, log logr.Logger) (func(), error) {
+	resource, err := resource.Merge(resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName("maintenance-controller"),
+			semconv.ServiceVersion("0.1.0"),
+		))
+	if err != nil {
+		return nil, err
+	}
+
+	metricExporter, err := otlpmetrichttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithResource(resource),
+		metric.WithReader(metric.NewPeriodicReader(
+			metricExporter,
+			metric.WithInterval(time.Minute),
+		)),
+	)
+	otel.SetMeterProvider(meterProvider)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(cause error) {
+		log.Error(cause, "encountered otel error")
+	}))
+	shutdown := func() {
+		if err := meterProvider.Shutdown(context.Background()); err != nil {
+			log.Error(err, "failed to shutdown open telemetry exporter")
+		}
+	}
+	return shutdown, nil
 }

@@ -171,7 +171,8 @@ var _ = BeforeSuite(func() {
 		})
 	Expect(err).To(Succeed())
 
-	metrics.RegisterMaintenanceMetrics()
+	err = metrics.RegisterMaintenanceMetrics()
+	Expect(err).To(Succeed())
 
 	nodeInfoCache = cache.NewNodeInfoCache()
 	err = (&NodeReconciler{
