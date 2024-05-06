@@ -1,5 +1,5 @@
 # Maintenance Controller
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/sapcc/maintenance-controller/test_workflow.yaml?branch=master)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/sapcc/maintenance-controller/ci.yaml?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/sapcc/maintenance-controller/badge.svg)](https://coveralls.io/github/sapcc/maintenance-controller)
 ![Docker Pulls](https://img.shields.io/docker/pulls/sapcc/maintenance-controller)
 
