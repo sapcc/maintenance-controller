@@ -27,7 +27,10 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
@@ -58,6 +61,7 @@ import (
 	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/kubernikus"
 	"github.com/sapcc/maintenance-controller/metrics"
+	"github.com/sapcc/maintenance-controller/otelr"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -102,7 +106,14 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctx := ctrl.SetupSignalHandler()
+	zaplog := zap.New(zap.UseFlagOptions(&opts))
+	otelShutdown, err := setupOtel(ctx, zaplog.GetSink(), zaplog.WithName("otel"))
+	if err != nil {
+		setupLog.Error(err, "unable to setup open telemetry metric export")
+		os.Exit(1)
+	}
+
 	restConfig := getKubeconfigOrDie(kubecontext)
 	setupLog.Info("Loaded kubeconfig", "context", kubecontext, "host", restConfig.Host)
 
@@ -125,12 +136,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := ctrl.SetupSignalHandler()
-	otelShutdown, err := setupOtel(ctx, ctrl.Log.WithName("otel"))
-	if err != nil {
-		setupLog.Error(err, "unable to setup open telemetry export")
-		os.Exit(1)
-	}
 	if err = metrics.RegisterMaintenanceMetrics(); err != nil {
 		setupLog.Error(err, "unable to setup metrics")
 		os.Exit(1)
@@ -240,7 +245,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 	return nil
 }
 
-func setupOtel(ctx context.Context, log logr.Logger) (func(), error) {
+func setupOtel(ctx context.Context, baseSink logr.LogSink, logger logr.Logger) (func(), error) {
 	resource, err := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL,
 			semconv.ServiceName("maintenance-controller"),
@@ -263,12 +268,29 @@ func setupOtel(ctx context.Context, log logr.Logger) (func(), error) {
 		)),
 	)
 	otel.SetMeterProvider(meterProvider)
+
+	logExporter, err := otlploghttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+	logProvider := log.NewLoggerProvider(
+		log.WithProcessor(log.NewSimpleProcessor(logExporter)),
+		log.WithResource(resource),
+	)
+	global.SetLoggerProvider(logProvider)
+
+	otelSink := otelr.NewOtelSink(global.Logger("maintenance-controller"))
+	ctrl.SetLogger(logr.New(otelr.NewMultiSink([]logr.LogSink{baseSink, otelSink})))
+
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(cause error) {
-		log.Error(cause, "encountered otel error")
+		logger.Error(cause, "encountered otel error")
 	}))
 	shutdown := func() {
 		if err := meterProvider.Shutdown(context.Background()); err != nil {
-			log.Error(err, "failed to shutdown open telemetry exporter")
+			logger.Error(err, "failed to shutdown open telemetry metrics exporter")
+		}
+		if err := logProvider.Shutdown(context.Background()); err != nil {
+			logger.Error(err, "failed to shutdown open telemetry log exporter")
 		}
 	}
 	return shutdown, nil
