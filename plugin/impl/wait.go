@@ -121,8 +121,8 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) p
 			// So if params.LastTransition and now are on the same day
 			// sub will be greater then since => sub becomes negative.
 			// In the end we compare against a positive duration, so this is fine.
-			hour, min, sec := params.LastTransition.Clock()
-			sub = day - time.Duration(hour)*time.Hour - time.Duration(min)*time.Minute - time.Duration(sec)*time.Second
+			hour, minute, sec := params.LastTransition.Clock()
+			sub = day - time.Duration(hour)*time.Hour - time.Duration(minute)*time.Minute - time.Duration(sec)*time.Second
 		}
 		// subtract since and move to the next day
 		since -= sub
@@ -131,8 +131,8 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) p
 	// if now is an excluded day and we have not accounted for it already,
 	// the time from 00:00:00 to now has to be subtracted.
 	if !isSameDay(params.LastTransition, now) && we.isExcluded(now.Weekday()) {
-		hour, min, sec := now.Clock()
-		sub := time.Duration(hour)*time.Hour + time.Duration(min)*time.Minute + time.Duration(sec)*time.Second
+		hour, minute, sec := now.Clock()
+		sub := time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute + time.Duration(sec)*time.Second
 		since -= sub
 	}
 	if since > we.Duration {
