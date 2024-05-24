@@ -6,10 +6,10 @@ require (
 	github.com/PaesslerAG/gval v1.2.2
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
-	github.com/onsi/ginkgo/v2 v2.17.3
+	github.com/onsi/ginkgo/v2 v2.18.0
 	github.com/onsi/gomega v1.33.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.53.0
