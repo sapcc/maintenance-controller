@@ -35,6 +35,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -57,6 +61,7 @@ type Server struct {
 	Client        client.Client
 	counter       int
 	shutdown      chan struct{}
+	tracer        trace.Tracer
 }
 
 func (s *Server) NeedLeaderElection() bool {
@@ -68,40 +73,62 @@ func (s *Server) Done() chan struct{} {
 	return s.shutdown
 }
 
+type metricsHandler struct {
+	counter     *int
+	promHandler http.Handler
+}
+
+func (m *metricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	*m.counter++
+	m.promHandler.ServeHTTP(w, r)
+}
+
+type infoHandler struct {
+	server *Server
+}
+
+func (i *infoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	elected := false
+	select {
+	case _, ok := <-i.server.Elected:
+		elected = !ok
+		break
+	default:
+	}
+	if elected {
+		i.server.serveInfo(w)
+	} else {
+		ctx, span := i.server.tracer.Start(r.Context(), "fetch info from leader")
+		defer span.End()
+		i.server.fetchInfo(ctx, w)
+	}
+}
+
 func (s *Server) Start(ctx context.Context) error {
+	s.tracer = otel.GetTracerProvider().Tracer("maintenance-controller")
 	s.shutdown = make(chan struct{})
 	listener, err := net.Listen("tcp", s.Address)
 	if err != nil {
 		return err
 	}
-	handler := promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{
-		ErrorHandling: promhttp.HTTPErrorOnError,
-	})
+	metricsHandler := &metricsHandler{
+		counter: &s.counter,
+		promHandler: promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{
+			ErrorHandling: promhttp.HTTPErrorOnError,
+		}),
+	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		s.counter++
-		handler.ServeHTTP(w, r)
-	})
-	mux.HandleFunc("/api/v1/info", func(w http.ResponseWriter, r *http.Request) {
-		elected := false
-		select {
-		case _, ok := <-s.Elected:
-			elected = !ok
-			break
-		default:
-		}
-		if elected {
-			s.serveInfo(w)
-		} else {
-			s.fetchInfo(w)
-		}
-	})
+	mux.Handle("/metrics", otelhttp.NewHandler(metricsHandler, "get metrics"))
+	infoHandler := &infoHandler{
+		server: s,
+	}
+	mux.Handle("/api/v1/info", otelhttp.NewHandler(infoHandler, "get info"))
 	path := s.StaticPath
 	if path == "" {
 		path = "static"
 	}
 	static := http.FileServer(http.Dir(path))
-	mux.Handle("/static/", http.StripPrefix("/static", static))
+	mux.Handle("/static/", otelhttp.NewHandler(http.StripPrefix("/static", static), "get static"))
 	mux.Handle("/", http.RedirectHandler("/static", http.StatusMovedPermanently))
 	// values copied over from controller-runtime
 	server := &http.Server{
@@ -135,7 +162,11 @@ func (s *Server) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) writeError(err error, w http.ResponseWriter) {
+func (s *Server) writeError(err error, w http.ResponseWriter, span trace.Span) {
+	if span != nil {
+		span.SetStatus(codes.Error, "request failed")
+		span.RecordError(err)
+	}
 	jsonBytes := []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
 	_, err = w.Write(jsonBytes)
 	if err != nil {
@@ -146,7 +177,7 @@ func (s *Server) writeError(err error, w http.ResponseWriter) {
 func (s *Server) serveInfo(w http.ResponseWriter) {
 	jsonBytes, err := s.NodeInfoCache.JSON()
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, nil)
 		return
 	}
 	_, err = w.Write(jsonBytes)
@@ -155,23 +186,24 @@ func (s *Server) serveInfo(w http.ResponseWriter) {
 	}
 }
 
-func (s *Server) fetchInfo(w http.ResponseWriter) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+func (s *Server) fetchInfo(ctx context.Context, w http.ResponseWriter) {
+	span := trace.SpanFromContext(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	namespace, err := s.getNamespace()
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	var lease coordinationv1.Lease
 	leaseName := types.NamespacedName{Namespace: namespace, Name: constants.LeaderElectionID}
 	err = s.Client.Get(ctx, leaseName, &lease)
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	if lease.Spec.HolderIdentity == nil {
-		s.writeError(errors.New("no maintenance-controller is leading"), w)
+		s.writeError(errors.New("no maintenance-controller is leading"), w, span)
 		return
 	}
 	holder := *lease.Spec.HolderIdentity
@@ -179,29 +211,29 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 	var pod corev1.Pod
 	err = s.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: leader}, &pod)
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	addr := net.JoinHostPort(pod.Status.PodIP, "8080")
 	url := fmt.Sprintf("http://%s/api/v1/info", addr)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	_, err = io.Copy(w, res.Body)
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 	err = res.Body.Close()
 	if err != nil {
-		s.writeError(err, w)
+		s.writeError(err, w, span)
 		return
 	}
 }

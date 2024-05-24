@@ -24,18 +24,22 @@ import (
 	"os"
 	"time"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
+
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -255,6 +259,18 @@ func setupOtel(ctx context.Context, baseSink logr.LogSink, logger logr.Logger) (
 		return nil, err
 	}
 
+	traceExporter, err := otlptracehttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tracerProvider := trace.NewTracerProvider(
+		trace.WithBatcher(traceExporter),
+		trace.WithResource(resource),
+	)
+
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
 	metricExporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		return nil, err
@@ -286,6 +302,9 @@ func setupOtel(ctx context.Context, baseSink logr.LogSink, logger logr.Logger) (
 		logger.Error(cause, "encountered otel error")
 	}))
 	shutdown := func() {
+		if err := tracerProvider.Shutdown(context.Background()); err != nil {
+			logger.Error(err, "failed to shutdown open telemetry trace exporter")
+		}
 		if err := meterProvider.Shutdown(context.Background()); err != nil {
 			logger.Error(err, "failed to shutdown open telemetry metrics exporter")
 		}
