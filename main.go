@@ -28,6 +28,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -163,6 +164,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 	nodeInfoCache := cache.NewNodeInfoCache()
 	if err := (&controllers.NodeReconciler{
 		Client:        mgr.GetClient(),
+		Clientset:     kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 		Log:           ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:        mgr.GetScheme(),
 		Recorder:      mgr.GetEventRecorderFor("maintenance"),

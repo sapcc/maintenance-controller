@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -118,12 +119,15 @@ profiles:
       next: in-maintenance
 `
 
-var cfg *rest.Config
-var k8sClient client.Client
-var k8sManager ctrl.Manager
-var testEnv *envtest.Environment
-var stopController context.CancelFunc
-var nodeInfoCache cache.NodeInfoCache
+var (
+	cfg            *rest.Config
+	k8sClient      client.Client
+	k8sClientset   kubernetes.Interface
+	k8sManager     ctrl.Manager
+	testEnv        *envtest.Environment
+	stopController context.CancelFunc
+	nodeInfoCache  cache.NodeInfoCache
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -191,8 +195,12 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
+	k8sClientset, err = kubernetes.NewForConfig(k8sManager.GetConfig())
+	Expect(err).To(Succeed())
+	Expect(k8sClientset).ToNot(BeNil())
+
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).To(Succeed())
 	Expect(k8sClient).ToNot(BeNil())
 
 	err = os.MkdirAll("./config", 0700)

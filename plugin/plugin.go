@@ -31,6 +31,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -96,6 +97,7 @@ type Parameters struct {
 	// whether to log failing checks, notifications, ...
 	LogDetails     bool
 	Client         client.Client
+	Clientset      kubernetes.Interface
 	Ctx            context.Context //nolint: containedctx
 	Log            logr.Logger
 	Recorder       record.EventRecorder

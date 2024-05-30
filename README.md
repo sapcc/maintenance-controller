@@ -336,10 +336,18 @@ config:
   value: the value to set, optional
   remove: boolean value, if true the label is removed, if false the label is added or changed, optional
 ```
+__eviction:__ Cordons, uncordons or drains a node
+```yaml
+config:
+  action: one of "cordon", "uncordon" or "drain", required
+  deletionTimeout: how long to wait for pod removal to succeed during drain, optional
+  evictionTimeout: how long to retry creation of pod evictions for drain, optional
+```
 
 ## Additional integrations
 - Support for [VMware ESX maintenances](esx/README.md)
 - Support for [Kubernikus](kubernikus/README.md)
+- Support for [Cluster-API](https://github.com/sapcc/runtime-extension-maintenance-controller)
 - The maintenance controller exports a bunch of prometheus metrics, but especially
   - `maintenance_controller_shuffle_count`: Counts pods in DaemonSets, Deployments and StatefulSets, that were likely shuffled by a node send into maintenance
   - `maintenance_controller_shuffles_per_replica`: Count of pods in DaemonSets, Deployments and StatefulSets, that were likely shuffled by a node send into maintenance, divided by the replica count when the event occurred

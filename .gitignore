@@ -21,5 +21,7 @@ maintenance_config.yaml
 # IDEs
 .vscode
 
+.DS_Store
+
 # Dev files
 static/api/v1/info

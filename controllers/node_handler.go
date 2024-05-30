@@ -85,8 +85,8 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			logDetails = true
 		}
 		// build plugin arguments
-		pluginParams := plugin.Parameters{Client: params.client, Ctx: ctx, Log: params.log,
-			Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),
+		pluginParams := plugin.Parameters{Client: params.client, Clientset: params.clientset, Ctx: ctx,
+			Log: params.log, Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),
 			State: string(ps.State), LastTransition: data.Profiles[ps.Profile.Name].Transition,
 			Recorder: params.recorder, LogDetails: logDetails}
 

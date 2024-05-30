@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/api"
@@ -1115,6 +1116,88 @@ var _ = Describe("The AnyLabel plugin", func() {
 		result, err := anyLabel.Check(plugin.Parameters{Ctx: context.Background(), Client: k8sClient})
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeFalse())
+	})
+
+})
+
+var _ = Describe("The eviction plugin", func() {
+
+	var node *corev1.Node
+	var pod *corev1.Pod
+
+	BeforeEach(func() {
+		node = &corev1.Node{}
+		node.Name = "evict-node"
+		Expect(k8sClient.Create(context.Background(), node)).To(Succeed())
+
+		pod = &corev1.Pod{}
+		pod.Name = "evict-pod"
+		pod.Namespace = metav1.NamespaceDefault
+		pod.Spec.NodeName = node.Name
+		pod.Spec.Containers = []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		Expect(k8sClient.Delete(
+			context.Background(),
+			pod,
+			&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
+		)).To(Succeed())
+		Eventually(func(g Gomega) []corev1.Pod {
+			pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(context.Background(), metav1.ListOptions{})
+			g.Expect(err).To(Succeed())
+			return pods.Items
+		}).Should(BeEmpty())
+		Expect(k8sClient.Delete(context.Background(), node)).To(Succeed())
+	})
+
+	It("should mark a node as unschedulable with cordon action", func(ctx SpecContext) {
+		eviction := impl.Eviction{Action: impl.Cordon}
+		err := eviction.Trigger(plugin.Parameters{Ctx: ctx, Client: k8sClient, Node: node})
+		Expect(err).To(Succeed())
+		Eventually(func(g Gomega) bool {
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
+			g.Expect(err).To(Succeed())
+			return node.Spec.Unschedulable
+		}).Should(BeTrue())
+	})
+
+	It("should mark a node as schedulable with uncordon action", func(ctx SpecContext) {
+		originalNode := node.DeepCopy()
+		node.Spec.Unschedulable = true
+		Expect(k8sClient.Patch(ctx, node, client.MergeFrom(originalNode))).To(Succeed())
+
+		eviction := impl.Eviction{Action: impl.Uncordon}
+		err := eviction.Trigger(plugin.Parameters{Ctx: ctx, Client: k8sClient, Node: node})
+		Expect(err).To(Succeed())
+		Eventually(func(g Gomega) bool {
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
+			g.Expect(err).To(Succeed())
+			return node.Spec.Unschedulable
+		}).Should(BeFalse())
+	})
+
+	It("should evict pods with the drain action", func(ctx SpecContext) {
+		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute}
+		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
+		err := eviction.Trigger(params)
+		Expect(err).To(HaveOccurred()) // awaiting the pod deletions fails because there is no kubelet running
+		Eventually(func(g Gomega) bool {
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
+			g.Expect(err).To(Succeed())
+			return node.Spec.Unschedulable
+		}).Should(BeTrue())
+		Eventually(func(g Gomega) *metav1.Time {
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(pod), pod)
+			g.Expect(err).To(Succeed())
+			return pod.DeletionTimestamp
+		}).ShouldNot(BeNil())
 	})
 
 })

@@ -72,9 +72,11 @@ func EnsureSchedulable(ctx context.Context, k8sClient client.Client, node *corev
 }
 
 type DrainParameters struct {
+	// how long to wait for pods to vanish
 	AwaitDeletion WaitParameters
-	Eviction      WaitParameters
-	Client        client.Client
+	// how long to wait for eviction creation to succeed
+	Eviction WaitParameters
+	Client   client.Client
 	// for eviction API as that is not callable from client.Client
 	Clientset kubernetes.Interface
 	// when set to true and eviction creation fails

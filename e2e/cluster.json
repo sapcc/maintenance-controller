@@ -2,10 +2,11 @@
   "name": "maintenance-con-e2e",
   "spec": {
     "openstack": {
-      "routerID": "c7a8528b-0c86-4cb7-b6e2-c258d60bed47"
+      "routerID": "c7a8528b-0c86-4cb7-b6e2-c258d60bed47",
+      "lbSubnetID": "024209a3-9134-4cd0-841d-9429339f1ae7"
     },
     "backup": "off",
-    "version": "1.28.8",
+    "version": "1.28.10",
     "serviceCIDR": "198.18.192.0/18",
     "clusterCIDR": "100.100.0.0/17",
     "nodePools": [

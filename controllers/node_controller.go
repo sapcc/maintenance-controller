@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +48,7 @@ import (
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
+	Clientset     *kubernetes.Clientset
 	Log           logr.Logger
 	Scheme        *runtime.Scheme
 	Recorder      record.EventRecorder
@@ -55,6 +57,7 @@ type NodeReconciler struct {
 
 type reconcileParameters struct {
 	client        client.Client
+	clientset     kubernetes.Interface
 	config        *Config
 	log           logr.Logger
 	recorder      record.EventRecorder
@@ -127,6 +130,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *NodeReconciler) makeParams(config *Config, node *corev1.Node) reconcileParameters {
 	return reconcileParameters{
 		client:        r.Client,
+		clientset:     r.Clientset,
 		config:        config,
 		log:           r.Log.WithValues("node", types.NamespacedName{Name: node.Name, Namespace: node.Namespace}),
 		node:          node,

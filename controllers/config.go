@@ -169,31 +169,33 @@ func loadPluginChains(config StateDescriptor, registry *plugin.Registry) (state.
 
 // addPluginsToRegistry adds known plugins to the registry.
 func addPluginsToRegistry(registry *plugin.Registry) {
-	addChecker := func(checker plugin.Checker) {
+	checkers := []plugin.Checker{
+		&impl.Affinity{},
+		&impl.AnyLabel{},
+		&impl.ClusterSemver{},
+		&impl.Condition{},
+		&impl.HasAnnotation{},
+		&impl.HasLabel{},
+		&impl.KubernikusCount{},
+		&impl.MaxMaintenance{},
+		&impl.NodeCount{},
+		&impl.PrometheusInstant{},
+		&impl.Stagger{},
+		&impl.TimeWindow{},
+		&impl.Wait{},
+		&impl.WaitExclude{},
+	}
+	for _, checker := range checkers {
 		registry.CheckPlugins[checker.ID()] = checker
 	}
-	addChecker(&impl.Affinity{})
-	addChecker(&impl.AnyLabel{})
-	addChecker(&impl.ClusterSemver{})
-	addChecker(&impl.Condition{})
-	addChecker(&impl.HasAnnotation{})
-	addChecker(&impl.HasLabel{})
-	addChecker(&impl.KubernikusCount{})
-	addChecker(&impl.MaxMaintenance{})
-	addChecker(&impl.NodeCount{})
-	addChecker(&impl.PrometheusInstant{})
-	addChecker(&impl.Stagger{})
-	addChecker(&impl.TimeWindow{})
-	addChecker(&impl.Wait{})
-	addChecker(&impl.WaitExclude{})
 
-	addNotifier := func(notifier plugin.Notifier) {
+	notifiers := []plugin.Notifier{&impl.Mail{}, &impl.SlackThread{}, &impl.SlackWebhook{}}
+	for _, notifier := range notifiers {
 		registry.NotificationPlugins[notifier.ID()] = notifier
 	}
-	addNotifier(&impl.Mail{})
-	addNotifier(&impl.SlackWebhook{})
-	addNotifier(&impl.SlackThread{})
 
-	registry.TriggerPlugins["alterAnnotation"] = &impl.AlterAnnotation{}
-	registry.TriggerPlugins["alterLabel"] = &impl.AlterLabel{}
+	triggers := []plugin.Trigger{&impl.AlterAnnotation{}, &impl.AlterLabel{}, &impl.Eviction{}}
+	for _, trigger := range triggers {
+		registry.TriggerPlugins[trigger.ID()] = trigger
+	}
 }
