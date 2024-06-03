@@ -139,7 +139,6 @@ func GetPodsForDrain(ctx context.Context, k8sClient client.Client, nodeName stri
 	if err != nil {
 		return nil, err
 	}
-	// filter
 	filtered := make([]corev1.Pod, 0)
 	for _, pod := range podList.Items {
 		// skip mirror pods
