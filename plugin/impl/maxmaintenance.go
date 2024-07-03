@@ -20,6 +20,7 @@
 package impl
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -84,9 +85,11 @@ func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.
 	if m.Profile != "" {
 		nodes = m.filterProfileName(nodes)
 	}
+	info := map[string]any{"scope": "all nodes in the cluster"}
 	if m.GroupLabel != "" {
 		if groupValue, ok := params.Node.Labels[m.GroupLabel]; ok {
 			nodes = m.filterGroupLabel(nodes, m.GroupLabel, groupValue)
+			info["scope"] = fmt.Sprintf("nodes matching the %s=%s label selector", m.GroupLabel, groupValue)
 		}
 	}
 	if int64(m.SkipAfter) != 0 {
@@ -96,7 +99,8 @@ func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.
 		}
 		nodes = filtered
 	}
-	info := map[string]any{"maintained": len(nodes), "max": m.MaxNodes}
+	info["maintained"] = len(nodes)
+	info["max"] = m.MaxNodes
 	if len(nodes) >= m.MaxNodes {
 		return plugin.Failed(info), nil
 	}

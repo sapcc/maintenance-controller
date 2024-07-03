@@ -1,6 +1,6 @@
 # Configuration
 
-For the refered terms, see the [concepts](concepts.md) documentation.
+For the referred terms, see the [concepts](concepts.md) documentation.
 
 ## Configuration file
 The maintenance-controller is configured using a single YAML file.

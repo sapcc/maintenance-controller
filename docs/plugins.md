@@ -56,6 +56,8 @@ config:
 ### maxMaintenance
 Checks that less than the specified amount of nodes are in the in-maintenance state.
 Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
+In the default configuration all nodes in the cluster are considered.
+If only a certain group of nodes is relevant consider setting the `groupLabel` option.
 ```yaml
 config:
   max: the limit of nodes that are in-maintenance, required
