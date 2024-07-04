@@ -57,13 +57,19 @@ config:
 Checks that less than the specified amount of nodes are in the in-maintenance state.
 Due to optimistic concurrency control of the API-Server this check might return the wrong result if more than one node is reconciled at any given time.
 In the default configuration all nodes in the cluster are considered.
-If only a certain group of nodes is relevant consider setting the `groupLabel` option.
+If only a certain group of nodes is relevant consider setting the `groupBy` option.
 ```yaml
 config:
   max: the limit of nodes that are in-maintenance, required
   profile: if set only consider nodes which do have the specified profile, optional
   skipAfter: if set only considers nodes, for which the time since the last transition does not exceed the specified duration, optional
-  groupLabel: if set only considers nodes, which have the same value for the specified label, optional
+  # if set only considers nodes, which have the same value as the current reconciled node for the specified labels, optional
+  groupBy:
+  - firstLabel
+  - secondLabel
+  # deprecated, label will be appended to groupBy, if not already included
+  # if set only considers nodes, which have the same value for the specified label, optional
+  groupLabel: singleLabel
 ```
 
 ### prometheusInstant

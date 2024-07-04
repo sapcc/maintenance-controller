@@ -21,6 +21,8 @@ package impl
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -36,10 +38,10 @@ import (
 // MaxMaintenance is a check plugin that checks whether the amount
 // of nodes with the in-maintenance state does not exceed the specified amount.
 type MaxMaintenance struct {
-	MaxNodes   int
-	Profile    string
-	GroupLabel string
-	SkipAfter  time.Duration
+	MaxNodes  int
+	Profile   string
+	GroupBy   []string
+	SkipAfter time.Duration
 }
 
 // New creates a new MaxMaintenance instance with the given config.
@@ -47,17 +49,25 @@ func (m *MaxMaintenance) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
 		Max        int           `config:"max" validate:"required"`
 		Profile    string        `config:"profile"`
-		GroupLabel string        `config:"groupLabel"`
+		GroupLabel string        `config:"groupLabel"` // deprecated
+		GroupBy    []string      `config:"groupBy"`
 		SkipAfter  time.Duration `config:"skipAfter"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
+	groupBy := conf.GroupBy
+	if groupBy == nil {
+		groupBy = make([]string, 0)
+	}
+	if conf.GroupLabel != "" && !slices.Contains(groupBy, conf.GroupLabel) {
+		groupBy = append(groupBy, conf.GroupLabel)
+	}
 	return &MaxMaintenance{
-		MaxNodes:   conf.Max,
-		Profile:    conf.Profile,
-		GroupLabel: conf.GroupLabel,
-		SkipAfter:  conf.SkipAfter,
+		MaxNodes:  conf.Max,
+		Profile:   conf.Profile,
+		GroupBy:   groupBy,
+		SkipAfter: conf.SkipAfter,
 	}, nil
 }
 
@@ -86,11 +96,15 @@ func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.
 		nodes = m.filterProfileName(nodes)
 	}
 	info := map[string]any{"scope": "all nodes in the cluster"}
-	if m.GroupLabel != "" {
-		if groupValue, ok := params.Node.Labels[m.GroupLabel]; ok {
-			nodes = m.filterGroupLabel(nodes, m.GroupLabel, groupValue)
-			info["scope"] = fmt.Sprintf("nodes matching the %s=%s label selector", m.GroupLabel, groupValue)
+	consideredLabels := make([]string, 0)
+	for _, groupLabel := range m.GroupBy {
+		if groupValue, ok := params.Node.Labels[groupLabel]; ok {
+			nodes = m.filterGroupLabel(nodes, groupLabel, groupValue)
+			consideredLabels = append(consideredLabels, fmt.Sprintf("%s=%s", groupLabel, groupValue))
 		}
+	}
+	if len(consideredLabels) > 0 {
+		info["scope"] = fmt.Sprintf("nodes matching the %s label selector", strings.Join(consideredLabels, ","))
 	}
 	if int64(m.SkipAfter) != 0 {
 		filtered, err := m.filterRecentTransition(nodes, params.Log)

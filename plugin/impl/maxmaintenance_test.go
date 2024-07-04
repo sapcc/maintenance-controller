@@ -44,7 +44,20 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		}
 	}
 
-	It("can parse its configuration", func() {
+	It("can parse a current configuration", func() {
+		configStr := "max: 481\ngroupBy: [\"firstLabel\", \"secondLabel\"]"
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
+		Expect(err).To(Succeed())
+		var base MaxMaintenance
+		plugin, err := base.New(&config)
+		Expect(err).To(Succeed())
+		maxMaintenance, ok := plugin.(*MaxMaintenance)
+		Expect(ok).To(BeTrue())
+		Expect(maxMaintenance.MaxNodes).To(Equal(481))
+		Expect(maxMaintenance.GroupBy).To(HaveExactElements("firstLabel", "secondLabel"))
+	})
+
+	It("can parse a legacy configuration", func() {
 		configStr := "max: 296\nprofile: kappa\nskipAfter: 20s\ngroupLabel: " + groupLabel
 		config, err := ucfgwrap.FromYAML([]byte(configStr))
 		Expect(err).To(Succeed())
@@ -56,7 +69,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		Expect(maxMaintenance.MaxNodes).To(Equal(296))
 		Expect(maxMaintenance.Profile).To(Equal("kappa"))
 		Expect(maxMaintenance.SkipAfter).To(Equal(20 * time.Second))
-		Expect(maxMaintenance.GroupLabel).To(Equal(groupLabel))
+		Expect(maxMaintenance.GroupBy).To(HaveExactElements(groupLabel))
 	})
 
 	It("passes if the returned nodes are less the max value", func() {
@@ -141,7 +154,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 
 	})
 
-	Context("with groupLabel", func() {
+	Context("with groupBy", func() {
 
 		makeNodes := func(group1, group2 string) []corev1.Node {
 			var node1 corev1.Node
@@ -152,7 +165,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		}
 
 		It("blocks when nodes within the same group are in-maintenance", func() {
-			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			plugin := MaxMaintenance{MaxNodes: 1, GroupBy: []string{groupLabel}}
 			nodes := makeNodes("a", "a")
 			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
 			Expect(err).To(Succeed())
@@ -160,7 +173,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		})
 
 		It("passes when nodes within the same group are out of maintenance", func() {
-			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			plugin := MaxMaintenance{MaxNodes: 1, GroupBy: []string{groupLabel}}
 			nodes := makeNodes("a", "a")
 			result, err := plugin.checkInternal(makeParams(&nodes[0]), []corev1.Node{{}})
 			Expect(err).To(Succeed())
@@ -168,7 +181,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		})
 
 		It("passes when nodes with the other groups are in-maintenance", func() {
-			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			plugin := MaxMaintenance{MaxNodes: 1, GroupBy: []string{groupLabel}}
 			nodes := makeNodes("b", "c")
 			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
 			Expect(err).To(Succeed())
@@ -176,7 +189,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		})
 
 		It("matches against the whole cluster when the label value is empty", func() {
-			plugin := MaxMaintenance{MaxNodes: 1, GroupLabel: groupLabel}
+			plugin := MaxMaintenance{MaxNodes: 1, GroupBy: []string{groupLabel}}
 			nodes := makeNodes("", "d")
 			result, err := plugin.checkInternal(makeParams(&nodes[0]), nodes[1:])
 			Expect(err).To(Succeed())
