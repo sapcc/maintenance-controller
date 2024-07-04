@@ -28,7 +28,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-const day = 24 * time.Hour
+const day time.Duration = 24 * time.Hour
 
 type Wait struct {
 	Duration time.Duration
@@ -56,7 +56,8 @@ func (w *Wait) Check(params plugin.Parameters) (plugin.CheckResult, error) {
 	if time.Since(params.LastTransition) > w.Duration {
 		return plugin.Passed(nil), nil
 	}
-	return plugin.Failed(map[string]any{"available_in": w.Duration - time.Since(params.LastTransition)}), nil
+	remaining := w.Duration - time.Since(params.LastTransition)
+	return plugin.Failed(map[string]any{"remaining_seconds": remaining.Seconds()}), nil
 }
 
 func (w *Wait) OnTransition(params plugin.Parameters) error {
@@ -138,7 +139,8 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) p
 	if since > we.Duration {
 		return plugin.Passed(nil)
 	}
-	return plugin.Failed(map[string]any{"available_in": we.Duration - since})
+	remaining := we.Duration - since
+	return plugin.Failed(map[string]any{"remaining_seconds": remaining.Seconds()})
 }
 
 func (we *WaitExclude) isExcluded(weekday time.Weekday) bool {
