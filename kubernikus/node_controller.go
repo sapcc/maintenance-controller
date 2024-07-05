@@ -27,10 +27,10 @@ import (
 	semver "github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -214,11 +214,10 @@ func deleteVM(ctx context.Context, nodeName string) error {
 			ProjectID:      osConf.ProjectID,
 		},
 	}
-	provider, err := clientconfig.AuthenticatedClient(opts)
+	provider, err := clientconfig.AuthenticatedClient(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("failed OpenStack authentification: %w", err)
 	}
-	provider.Context = ctx
 	compute, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
 		Region: osConf.Region,
 	})
@@ -228,7 +227,7 @@ func deleteVM(ctx context.Context, nodeName string) error {
 	list, err := servers.List(compute, servers.ListOpts{
 		TenantID: osConf.ProjectID,
 		Name:     nodeName,
-	}).AllPages()
+	}).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list servers: %w", err)
 	}
@@ -243,7 +242,7 @@ func deleteVM(ctx context.Context, nodeName string) error {
 	if len(serverList) != 1 {
 		return fmt.Errorf("expected to list 1 or 0 servers, but got %v", len(serverList))
 	}
-	result := servers.Delete(compute, serverList[0].ID)
+	result := servers.Delete(ctx, compute, serverList[0].ID)
 	if result.ExtractErr() != nil {
 		return fmt.Errorf("failed to delete VM: %w body: %v", result.ExtractErr(), result.Body)
 	}
