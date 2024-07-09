@@ -81,7 +81,7 @@ var _ = Describe("ShouldShutdown", func() {
 
 var _ = Describe("GetPodsForDeletion", func() {
 
-	makePod := func(podName, nodeName string, custom ...func(*corev1.Pod)) error {
+	makePod := func(ctx context.Context, podName, nodeName string, custom ...func(*corev1.Pod)) error {
 		var pod corev1.Pod
 		pod.Namespace = "default"
 		pod.Name = podName
@@ -95,18 +95,18 @@ var _ = Describe("GetPodsForDeletion", func() {
 		for _, cust := range custom {
 			cust(&pod)
 		}
-		return k8sClient.Create(context.Background(), &pod)
+		return k8sClient.Create(ctx, &pod)
 	}
 
-	AfterEach(func() {
+	AfterEach(func(ctx context.Context) {
 		var podList corev1.PodList
-		Expect(k8sClient.List(context.Background(), &podList)).To(Succeed())
+		Expect(k8sClient.List(ctx, &podList)).To(Succeed())
 		var gracePeriod int64
 		for i := range podList.Items {
-			Expect(k8sClient.Delete(context.Background(), &podList.Items[i],
+			Expect(k8sClient.Delete(ctx, &podList.Items[i],
 				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
 		}
-		err := common.WaitForPodDeletions(context.Background(), k8sClient, podList.Items,
+		err := common.WaitForPodDeletions(ctx, k8sClient, podList.Items,
 			common.WaitParameters{
 				Period:  1 * time.Second,
 				Timeout: 4 * time.Second,
@@ -114,32 +114,32 @@ var _ = Describe("GetPodsForDeletion", func() {
 		Expect(err).To(Succeed())
 	})
 
-	It("filters for the correct node", func() {
-		Expect(makePod("firstpod", "firstnode")).To(Succeed())
-		Expect(makePod("secondpod", "secondnode")).To(Succeed())
-		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "firstnode")
+	It("filters for the correct node", func(ctx SpecContext) {
+		Expect(makePod(ctx, "firstpod", "firstnode")).To(Succeed())
+		Expect(makePod(ctx, "secondpod", "secondnode")).To(Succeed())
+		deletable, err := common.GetPodsForDrain(ctx, k8sClient, "firstnode")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(1))
 	})
 
-	It("filters DaemonSets", func() {
-		Expect(makePod("firstpod", "node")).To(Succeed())
-		Expect(makePod("secondpod", "node")).To(Succeed())
-		Expect(makePod("ds", "node", func(p *corev1.Pod) {
+	It("filters DaemonSets", func(ctx SpecContext) {
+		Expect(makePod(ctx, "firstpod", "node")).To(Succeed())
+		Expect(makePod(ctx, "secondpod", "node")).To(Succeed())
+		Expect(makePod(ctx, "ds", "node", func(p *corev1.Pod) {
 			p.OwnerReferences = []v1.OwnerReference{{Kind: "DaemonSet", APIVersion: "apps/v1", Name: "ds", UID: types.UID("ds")}}
 		})).To(Succeed())
-		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "node")
+		deletable, err := common.GetPodsForDrain(ctx, k8sClient, "node")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(2))
 	})
 
-	It("filters MirrorPods", func() {
-		Expect(makePod("firstpod", "node")).To(Succeed())
-		Expect(makePod("secondpod", "node")).To(Succeed())
-		Expect(makePod("mirror", "node", func(p *corev1.Pod) {
+	It("filters MirrorPods", func(ctx SpecContext) {
+		Expect(makePod(ctx, "firstpod", "node")).To(Succeed())
+		Expect(makePod(ctx, "secondpod", "node")).To(Succeed())
+		Expect(makePod(ctx, "mirror", "node", func(p *corev1.Pod) {
 			p.Annotations = map[string]string{corev1.MirrorPodAnnotationKey: constants.TrueStr}
 		})).To(Succeed())
-		deletable, err := common.GetPodsForDrain(context.Background(), k8sClient, "node")
+		deletable, err := common.GetPodsForDrain(ctx, k8sClient, "node")
 		Expect(err).To(Succeed())
 		Expect(deletable).To(HaveLen(2))
 	})
@@ -160,28 +160,28 @@ var _ = Describe("ensureVmOff", func() {
 		}
 	})
 
-	AfterEach(func() {
+	AfterEach(func(ctx SpecContext) {
 		// power on VM
-		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
+		client, err := vCenters.Client(ctx, vcServer.URL.Host)
 		Expect(err).To(Succeed())
 		mgr := view.NewManager(client.Client)
 		Expect(err).To(Succeed())
-		view, err := mgr.CreateContainerView(context.Background(),
+		view, err := mgr.CreateContainerView(ctx,
 			client.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		vm := object.NewVirtualMachine(client.Client, vms[0].Self)
-		task, err := vm.PowerOn(context.Background())
+		task, err := vm.PowerOn(ctx)
 		Expect(err).To(Succeed())
-		err = task.WaitEx(context.Background())
+		err = task.WaitEx(ctx)
 		Expect(err).To(Succeed())
 	})
 
-	It("should shutdown a VM", func() {
-		err := EnsureVMOff(context.Background(), ShutdownParams{
+	It("should shutdown a VM", func(ctx SpecContext) {
+		err := EnsureVMOff(ctx, ShutdownParams{
 			VCenters: vCenters,
 			Info: HostInfo{
 				AvailabilityZone: vcServer.URL.Host,
@@ -194,15 +194,15 @@ var _ = Describe("ensureVmOff", func() {
 		})
 		Expect(err).To(Succeed())
 
-		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
+		client, err := vCenters.Client(ctx, vcServer.URL.Host)
 		Expect(err).To(Succeed())
 		mgr := view.NewManager(client.Client)
 		Expect(err).To(Succeed())
-		view, err := mgr.CreateContainerView(context.Background(),
+		view, err := mgr.CreateContainerView(ctx,
 			client.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOff

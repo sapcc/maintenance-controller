@@ -20,7 +20,6 @@
 package esx
 
 import (
-	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -60,7 +59,7 @@ var _ = Describe("ShouldStart", func() {
 
 var _ = Describe("ensureVmOn", func() {
 
-	It("starts a VM", func() {
+	It("starts a VM", func(ctx SpecContext) {
 		vCenters := &VCenters{
 			Template: TemplateURL,
 			Credentials: map[string]Credential{
@@ -74,7 +73,7 @@ var _ = Describe("ensureVmOn", func() {
 			AvailabilityZone: vcServer.URL.Host,
 			Name:             HostSystemName,
 		}
-		err := EnsureVMOff(context.Background(), ShutdownParams{
+		err := EnsureVMOff(ctx, ShutdownParams{
 			VCenters: vCenters,
 			Info:     hostInfo,
 			NodeName: "firstvm",
@@ -83,18 +82,18 @@ var _ = Describe("ensureVmOn", func() {
 			Log:      GinkgoLogr,
 		})
 		Expect(err).To(Succeed())
-		err = ensureVMOn(context.Background(), vCenters, hostInfo, "firstvm")
+		err = ensureVMOn(ctx, vCenters, hostInfo, "firstvm")
 		Expect(err).To(Succeed())
 
-		client, err := vCenters.Client(context.Background(), vcServer.URL.Host)
+		client, err := vCenters.Client(ctx, vcServer.URL.Host)
 		Expect(err).To(Succeed())
 		mgr := view.NewManager(client.Client)
 		Expect(err).To(Succeed())
-		view, err := mgr.CreateContainerView(context.Background(),
+		view, err := mgr.CreateContainerView(ctx,
 			client.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 		Expect(err).To(Succeed())
 		var vms []mo.VirtualMachine
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn

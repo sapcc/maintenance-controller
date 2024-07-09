@@ -89,6 +89,7 @@ var testEnv *envtest.Environment
 var vCenter *simulator.Model
 var vcServer *simulator.Server
 var stopController context.CancelFunc
+var esxRef string
 
 func TestESX(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -142,10 +143,24 @@ var _ = BeforeSuite(func() {
 	view, err := mgr.CreateContainerView(context.Background(),
 		vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 	Expect(err).To(Succeed())
+	defer func() {
+		Expect(view.Destroy(context.Background())).To(Succeed())
+	}()
 	renameVM(view, "DC0_H0_VM0", "firstvm")
 	renameVM(view, "DC0_H0_VM1", "secondvm")
 	renameVM(view, "DC0_H1_VM0", "thirdvm")
 	renameVM(view, "DC0_H1_VM1", "fourthvm")
+
+	containerView, err := mgr.CreateContainerView(context.Background(), vcClient.ServiceContent.RootFolder, []string{"HostSystem"}, true)
+	Expect(err).To(Succeed())
+	var hss []mo.HostSystem
+	err = containerView.Retrieve(context.Background(), []string{"HostSystem"}, []string{"name"}, &hss)
+	Expect(err).To(Succeed())
+	for _, hs := range hss {
+		if hs.Name == ESXName {
+			esxRef = hs.Reference().Value
+		}
+	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

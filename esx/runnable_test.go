@@ -47,7 +47,7 @@ var _ = Describe("The ESX controller", func() {
 	var thirdNode *corev1.Node
 	var fourthNode *corev1.Node
 
-	makeNode := func(name, esx string, schedulable, withPods bool) (*corev1.Node, error) {
+	makeNode := func(ctx context.Context, name, esx string, schedulable, withPods bool) (*corev1.Node, error) {
 		node := &corev1.Node{}
 		node.Name = name
 		node.Namespace = DefaultNamespace
@@ -55,7 +55,7 @@ var _ = Describe("The ESX controller", func() {
 		node.Labels = make(map[string]string)
 		node.Labels[constants.HostLabelKey] = esx
 		node.Labels[constants.FailureDomainLabelKey] = "eu-nl-2a"
-		err := k8sClient.Create(context.Background(), node)
+		err := k8sClient.Create(ctx, node)
 		if err != nil {
 			return nil, err
 		}
@@ -76,62 +76,62 @@ var _ = Describe("The ESX controller", func() {
 		}
 		var gracePeriod int64
 		pod.Spec.TerminationGracePeriodSeconds = &gracePeriod
-		err = k8sClient.Create(context.Background(), pod)
+		err = k8sClient.Create(ctx, pod)
 		if err != nil {
 			return nil, err
 		}
 		return node, nil
 	}
 
-	BeforeEach(func() {
+	BeforeEach(func(ctx SpecContext) {
 		var err error
-		firstNode, err = makeNode("firstvm", ESXName, true, true)
+		firstNode, err = makeNode(ctx, "firstvm", ESXName, true, true)
 		Expect(err).To(Succeed())
-		secondNode, err = makeNode("secondvm", ESXName, true, true)
+		secondNode, err = makeNode(ctx, "secondvm", ESXName, true, true)
 		Expect(err).To(Succeed())
-		thirdNode, err = makeNode("thirdvm", "DC0_H1", true, false)
+		thirdNode, err = makeNode(ctx, "thirdvm", "DC0_H1", true, false)
 		Expect(err).To(Succeed())
-		fourthNode, err = makeNode("fourthvm", "DC0_H1", false, false)
+		fourthNode, err = makeNode(ctx, "fourthvm", "DC0_H1", false, false)
 		Expect(err).To(Succeed())
 	})
 
-	AfterEach(func() {
-		err := k8sClient.Delete(context.Background(), firstNode)
+	AfterEach(func(ctx SpecContext) {
+		err := k8sClient.Delete(ctx, firstNode)
 		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), secondNode)
+		err = k8sClient.Delete(ctx, secondNode)
 		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), thirdNode)
+		err = k8sClient.Delete(ctx, thirdNode)
 		Expect(err).To(Succeed())
-		err = k8sClient.Delete(context.Background(), fourthNode)
+		err = k8sClient.Delete(ctx, fourthNode)
 		Expect(err).To(Succeed())
 
 		var podList corev1.PodList
-		err = k8sClient.List(context.Background(), &podList)
+		err = k8sClient.List(ctx, &podList)
 		Expect(err).To(Succeed())
 		var gracePeriod int64
 		for i := range podList.Items {
-			err = k8sClient.Delete(context.Background(), &podList.Items[i],
+			err = k8sClient.Delete(ctx, &podList.Items[i],
 				&client.DeleteOptions{GracePeriodSeconds: &gracePeriod})
 			Expect(err).To(Succeed())
 		}
 
-		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+		vcClient, err := govmomi.NewClient(ctx, vcServer.URL, true)
 		Expect(err).To(Succeed())
 		// set host out of maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-20",
+			Value: esxRef,
 		})
-		task, err := host.ExitMaintenanceMode(context.Background(), 1000)
+		task, err := host.ExitMaintenanceMode(ctx, 1000)
 		Expect(err).To(Succeed())
-		err = task.WaitEx(context.Background())
+		err = task.WaitEx(ctx)
 		Expect(err).To(Succeed())
 	})
 
-	It("labels previously unlabeled nodes with maintenance state", func() {
+	It("labels previously unlabeled nodes with maintenance state", func(ctx SpecContext) {
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "firstvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
@@ -139,7 +139,7 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(NoMaintenance)))
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "secondvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
@@ -147,10 +147,10 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(NoMaintenance)))
 	})
 
-	It("labels previously unlabeled nodes with esx version", func() {
+	It("labels previously unlabeled nodes with esx version", func(ctx SpecContext) {
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "firstvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxVersionLabelKey]
@@ -158,7 +158,7 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal("8.0.2"))
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "secondvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxVersionLabelKey]
@@ -166,23 +166,23 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal("8.0.2"))
 	})
 
-	It("labels all nodes on a single EXS host in case of changes to the maintenance state", func() {
-		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+	It("labels all nodes on a single EXS host in case of changes to the maintenance state", func(ctx SpecContext) {
+		vcClient, err := govmomi.NewClient(ctx, vcServer.URL, true)
 		Expect(err).To(Succeed())
 
 		// set host in maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-20",
+			Value: esxRef,
 		})
-		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
+		task, err := host.EnterMaintenanceMode(ctx, 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
-		err = task.WaitEx(context.Background())
+		err = task.WaitEx(ctx)
 		Expect(err).To(Succeed())
 
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "firstvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "firstvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
@@ -190,7 +190,7 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(InMaintenance)))
 		Eventually(func(g Gomega) string {
 			var node corev1.Node
-			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: "secondvm"}, &node)
+			err := k8sClient.Get(ctx, client.ObjectKey{Name: "secondvm"}, &node)
 			g.Expect(err).To(Succeed())
 
 			val := node.Labels[constants.EsxMaintenanceLabelKey]
@@ -198,64 +198,70 @@ var _ = Describe("The ESX controller", func() {
 		}).Should(Equal(string(InMaintenance)))
 	})
 
-	fetchPowerState := func(vcClient *govmomi.Client) (vctypes.VirtualMachinePowerState, error) {
+	fetchPowerState := func(ctx context.Context, vcClient *govmomi.Client) (vctypes.VirtualMachinePowerState, error) {
 		mgr := view.NewManager(vcClient.Client)
-		view, err := mgr.CreateContainerView(context.Background(),
+		view, err := mgr.CreateContainerView(ctx,
 			vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 		if err != nil {
 			return "", err
 		}
 		var vms []mo.VirtualMachine
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "firstvm"})
 		if err != nil {
+			if err = view.Destroy(ctx); err != nil {
+				return "", err
+			}
 			return "", nil
+		}
+		if err = view.Destroy(ctx); err != nil {
+			return "", err
 		}
 		return vms[0].Summary.Runtime.PowerState, nil
 	}
 
-	It("shuts down nodes on an ESX host if it is in-maintenance and reboots are allowed", func() {
-		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+	It("shuts down nodes on an ESX host if it is in-maintenance and reboots are allowed", func(ctx SpecContext) {
+		vcClient, err := govmomi.NewClient(ctx, vcServer.URL, true)
 		Expect(err).To(Succeed())
 
 		// set host in maintenance
 		host := object.NewHostSystem(vcClient.Client, vctypes.ManagedObjectReference{
 			Type:  "HostSystem",
-			Value: "host-20",
+			Value: esxRef,
 		})
-		task, err := host.EnterMaintenanceMode(context.Background(), 1000, false, &vctypes.HostMaintenanceSpec{})
+		task, err := host.EnterMaintenanceMode(ctx, 1000, false, &vctypes.HostMaintenanceSpec{})
 		Expect(err).To(Succeed())
-		err = task.WaitEx(context.Background())
+		err = task.WaitEx(ctx)
 		Expect(err).To(Succeed())
 
 		allowMaintenance := func(node *corev1.Node) error {
 			cloned := node.DeepCopy()
 			node.Labels[constants.EsxRebootOkLabelKey] = constants.TrueStr
-			return k8sClient.Patch(context.Background(), node, client.MergeFrom(cloned))
+			return k8sClient.Patch(ctx, node, client.MergeFrom(cloned))
 		}
 		Expect(allowMaintenance(firstNode)).To(Succeed())
 		Expect(allowMaintenance(secondNode)).To(Succeed())
 
 		Eventually(func(g Gomega) map[string]string {
 			node := &corev1.Node{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
+			err = k8sClient.Get(ctx, types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			g.Expect(err).To(Succeed())
 			return node.Annotations
 		}).Should(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
 		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
-			err = k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
+			err = k8sClient.Get(ctx, types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}).Should(BeTrue())
 		Eventually(func(g Gomega) []corev1.Pod {
 			var podList corev1.PodList
-			err = k8sClient.List(context.Background(), &podList)
+			err = k8sClient.List(ctx, &podList)
 			g.Expect(err).To(Succeed())
 			return podList.Items
 		}, 10*time.Second).Should(BeEmpty())
 		Eventually(func(g Gomega) bool {
-			powerState, err := fetchPowerState(vcClient)
+			powerState, err := fetchPowerState(ctx, vcClient)
 			g.Expect(err).To(Succeed())
 			return powerState == vctypes.VirtualMachinePowerStatePoweredOff
 		}).Should(BeTrue())
@@ -263,49 +269,52 @@ var _ = Describe("The ESX controller", func() {
 		// ensure VM's on different host are not affected
 		mgr := view.NewManager(vcClient.Client)
 		Expect(err).To(Succeed())
-		view, err := mgr.CreateContainerView(context.Background(),
+		view, err := mgr.CreateContainerView(ctx,
 			vcClient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 		Expect(err).To(Succeed())
+		defer func() {
+			Expect(view.Destroy(ctx)).To(Succeed())
+		}()
 		var vms []mo.VirtualMachine
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "thirdvm"})
 		Expect(err).To(Succeed())
 		result := vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())
-		err = view.RetrieveWithFilter(context.Background(), []string{"VirtualMachine"},
+		err = view.RetrieveWithFilter(ctx, []string{"VirtualMachine"},
 			[]string{"summary.runtime"}, &vms, property.Match{"name": "fourthvm"})
 		Expect(err).To(Succeed())
 		result = vms[0].Summary.Runtime.PowerState == vctypes.VirtualMachinePowerStatePoweredOn
 		Expect(result).To(BeTrue())
 	})
 
-	It("starts nodes on an ESX host if it is out of maintenance and the controller initiated the shutdown", func() {
-		vcClient, err := govmomi.NewClient(context.Background(), vcServer.URL, true)
+	It("starts nodes on an ESX host if it is out of maintenance and the controller initiated the shutdown", func(ctx SpecContext) {
+		vcClient, err := govmomi.NewClient(ctx, vcServer.URL, true)
 		Expect(err).To(Succeed())
 
 		markInitiated := func(node *corev1.Node) error {
 			cloned := node.DeepCopy()
 			node.Spec.Unschedulable = true
 			node.Annotations = map[string]string{constants.EsxRebootInitiatedAnnotationKey: constants.TrueStr}
-			return k8sClient.Patch(context.Background(), node, client.MergeFrom(cloned))
+			return k8sClient.Patch(ctx, node, client.MergeFrom(cloned))
 		}
 		Expect(markInitiated(firstNode)).To(Succeed())
 		Expect(markInitiated(secondNode)).To(Succeed())
 
 		Eventually(func(g Gomega) bool {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
+			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			g.Expect(err).To(Succeed())
 			return node.Spec.Unschedulable
 		}, 10*time.Second).Should(BeFalse())
 		Eventually(func(g Gomega) map[string]string {
 			node := &corev1.Node{}
-			err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
+			err := k8sClient.Get(ctx, types.NamespacedName{Namespace: DefaultNamespace, Name: "firstvm"}, node)
 			g.Expect(err).To(Succeed())
 			return node.Annotations
 		}).ShouldNot(HaveKey(constants.EsxRebootInitiatedAnnotationKey))
 		Eventually(func(g Gomega) bool {
-			powerState, err := fetchPowerState(vcClient)
+			powerState, err := fetchPowerState(ctx, vcClient)
 			g.Expect(err).To(Succeed())
 			return powerState == vctypes.VirtualMachinePowerStatePoweredOn
 		}).Should(BeTrue())
