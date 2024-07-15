@@ -44,10 +44,15 @@ var (
 			"that were likely shuffled by a node send into maintenance, " +
 			"divided by the replica count when the event occurred",
 	}, []string{"owner", "profile"})
+
+	transitionFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "maintenance_controller_transition_failure_count",
+		Help: "Count of failed state transition evaluations due to plugin errors",
+	}, []string{"profile"})
 )
 
 func RegisterMaintenanceMetrics() {
-	metrics.Registry.MustRegister(shuffleCount, shufflesPerReplica)
+	metrics.Registry.MustRegister(shuffleCount, shufflesPerReplica, transitionFailures)
 }
 
 type shuffleRecord struct {
@@ -222,4 +227,8 @@ func makeLabels(owner, profile string) prometheus.Labels {
 		"owner":   owner,
 		"profile": profile,
 	}
+}
+
+func RecordTransitionFailure(profile string) {
+	transitionFailures.With(prometheus.Labels{"profile": profile}).Inc()
 }

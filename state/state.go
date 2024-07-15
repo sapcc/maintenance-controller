@@ -30,6 +30,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/sapcc/maintenance-controller/constants"
+	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
@@ -248,6 +249,24 @@ func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 func Apply(state NodeState, node *v1.Node, data *DataV2, params plugin.Parameters) (ApplyResult, error) {
 	recorder := params.Recorder
 	result := ApplyResult{Next: state.Label(), Transitions: []TransitionResult{}}
+
+	handleTransitionError := func(err error, prefix string) (ApplyResult, error) {
+		metrics.RecordTransitionFailure(params.Profile)
+		params.Log.Error(
+			err, prefix,
+			"state", params.State,
+			"profile", params.Profile,
+			"node", node.Name,
+		)
+		recorder.Eventf(
+			node, "Normal", "ChangeMaintenanceStateFailed",
+			"%v for profile %v: Will stay in %v state",
+			prefix, params.Profile, params.State,
+		)
+		result.Error = err.Error()
+		return result, fmt.Errorf("%v for profile %v: %w", strings.ToLower(prefix), params.Profile, err)
+	}
+
 	stateInfo, ok := data.Profiles[params.Profile]
 	if !ok {
 		err := fmt.Errorf("could not find profile '%s' in state data", params.Profile)
@@ -256,45 +275,25 @@ func Apply(state NodeState, node *v1.Node, data *DataV2, params plugin.Parameter
 	}
 	if stateInfo.Previous != stateInfo.Current {
 		if err := state.Enter(params, data); err != nil {
-			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-				"Failed to enter state for profile %v: Will stay in %v state",
-				params.Profile, params.State)
-			result.Error = err.Error()
-			return result, fmt.Errorf("failed to enter state %v for profile %v: %w", state.Label(), params.Profile, err)
+			return handleTransitionError(err, fmt.Sprintf("Failed to enter state %s", state.Label()))
 		}
 	}
 	// invoke notifications and check for transition
 	err := state.Notify(params, data)
 	if err != nil {
-		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one notification plugin failed for profile %v: Will stay in %v state",
-			params.Profile, params.State)
-		params.Log.Error(err, "Failed to notify", "state", params.State,
-			"profile", params.Profile)
-		result.Error = err.Error()
-		return result, fmt.Errorf("failed to notify for profile %v: %w", params.Profile, err)
+		return handleTransitionError(err, "At least one notification plugin failed")
 	}
 	transitions, err := state.Transition(params, data)
 	result.Transitions = transitions.Infos
 	if err != nil {
-		recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-			"At least one check plugin failed for profile %v: Will stay in %v state",
-			params.Profile, params.State)
-		params.Log.Error(err, "Failed to check for state transition", "state", params.State,
-			"profile", params.Profile)
-		result.Error = err.Error()
-		return result, fmt.Errorf("failed transition for profile %v: %w", params.Profile, err)
+		return handleTransitionError(err, "At least one check plugin failed")
 	}
 
 	// check if a transition should happen
 	if transitions.Next != state.Label() {
 		err = state.Trigger(params, transitions.Next, data)
 		if err != nil {
-			params.Log.Error(err, "Failed to execute triggers", "state", params.State, "profile", params.Profile)
-			recorder.Eventf(node, "Normal", "ChangeMaintenanceStateFailed",
-				"At least one trigger plugin failed for profile %v: Will stay in %v state", params.Profile, params.State)
-			result.Error = err.Error()
-			return result, err
+			return handleTransitionError(err, "At least one trigger plugin failed")
 		}
 		params.Log.Info("Moved node to next state", "state", string(transitions.Next), "profile", params.Profile)
 		recorder.Eventf(node, "Normal", "ChangedMaintenanceState",

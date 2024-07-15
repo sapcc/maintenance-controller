@@ -7,7 +7,8 @@ It defaults to `:8080`.
 The notable metrics are:
 - `maintenance_controller_shuffle_count`: Counts pods in DaemonSets, Deployments and StatefulSets, that were likely deleted as part of a mainteanance activity.
 - `maintenance_controller_shuffles_per_replica`: Count of pods in DaemonSets, Deployments and StatefulSets, that were likely deleted as part of a maintenance activity, divided by the replica count when the event occurred.
-They help determine the impact of maintenance activities on the workloads running on the cluster.
+- `maintenance_controller_transition_failure_count`: Count of state transition failures due to plugin errors.
+The first two help determine the impact of maintenance activities on the workloads running on the cluster.
 
 ## Web UI
 The maintenance-controller provides a web UI to visualize the state of maintenance profiles and nodes.

@@ -1046,6 +1046,23 @@ var _ = Describe("The api server", func() {
 		Expect(err).To(Succeed())
 	})
 
+	It("should create transition failure metrics", func(ctx SpecContext) {
+		originalNode := targetNode.DeepCopy()
+		targetNode.Labels = map[string]string{constants.ProfileLabelKey: "broken"}
+		Expect(k8sClient.Patch(ctx, targetNode, client.MergeFrom(originalNode))).To(Succeed())
+
+		Eventually(func(g Gomega) []string {
+			res, err := http.Get("http://localhost:15423/metrics")
+			g.Expect(err).To(Succeed())
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			g.Expect(err).To(Succeed())
+			return parseMetrics(string(data), []string{
+				"maintenance_controller_transition_failure_count{profile=\"broken\"}",
+			})
+		}).Should(Equal([]string{"5"}))
+	})
+
 	It("should return node infos", func() {
 		// since the cache is global the precise number
 		// of nodes is unknown for the cache

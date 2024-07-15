@@ -61,6 +61,10 @@ instances:
     config:
       key: transition
       value: "true"
+  - type: prometheusInstant
+    name: fail
+    config:
+      url: bananabread
   trigger:
   - type: alterLabel
     name: alter
@@ -117,6 +121,11 @@ profiles:
     transitions:
     - check: transition
       next: in-maintenance
+- name: broken
+  operational:
+    transitions:
+    - check: fail
+      next: maintenance-required
 `
 
 var (
