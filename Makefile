@@ -31,12 +31,13 @@ install-ginkgo: FORCE
 GO_BUILDFLAGS =
 GO_LDFLAGS =
 GO_TESTENV =
+GO_BUILDENV =
 TESTBIN=$(shell pwd)/testbin
 
 build-all: build/maintenance-controller
 
 build/maintenance-controller: FORCE generate
-	go build $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' -o build/maintenance-controller .
+	@env $(GO_BUILDENV) go build $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' -o build/maintenance-controller .
 
 DESTDIR =
 ifeq ($(shell uname -s),Darwin)
@@ -108,6 +109,7 @@ clean: FORCE
 
 vars: FORCE
 	@printf "DESTDIR=$(DESTDIR)\n"
+	@printf "GO_BUILDENV=$(GO_BUILDENV)\n"
 	@printf "GO_BUILDFLAGS=$(GO_BUILDFLAGS)\n"
 	@printf "GO_COVERPKGS=$(GO_COVERPKGS)\n"
 	@printf "GO_LDFLAGS=$(GO_LDFLAGS)\n"
