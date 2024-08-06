@@ -175,6 +175,7 @@ config:
   action: one of "cordon", "uncordon" or "drain", required
   deletionTimeout: how long to wait for pod removal to succeed during drain, optional
   evictionTimeout: how long to retry creation of pod evictions for drain, optional
+  forceEviction: if true and eviction does not remove all pods, delete them afterwards for deletionTimeout, optional
 ```
 
 ## Notification plugins

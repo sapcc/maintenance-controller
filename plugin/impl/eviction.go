@@ -46,6 +46,7 @@ type Eviction struct {
 	Action          EvictionAction
 	DeletionTimeout time.Duration
 	EvictionTimeout time.Duration
+	ForceEviction   bool
 }
 
 func (e *Eviction) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
@@ -53,6 +54,7 @@ func (e *Eviction) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 		Action          string        `config:"action" validate:"required"`
 		DeletionTimeout time.Duration `config:"deletionTimeout"`
 		EvictionTimeout time.Duration `config:"evictionTimeout"`
+		ForceEviction   bool          `config:"forceEviction"`
 	}{
 		DeletionTimeout: 10 * time.Minute,
 		EvictionTimeout: 10 * time.Minute,
@@ -67,6 +69,7 @@ func (e *Eviction) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 		Action:          EvictionAction(conf.Action),
 		DeletionTimeout: conf.DeletionTimeout,
 		EvictionTimeout: conf.EvictionTimeout,
+		ForceEviction:   conf.ForceEviction,
 	}, nil
 }
 
@@ -95,7 +98,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 			},
 			Client:        params.Client,
 			Clientset:     params.Clientset,
-			ForceEviction: false,
+			ForceEviction: e.ForceEviction,
 		})
 	}
 	return fmt.Errorf("invalid eviction action: %s", e.Action)

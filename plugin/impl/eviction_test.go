@@ -51,6 +51,21 @@ var _ = Describe("The eviction plugin", func() {
 		Expect(plugin.(*Eviction).Action).To(Equal(Drain))
 		Expect(plugin.(*Eviction).DeletionTimeout).To(Equal(11 * time.Minute))
 		Expect(plugin.(*Eviction).EvictionTimeout).To(Equal(532 * time.Millisecond))
+		Expect(plugin.(*Eviction).ForceEviction).To(BeFalse())
+	})
+
+	It("can parse it's configuration with force eviction", func() {
+		configStr := "action: drain\ndeletionTimeout: 12m\nevictionTimeout: 534ms\nforceEviction: true"
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
+		Expect(err).To(Succeed())
+
+		var base Eviction
+		plugin, err := base.New(&config)
+		Expect(err).To(Succeed())
+		Expect(plugin.(*Eviction).Action).To(Equal(Drain))
+		Expect(plugin.(*Eviction).DeletionTimeout).To(Equal(12 * time.Minute))
+		Expect(plugin.(*Eviction).EvictionTimeout).To(Equal(534 * time.Millisecond))
+		Expect(plugin.(*Eviction).ForceEviction).To(BeTrue())
 	})
 
 })
