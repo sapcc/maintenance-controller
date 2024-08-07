@@ -16,6 +16,16 @@
     </style>
     <script defer src="alpinejs@3.11.1.js"></script>
     <script>
+        const dateOpts = {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+            hour12: false,
+        };
+        const dateFmt = new Intl.DateTimeFormat("en-US", dateOpts);
         const nodeRequest = new Request("/api/v1/info");
         nodeRequest.method = "GET";
 
@@ -114,7 +124,7 @@
         </form>
         <template x-if="current !== null">
             <div>
-                <span x-text="`Snapshot of checks at ${current.updated}`"></span>
+                <span x-text="`Snapshot of checks at ${dateFmt.format(new Date(current.updated))}`"></span>
                 <div class="pure-g">
                     <template x-for="profile in current.profiles">
                         <div class="pure-u-1 pure-u-lg-1-2 pure-u-xl-1-3">
