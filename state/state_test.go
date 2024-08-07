@@ -294,6 +294,22 @@ var _ = Describe("Apply", func() {
 		Expect(result.Error).ToNot(BeEmpty())
 	})
 
+	It("invokes Enter() when the previous state is different from the current state", func() {
+		chain, enter := mockTriggerChain()
+		nodeState := operational{
+			label: Operational,
+			chains: PluginChains{
+				Enter: chain,
+			},
+		}
+		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: InMaintenance}}}
+		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
+		Expect(err).To(Succeed())
+		Expect(result.Next).To(Equal(Operational))
+		Expect(result.Transitions).To(BeEmpty())
+		Expect(enter.Invoked).To(Equal(1))
+	})
+
 })
 
 var _ = Describe("ParseData", func() {

@@ -41,7 +41,7 @@ func (s *operational) Label() NodeStateLabel {
 }
 
 func (s *operational) Enter(params plugin.Parameters, data *DataV2) error {
-	return nil
+	return s.chains.Enter.Execute(params)
 }
 
 func (s *operational) Notify(params plugin.Parameters, data *DataV2) error {

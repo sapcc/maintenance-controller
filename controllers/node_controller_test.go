@@ -253,14 +253,17 @@ var _ = Describe("The controller", func() {
 		Expect(operational.Transitions[0].Check.Plugins).To(HaveLen(1))
 		Expect(operational.Notification.Plugins).To(BeEmpty())
 		Expect(operational.Transitions[0].Trigger.Plugins).To(HaveLen(1))
+		Expect(operational.Enter.Plugins).To(BeEmpty())
 		required := profile.Chains[state.Required]
 		Expect(required.Transitions[0].Check.Plugins).To(HaveLen(2))
 		Expect(required.Notification.Plugins).To(BeEmpty())
 		Expect(required.Transitions[0].Trigger.Plugins).To(BeEmpty())
+		Expect(required.Enter.Plugins).To(BeEmpty())
 		maintenance := profile.Chains[state.InMaintenance]
 		Expect(maintenance.Transitions[0].Check.Plugins).To(HaveLen(3))
 		Expect(maintenance.Notification.Plugins).To(BeEmpty())
 		Expect(maintenance.Transitions[0].Trigger.Plugins).To(BeEmpty())
+		Expect(maintenance.Enter.Plugins).To(HaveLen(1))
 	})
 
 })

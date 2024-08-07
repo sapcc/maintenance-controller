@@ -135,5 +135,15 @@ var _ = Describe("MaintenanceRequired State", func() {
 			Expect(result.Infos[0].Error).ToNot(BeEmpty())
 			Expect(check.Invoked).To(Equal(1))
 		})
+
+		It("executes the enter chain", func() {
+			chain, enter := mockTriggerChain()
+			chains.Enter = chain
+			mr := newOperational(chains)
+			err := mr.Enter(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			Expect(err).To(Succeed())
+			Expect(enter.Invoked).To(Equal(1))
+		})
+
 	})
 })

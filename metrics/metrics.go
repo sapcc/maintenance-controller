@@ -21,6 +21,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,6 +69,9 @@ type fetchParams struct {
 // Actually increment shuffle counters.
 func RecordShuffles(ctx context.Context, k8sClient client.Client, node *v1.Node, currentProfile string) error {
 	var podList v1.PodList
+	if k8sClient == nil {
+		return errors.New("kubernetes client is nil")
+	}
 	err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": node.Name})
 	if err != nil {
 		return err

@@ -80,10 +80,7 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			continue
 		}
 
-		logDetails := false
-		if params.node.Labels[constants.LogDetailsLabelKey] == "true" {
-			logDetails = true
-		}
+		logDetails := params.node.Labels[constants.LogDetailsLabelKey] == "true"
 		// build plugin arguments
 		pluginParams := plugin.Parameters{Client: params.client, Clientset: params.clientset, Ctx: ctx,
 			Log: params.log, Profile: ps.Profile.Name, Node: params.node, InMaintenance: anyInMaintenance(profileStates),

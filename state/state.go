@@ -111,6 +111,7 @@ type NodeInfo struct {
 
 // PluginChains is a struct containing a plugin chain of each plugin type.
 type PluginChains struct {
+	Enter        plugin.TriggerChain
 	Notification plugin.NotificationChain
 	Transitions  []Transition
 }

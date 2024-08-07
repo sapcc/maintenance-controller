@@ -38,6 +38,7 @@ type ProfileDescriptor struct {
 }
 
 type StateDescriptor struct {
+	Enter       string
 	Notify      string
 	Transitions []TransitionDescriptor
 }
@@ -144,6 +145,13 @@ func loadPluginChains(config StateDescriptor, registry *plugin.Registry) (state.
 		return chains, err
 	}
 	chains.Notification = notificationChain
+
+	enterChain, err := registry.NewTriggerChain(config.Enter)
+	if err != nil {
+		return chains, err
+	}
+	chains.Enter = enterChain
+
 	chains.Transitions = make([]state.Transition, 0)
 	for _, transitionConfig := range config.Transitions {
 		var transition state.Transition

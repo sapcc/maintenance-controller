@@ -60,8 +60,8 @@ Each state has a name, a list of transitions, and a list of notification instanc
 ```yaml
 profiles:
 - name: os-patching
-  notify: notify_slack
   operational:
+    notify: notify_slack
     transitions:
     - check: check_approval
       trigger: remove_approval

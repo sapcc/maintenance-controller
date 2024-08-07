@@ -72,6 +72,12 @@ instances:
       key: alter
       value: "true"
       remove: false
+  - type: alterLabel
+    name: entered
+    config:
+      key: entered
+      value: "true"
+      remove: false
 profiles:
 - name: count
   operational:
@@ -84,6 +90,7 @@ profiles:
     - check: transition && transition
       next: in-maintenance
   in-maintenance:
+    enter: entered
     transitions:
     - check: transition && transition && transition
       next: operational

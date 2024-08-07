@@ -131,6 +131,15 @@ var _ = Describe("Operational State", func() {
 			Expect(check.Invoked).To(Equal(1))
 		})
 
+		It("executes the enter chain", func() {
+			chain, enter := mockTriggerChain()
+			chains.Enter = chain
+			op := newOperational(chains)
+			err := op.Enter(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			Expect(err).To(Succeed())
+			Expect(enter.Invoked).To(Equal(1))
+		})
+
 	})
 
 	It("should execute the notification chain if the state has changed", func() {

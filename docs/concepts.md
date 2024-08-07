@@ -84,3 +84,21 @@ notify:
     config:
       interval: 24h
 ```
+
+## Triggers on entering a state
+Each state in a maintenance profile can optionally specify a list of trigger plugin instances, which are executed when the profile enters that state.
+This is mostly useful in conjunction with the `in-maintenance` state and the `maxMaintenance` and `eviction` plugins to drain nodes via the maintenance-controller.
+Draining a node as part of a transition is prone to race conditions, when the maintenance-controller drains itself and a different node could move into the `in-maintenance` state.
+
+```yaml
+maintenance-required:
+  transitions:
+  - check: nodes_in_maintenance
+    next: in-maintenance
+in-maintenance:
+  enter: drain_node
+  transitions:
+  - check: node_ready
+    trigger: remove_approval
+    next: operational
+```

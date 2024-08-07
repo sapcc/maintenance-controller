@@ -41,6 +41,9 @@ func (s *inMaintenance) Label() NodeStateLabel {
 }
 
 func (s *inMaintenance) Enter(params plugin.Parameters, data *DataV2) error {
+	if err := s.chains.Enter.Execute(params); err != nil {
+		return err
+	}
 	if err := metrics.RecordShuffles(
 		params.Ctx,
 		params.Client,

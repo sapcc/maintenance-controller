@@ -19,5 +19,5 @@ The maintenance-controller creates Kubernetes events on nodes for each state tra
 These are visible in the `kubectl describe node` as well as `kubectl get events` output.
 Also, the maintenance-controller logs all errors and informational messages to the standard output.
 
-When multiple instances of the maintenance-controller are running in a cluster, the `--enable-leader-election` must be set.
-Otherwise, the instances might interfere with each other.
+When multiple instances of the maintenance-controller are running in a cluster, the `--enable-leader-election` **must** be set.
+Otherwise, the instances will interfere with each other.
