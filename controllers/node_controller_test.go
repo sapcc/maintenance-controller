@@ -306,8 +306,8 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 	// The test below requires a connection to an api server,
 	// which is not simulated within the plugin/impl package
 	It("should fail if a node is in maintenance", func() {
-		max := impl.MaxMaintenance{MaxNodes: 1}
-		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		maxNodes := impl.MaxMaintenance{MaxNodes: 1}
+		result, err := maxNodes.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeFalse())
 	})
@@ -318,8 +318,8 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		err := k8sClient.Patch(context.Background(), patched, client.MergeFrom(targetNode))
 		Expect(err).To(Succeed())
 		awaitNodeState(patched, state.Required)
-		max := impl.MaxMaintenance{MaxNodes: 1}
-		result, err := max.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
+		maxNodes := impl.MaxMaintenance{MaxNodes: 1}
+		result, err := maxNodes.Check(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
 		Expect(result.Passed).To(BeTrue())
 	})
