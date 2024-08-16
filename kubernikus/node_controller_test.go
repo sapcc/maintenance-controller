@@ -21,12 +21,14 @@ package kubernikus
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/common"
@@ -90,7 +92,11 @@ var _ = Describe("The kubernikus controller", func() {
 	})
 
 	It("marks an up-to-date node as not needing an update", func() {
-		initNode("v1.30.2")
+		clientset, err := kubernetes.NewForConfig(cfg)
+		Expect(err).To(Succeed())
+		version, err := common.GetAPIServerVersion(clientset)
+		Expect(err).To(Succeed())
+		initNode(fmt.Sprintf("v%s", version))
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
@@ -100,7 +106,7 @@ var _ = Describe("The kubernikus controller", func() {
 	})
 
 	It("marks a node needing a downgrade", func() {
-		initNode("v1.20.2")
+		initNode("v1.156.2")
 		Eventually(func(g Gomega) string {
 			result := &v1.Node{}
 			g.Expect(k8sClient.Get(context.Background(), nodeName, result)).To(Succeed())
