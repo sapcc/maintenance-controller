@@ -7,11 +7,11 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
-	github.com/gophercloud/gophercloud/v2 v2.1.0
-	github.com/gophercloud/utils/v2 v2.0.0-20240912080913-c094a6e5b7da
+	github.com/gophercloud/gophercloud/v2 v2.1.1
+	github.com/gophercloud/utils/v2 v2.0.0-20240919072936-a66ae2ba6ef0
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
-	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/common v0.59.1
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.14.0
@@ -23,7 +23,7 @@ require (
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
+	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 	sigs.k8s.io/controller-runtime v0.19.0
 )
 
