@@ -95,6 +95,7 @@ maintenance-required:
   transitions:
   - check: nodes_in_maintenance
     next: in-maintenance
+    trigger: cordon_node
 in-maintenance:
   enter: drain_node
   transitions:

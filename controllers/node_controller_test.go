@@ -1181,11 +1181,7 @@ var _ = Describe("The eviction plugin", func() {
 		eviction := impl.Eviction{Action: impl.Cordon}
 		err := eviction.Trigger(plugin.Parameters{Ctx: ctx, Client: k8sClient, Node: node})
 		Expect(err).To(Succeed())
-		Eventually(func(g Gomega) bool {
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
-			g.Expect(err).To(Succeed())
-			return node.Spec.Unschedulable
-		}).Should(BeTrue())
+		Expect(node.Spec.Unschedulable).To(BeTrue())
 	})
 
 	It("should mark a node as schedulable with uncordon action", func(ctx SpecContext) {
@@ -1196,11 +1192,7 @@ var _ = Describe("The eviction plugin", func() {
 		eviction := impl.Eviction{Action: impl.Uncordon}
 		err := eviction.Trigger(plugin.Parameters{Ctx: ctx, Client: k8sClient, Node: node})
 		Expect(err).To(Succeed())
-		Eventually(func(g Gomega) bool {
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
-			g.Expect(err).To(Succeed())
-			return node.Spec.Unschedulable
-		}).Should(BeFalse())
+		Expect(node.Spec.Unschedulable).To(BeFalse())
 	})
 
 	It("should evict pods with the drain action", func(ctx SpecContext) {
@@ -1208,11 +1200,7 @@ var _ = Describe("The eviction plugin", func() {
 		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
 		err := eviction.Trigger(params)
 		Expect(err).To(HaveOccurred()) // awaiting the pod deletions fails because there is no kubelet running
-		Eventually(func(g Gomega) bool {
-			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(node), node)
-			g.Expect(err).To(Succeed())
-			return node.Spec.Unschedulable
-		}).Should(BeTrue())
+		Expect(node.Spec.Unschedulable).To(BeTrue())
 		Eventually(func(g Gomega) *metav1.Time {
 			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(pod), pod)
 			g.Expect(err).To(Succeed())

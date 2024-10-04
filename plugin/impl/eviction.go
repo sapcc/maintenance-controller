@@ -80,13 +80,21 @@ func (e *Eviction) ID() string {
 func (e *Eviction) Trigger(params plugin.Parameters) error {
 	switch e.Action {
 	case Cordon:
-		return common.EnsureSchedulable(params.Ctx, params.Client, params.Node, false)
+		params.Node.Spec.Unschedulable = true
+		return nil
 	case Uncordon:
-		return common.EnsureSchedulable(params.Ctx, params.Client, params.Node, true)
+		params.Node.Spec.Unschedulable = false
+		return nil
 	case Drain:
-		if err := common.EnsureSchedulable(params.Ctx, params.Client, params.Node, false); err != nil {
-			return err
-		}
+		// The implementation below is technically wrong.
+		// Just assigning true to Unschedulable does not patch the node object on the api server.
+		// This done at the end of the reconciliation loop.
+		// Actively patching within this plugin increases the resource version to increase.
+		// The increment causes the patch at then end of the reconciliation loop to fail,
+		// which consistently drops state.
+		// Assigning true to unschedulable here is a sanity action.
+		// The user should configure to run the cordon action before running the drain action.
+		params.Node.Spec.Unschedulable = true
 		return common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
 			AwaitDeletion: common.WaitParameters{
 				Period:  defaultPeriod,

@@ -170,6 +170,7 @@ config:
 
 ### eviction
 Cordons, uncordons or drains a node.
+Ensure to run an instance with the `cordon` action before running an instance with the `drain` action.
 ```yaml
 config:
   action: one of "cordon", "uncordon" or "drain", required
