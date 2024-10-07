@@ -68,7 +68,7 @@ check: FORCE static-check build/cover.html build-all
 generate: install-controller-gen
 	@printf "\e[1;36m>> controller-gen\e[0m\n"
 	@controller-gen crd rbac:roleName=maintenance-controller paths="./..." output:crd:artifacts:config=crd
-	@controller-gen object paths=./...
+	@controller-gen object paths="./..."
 
 run-golangci-lint: FORCE prepare-static-check
 	@printf "\e[1;36m>> golangci-lint\e[0m\n"
