@@ -76,13 +76,13 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	conf, err := ucfgwrap.FromYAMLFile(constants.MaintenanceConfigFilePath, ucfg.VarExp, ucfg.ResolveEnv)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
-		// the controller is missconfigured, no need to requeue before the configuration is fixed
+		// the controller is misconfigured, no need to requeue before the configuration is fixed
 		return ctrl.Result{}, nil
 	}
 	config, err := LoadConfig(&conf)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (semantic error)")
-		// the controller is missconfigured, no need to requeue before the configuration is fixed
+		// the controller is misconfigured, no need to requeue before the configuration is fixed
 		return ctrl.Result{}, nil
 	}
 

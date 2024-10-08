@@ -5,18 +5,6 @@ metadata:
   name: maintenance-controller
 rules:
 - apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - ""
   resources:
   - events
@@ -28,6 +16,7 @@ rules:
   - ""
   resources:
   - nodes
+  - pods
   verbs:
   - create
   - delete
@@ -45,9 +34,9 @@ rules:
   - patch
   - update
 - apiGroups:
-  - ""
+  - coordination.k8s.io
   resources:
-  - pods
+  - leases
   verbs:
   - create
   - delete
