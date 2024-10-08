@@ -258,5 +258,6 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			MaxConcurrentReconciles: ConcurrentReconciles,
 		}).
 		For(&v1.Node{}).
+		Named("kubernikus").
 		Complete(r)
 }
