@@ -7,15 +7,15 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
-	github.com/gophercloud/gophercloud/v2 v2.1.1
-	github.com/gophercloud/utils/v2 v2.0.0-20241008104625-7cbb8fd76bb7
+	github.com/gophercloud/gophercloud/v2 v2.2.0
+	github.com/gophercloud/utils/v2 v2.0.0-20241021065553-b46d0737ee98
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	github.com/prometheus/client_golang v1.20.5
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/common v0.60.1
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.15.0
-	github.com/vmware/govmomi v0.44.1
+	github.com/vmware/govmomi v0.45.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	gopkg.in/ini.v1 v1.67.0
@@ -24,7 +24,7 @@ require (
 	k8s.io/client-go v0.31.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
-	sigs.k8s.io/controller-runtime v0.19.0
+	sigs.k8s.io/controller-runtime v0.19.1
 )
 
 require (
