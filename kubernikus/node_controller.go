@@ -27,10 +27,8 @@ import (
 	semver "github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
-	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
-	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -205,22 +203,11 @@ func deleteVM(ctx context.Context, nodeName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse cloudprovider.conf: %w", err)
 	}
-	opts := &clientconfig.ClientOpts{
-		AuthInfo: &clientconfig.AuthInfo{
-			AuthURL:        osConf.AuthURL,
-			Username:       osConf.Username,
-			Password:       osConf.Password,
-			UserDomainName: osConf.Domainname,
-			ProjectID:      osConf.ProjectID,
-		},
-	}
-	provider, err := clientconfig.AuthenticatedClient(ctx, opts)
+	provider, endpointOpts, err := osConf.Connect(ctx)
 	if err != nil {
 		return fmt.Errorf("failed OpenStack authentification: %w", err)
 	}
-	compute, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
-		Region: osConf.Region,
-	})
+	compute, err := openstack.NewComputeV2(provider, endpointOpts)
 	if err != nil {
 		return fmt.Errorf("failed to create OS compute endpoint: %w", err)
 	}
