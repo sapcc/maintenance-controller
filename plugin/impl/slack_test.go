@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 	"github.com/sapcc/maintenance-controller/state"
@@ -44,9 +45,11 @@ var _ = Describe("The slack webhook plugin", func() {
 		var base SlackWebhook
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*SlackWebhook).Hook).To(Equal("http://example.com"))
-		Expect(plugin.(*SlackWebhook).Channel).To(Equal("thechannel"))
-		Expect(plugin.(*SlackWebhook).Message).To(Equal("msg"))
+		Expect(plugin).To(Equal(&SlackWebhook{
+			Hook:    "http://example.com",
+			Channel: "thechannel",
+			Message: "msg",
+		}))
 	})
 
 	It("should send a message", func() {
@@ -117,12 +120,13 @@ var _ = Describe("The slack thread plugin", func() {
 		var base SlackThread
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*SlackThread).Token).To(Equal("token"))
-		Expect(plugin.(*SlackThread).Channel).To(Equal("thechannel"))
-		Expect(plugin.(*SlackThread).Message).To(Equal("msg"))
-		Expect(plugin.(*SlackThread).Title).To(Equal("title"))
-		Expect(plugin.(*SlackThread).LeaseName.Name).To(Equal("lease"))
-		Expect(plugin.(*SlackThread).LeaseName.Namespace).To(Equal("default"))
-		Expect(plugin.(*SlackThread).Period).To(Equal(time.Minute))
+		Expect(plugin).To(Equal(&SlackThread{
+			Token:     "token",
+			Channel:   "thechannel",
+			Title:     "title",
+			Message:   "msg",
+			LeaseName: types.NamespacedName{Name: "lease", Namespace: "default"},
+			Period:    time.Minute,
+		}))
 	})
 })

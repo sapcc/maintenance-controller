@@ -35,9 +35,11 @@ var _ = Describe("The Stagger plugin", func() {
 		var base Stagger
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Stagger).Duration).To(Equal(1 * time.Minute))
-		Expect(plugin.(*Stagger).Parallel).To(Equal(1))
-		Expect(plugin.(*Stagger).LeaseName).To(Equal("mc-lease"))
-		Expect(plugin.(*Stagger).LeaseNamespace).To(Equal("default"))
+		Expect(plugin).To(Equal(&Stagger{
+			Duration:       time.Minute,
+			LeaseName:      "mc-lease",
+			LeaseNamespace: "default",
+			Parallel:       1,
+		}))
 	})
 })

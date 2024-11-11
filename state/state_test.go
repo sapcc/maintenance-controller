@@ -183,7 +183,9 @@ var _ = Describe("NotifyDefault", func() {
 			Profiles:      makeProfileMap(Operational, InMaintenance),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
-		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
+		notifyPeriodic, ok := chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic)
+		Expect(ok).To(BeTrue())
+		notifyPeriodic.Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
 		err := notifyDefault(plugin.Parameters{Log: GinkgoLogr, Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())
@@ -196,7 +198,9 @@ var _ = Describe("NotifyDefault", func() {
 			Profiles:      makeProfileMap(Operational, Operational),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
-		chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic).Interval = 30 * time.Millisecond
+		notifyPeriodic, ok := chain.Plugins[0].Schedule.(*plugin.NotifyPeriodic)
+		Expect(ok).To(BeTrue())
+		notifyPeriodic.Interval = 30 * time.Millisecond
 		time.Sleep(40 * time.Millisecond)
 		err := notifyDefault(plugin.Parameters{Log: GinkgoLogr, Profile: "p"}, &data, &chain)
 		Expect(err).To(Succeed())

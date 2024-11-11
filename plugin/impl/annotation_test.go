@@ -38,8 +38,10 @@ var _ = Describe("The HasAnnotation plugin", func() {
 		var base HasAnnotation
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*HasAnnotation).Key).To(Equal("key"))
-		Expect(plugin.(*HasAnnotation).Value).To(Equal("value"))
+		Expect(plugin).To(Equal(&HasAnnotation{
+			Key:   "key",
+			Value: "value",
+		}))
 	})
 
 	Context("with annotation key=value", func() {
@@ -94,9 +96,11 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 		var base AlterAnnotation
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*AlterAnnotation).Key).To(Equal("key"))
-		Expect(plugin.(*AlterAnnotation).Value).To(Equal("value"))
-		Expect(plugin.(*AlterAnnotation).Remove).To(BeTrue())
+		Expect(plugin).To(Equal(&AlterAnnotation{
+			Key:    "key",
+			Value:  "value",
+			Remove: true,
+		}))
 	})
 
 	Context("with annotation key=value", func() {

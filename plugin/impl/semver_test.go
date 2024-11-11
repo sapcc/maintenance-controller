@@ -33,7 +33,9 @@ var _ = Describe("The ClusterSemver plugin", func() {
 		var base ClusterSemver
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*ClusterSemver).Key).To(Equal("alge"))
-		Expect(plugin.(*ClusterSemver).ProfileScoped).To(BeTrue())
+		Expect(plugin).To(Equal(&ClusterSemver{
+			Key:           "alge",
+			ProfileScoped: true,
+		}))
 	})
 })

@@ -145,7 +145,7 @@ var _ = Describe("CheckChain", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
 			Expect(result.Expression).To(Equal(expr))
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 3}))
 		})
 
 		It("should return false if at least one check of an and chain does not pass", func() {
@@ -155,8 +155,8 @@ var _ = Describe("CheckChain", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 			Expect(result.Expression).To(Equal(expr))
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
-			Expect(falseInstance.Plugin.(*falseCheck).Invoked).To(Equal(2))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 2}))
+			Expect(falseInstance.Plugin).To(Equal(&falseCheck{Invoked: 2}))
 		})
 
 		It("should return true if all plugins of an or chain pass", func() {
@@ -166,7 +166,7 @@ var _ = Describe("CheckChain", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
 			Expect(result.Expression).To(Equal(expr))
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 3}))
 		})
 
 		It("should return true if one plugin of an or chain does not pass", func() {
@@ -176,7 +176,7 @@ var _ = Describe("CheckChain", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeTrue())
 			Expect(result.Expression).To(Equal(expr))
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(2))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 2}))
 		})
 
 		It("should return false if a passing plugin is negated", func() {
@@ -186,7 +186,7 @@ var _ = Describe("CheckChain", func() {
 			Expect(err).To(Succeed())
 			Expect(result.Passed).To(BeFalse())
 			Expect(result.Expression).To(Equal(expr))
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(1))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 1}))
 		})
 
 		It("should propagate errors", func() {
@@ -196,8 +196,8 @@ var _ = Describe("CheckChain", func() {
 			result, err := chain.Execute(emptyParams)
 			Expect(err).To(HaveOccurred())
 			Expect(result.Passed).To(BeFalse())
-			Expect(trueInstance.Plugin.(*trueCheck).Invoked).To(Equal(3))
-			Expect(errorInstance.Plugin.(*errorCheck).Invoked).To(Equal(1))
+			Expect(trueInstance.Plugin).To(Equal(&trueCheck{Invoked: 3}))
+			Expect(errorInstance.Plugin).To(Equal(&errorCheck{Invoked: 1}))
 		})
 
 		It("should collect check infos", func() {

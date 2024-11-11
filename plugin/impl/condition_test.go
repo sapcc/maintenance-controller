@@ -37,8 +37,10 @@ var _ = Describe("The Condition plugin", func() {
 		var base Condition
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Condition).Type).To(Equal("Ready"))
-		Expect(plugin.(*Condition).Status).To(Equal("True"))
+		Expect(plugin).To(Equal(&Condition{
+			Type:   "Ready",
+			Status: "True",
+		}))
 	})
 
 	Context("with node Ready=True", func() {

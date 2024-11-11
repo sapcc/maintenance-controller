@@ -97,7 +97,7 @@ var _ = Describe("TriggerChain", func() {
 			}
 			err := chain.Execute(emptyParams)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(success.Plugin.(*successfulTrigger).Invoked).To(Equal(2))
+			Expect(success.Plugin).To(Equal(&successfulTrigger{Invoked: 2}))
 		})
 
 		It("should propagate errors", func() {
@@ -106,8 +106,8 @@ var _ = Describe("TriggerChain", func() {
 			}
 			err := chain.Execute(emptyParams)
 			Expect(err).To(HaveOccurred())
-			Expect(success.Plugin.(*successfulTrigger).Invoked).To(Equal(1))
-			Expect(failing.Plugin.(*failingTrigger).Invoked).To(Equal(1))
+			Expect(success.Plugin).To(Equal(&successfulTrigger{Invoked: 1}))
+			Expect(failing.Plugin).To(Equal(&failingTrigger{Invoked: 1}))
 		})
 	})
 })

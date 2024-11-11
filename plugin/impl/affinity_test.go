@@ -36,7 +36,7 @@ var _ = Describe("The Affinity plugin", func() {
 		var base Affinity
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Affinity).MinOperational).To(Equal(5))
+		Expect(plugin).To(Equal(&Affinity{MinOperational: 5}))
 	})
 
 	It("can initialize from null config", func() {
@@ -46,14 +46,14 @@ var _ = Describe("The Affinity plugin", func() {
 		var base Affinity
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Affinity).MinOperational).To(Equal(0))
+		Expect(plugin).To(Equal(&Affinity{MinOperational: 0}))
 	})
 
 	It("can initialize when config is nil", func() {
 		var base Affinity
 		plugin, err := base.New(nil)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Affinity).MinOperational).To(Equal(0))
+		Expect(plugin).To(Equal(&Affinity{MinOperational: 0}))
 	})
 
 	It("loads correctly into registry when config is nil", func() {

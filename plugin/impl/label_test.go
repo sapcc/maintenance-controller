@@ -38,8 +38,10 @@ var _ = Describe("The HasLabel plugin", func() {
 		var base HasLabel
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*HasLabel).Key).To(Equal("key"))
-		Expect(plugin.(*HasLabel).Value).To(Equal("value"))
+		Expect(plugin).To(Equal(&HasLabel{
+			Key:   "key",
+			Value: "value",
+		}))
 	})
 
 	Context("with label key=value", func() {
@@ -94,8 +96,10 @@ var _ = Describe("The AnyLabel plugin", func() {
 		var base AnyLabel
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*AnyLabel).Key).To(Equal("key"))
-		Expect(plugin.(*AnyLabel).Value).To(Equal("test"))
+		Expect(plugin).To(Equal(&AnyLabel{
+			Key:   "key",
+			Value: "test",
+		}))
 	})
 
 })
@@ -109,9 +113,11 @@ var _ = Describe("The AlterLabel plugin", func() {
 		var base AlterLabel
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*AlterLabel).Key).To(Equal("key"))
-		Expect(plugin.(*AlterLabel).Value).To(Equal("value"))
-		Expect(plugin.(*AlterLabel).Remove).To(BeTrue())
+		Expect(plugin).To(Equal(&AlterLabel{
+			Key:    "key",
+			Value:  "value",
+			Remove: true,
+		}))
 	})
 
 	Context("with label key=value", func() {

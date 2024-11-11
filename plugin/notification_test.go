@@ -98,7 +98,7 @@ var _ = Describe("NotificationChain", func() {
 			}
 			err := chain.Execute(emptyParams)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(success.Plugin.(*successfulNotification).Invoked).To(Equal(2))
+			Expect(success.Plugin).To(Equal(&successfulNotification{Invoked: 2}))
 		})
 
 		It("should propagate errors", func() {
@@ -107,8 +107,8 @@ var _ = Describe("NotificationChain", func() {
 			}
 			err := chain.Execute(emptyParams)
 			Expect(err).To(HaveOccurred())
-			Expect(success.Plugin.(*successfulNotification).Invoked).To(Equal(1))
-			Expect(failing.Plugin.(*failingNotification).Invoked).To(Equal(1))
+			Expect(success.Plugin).To(Equal(&successfulNotification{Invoked: 1}))
+			Expect(failing.Plugin).To(Equal(&failingNotification{Invoked: 1}))
 		})
 	})
 })

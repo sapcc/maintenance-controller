@@ -36,8 +36,12 @@ var _ = Describe("The eviction plugin", func() {
 		var base Eviction
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Eviction).DeletionTimeout).To(Equal(10 * time.Minute))
-		Expect(plugin.(*Eviction).EvictionTimeout).To(Equal(10 * time.Minute))
+		Expect(plugin).To(Equal(&Eviction{
+			Action:          Drain,
+			DeletionTimeout: 10 * time.Minute,
+			EvictionTimeout: 10 * time.Minute,
+			ForceEviction:   false,
+		}))
 	})
 
 	It("can parse it's configuration", func() {
@@ -48,10 +52,12 @@ var _ = Describe("The eviction plugin", func() {
 		var base Eviction
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Eviction).Action).To(Equal(Drain))
-		Expect(plugin.(*Eviction).DeletionTimeout).To(Equal(11 * time.Minute))
-		Expect(plugin.(*Eviction).EvictionTimeout).To(Equal(532 * time.Millisecond))
-		Expect(plugin.(*Eviction).ForceEviction).To(BeFalse())
+		Expect(plugin).To(Equal(&Eviction{
+			Action:          Drain,
+			DeletionTimeout: 11 * time.Minute,
+			EvictionTimeout: 532 * time.Millisecond,
+			ForceEviction:   false,
+		}))
 	})
 
 	It("can parse it's configuration with force eviction", func() {
@@ -62,10 +68,12 @@ var _ = Describe("The eviction plugin", func() {
 		var base Eviction
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Eviction).Action).To(Equal(Drain))
-		Expect(plugin.(*Eviction).DeletionTimeout).To(Equal(12 * time.Minute))
-		Expect(plugin.(*Eviction).EvictionTimeout).To(Equal(534 * time.Millisecond))
-		Expect(plugin.(*Eviction).ForceEviction).To(BeTrue())
+		Expect(plugin).To(Equal(&Eviction{
+			Action:          Drain,
+			DeletionTimeout: 12 * time.Minute,
+			EvictionTimeout: 534 * time.Millisecond,
+			ForceEviction:   true,
+		}))
 	})
 
 })

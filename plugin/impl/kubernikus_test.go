@@ -33,6 +33,8 @@ var _ = Describe("The KubernikusCount plugin", func() {
 		var base KubernikusCount
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*KubernikusCount).Cluster).To(Equal("aCluster"))
+		Expect(plugin).To(Equal(&KubernikusCount{
+			Cluster: "aCluster",
+		}))
 	})
 })

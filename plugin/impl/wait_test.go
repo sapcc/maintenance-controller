@@ -37,7 +37,7 @@ var _ = Describe("The wait plugin", func() {
 		Expect(err).To(Succeed())
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*Wait).Duration.Minutes()).To(Equal(12.0))
+		Expect(plugin).To(Equal(&Wait{Duration: 12 * time.Minute}))
 	})
 
 	It("passes if the defined time has passed", func() {
@@ -67,8 +67,10 @@ var _ = Describe("The waitExclude plugin", func() {
 		Expect(err).To(Succeed())
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*WaitExclude).Duration).To(Equal(17 * time.Minute))
-		Expect(plugin.(*WaitExclude).Exclude).To(ContainElement(time.Tuesday))
+		Expect(plugin).To(Equal(&WaitExclude{
+			Duration: 17 * time.Minute,
+			Exclude:  []time.Weekday{time.Tuesday},
+		}))
 	})
 
 	checkWaitExclude := func(we *WaitExclude, transition, now time.Time) bool {

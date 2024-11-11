@@ -35,7 +35,7 @@ var _ = Describe("The nodecount plugin", func() {
 		var base NodeCount
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*NodeCount).Count).To(Equal(154))
+		Expect(plugin).To(Equal(&NodeCount{Count: 154}))
 	})
 
 	It("does not fail in AfterEval", func() {

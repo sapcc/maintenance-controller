@@ -42,8 +42,11 @@ var _ = Describe("The prometheusInstant plugin", func() {
 		var base PrometheusInstant
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		Expect(plugin.(*PrometheusInstant).URL).To(Equal("http://abc.de"))
-		Expect(plugin.(*PrometheusInstant).Query).To(Equal("q"))
+		Expect(plugin).To(Equal(&PrometheusInstant{
+			URL:   "http://abc.de",
+			Query: "q",
+			Expr:  "value > 0",
+		}))
 	})
 
 	Context("with a mock prometheus", Ordered, func() {

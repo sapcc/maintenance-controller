@@ -35,10 +35,12 @@ var _ = Describe("The Timewindow plugin", func() {
 		var base TimeWindow
 		plugin, err := base.New(&config)
 		Expect(err).To(Succeed())
-		start := plugin.(*TimeWindow).Start
-		end := plugin.(*TimeWindow).End
-		weekdays := plugin.(*TimeWindow).Weekdays
-		exclude := plugin.(*TimeWindow).Exclude
+		timeWindow, ok := plugin.(*TimeWindow)
+		Expect(ok).To(BeTrue())
+		start := timeWindow.Start
+		end := timeWindow.End
+		weekdays := timeWindow.Weekdays
+		exclude := timeWindow.Exclude
 		Expect(start.Hour()).To(Equal(11))
 		Expect(start.Minute()).To(Equal(0))
 		Expect(end.Hour()).To(Equal(19))
