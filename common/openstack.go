@@ -20,9 +20,13 @@
 package common
 
 import (
+	"context"
 	"fmt"
 
 	"gopkg.in/ini.v1"
+
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
 
 	"github.com/sapcc/maintenance-controller/constants"
 )
@@ -59,4 +63,29 @@ func LoadOpenStackConfig() (OpenStackConfig, error) {
 		Domainname: osConf.Global.Domainname,
 		ProjectID:  osConf.Global.TenantID,
 	}, nil
+}
+
+func (osConf OpenStackConfig) Connect(ctx context.Context) (*gophercloud.ProviderClient, gophercloud.EndpointOpts, error) {
+	ao := gophercloud.AuthOptions{
+		IdentityEndpoint: osConf.AuthURL,
+		Username:         osConf.Username,
+		Password:         osConf.Password,
+		DomainName:       osConf.Domainname, // domain name of user, not of project
+		AllowReauth:      true,
+		Scope: &gophercloud.AuthScope{
+			ProjectID: osConf.ProjectID,
+		},
+	}
+	provider, err := openstack.NewClient(ao.IdentityEndpoint)
+	if err != nil {
+		return nil, gophercloud.EndpointOpts{}, err
+	}
+	err = openstack.Authenticate(ctx, provider, ao)
+	if err != nil {
+		return nil, gophercloud.EndpointOpts{}, err
+	}
+	eo := gophercloud.EndpointOpts{
+		Region: osConf.Region,
+	}
+	return provider, eo, nil
 }

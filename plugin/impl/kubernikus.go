@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 
@@ -87,16 +86,7 @@ func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, err
 	if err != nil {
 		return kluster{}, err
 	}
-	opts := &clientconfig.ClientOpts{
-		AuthInfo: &clientconfig.AuthInfo{
-			AuthURL:        osConf.AuthURL,
-			Username:       osConf.Username,
-			Password:       osConf.Password,
-			UserDomainName: osConf.Domainname,
-			ProjectID:      osConf.ProjectID,
-		},
-	}
-	provider, err := clientconfig.AuthenticatedClient(params.Ctx, opts)
+	provider, _, err := osConf.Connect(params.Ctx)
 	if err != nil {
 		return kluster{}, fmt.Errorf("failed OpenStack authentification: %w", err)
 	}
