@@ -8,13 +8,13 @@ require (
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
 	github.com/gophercloud/gophercloud/v2 v2.2.0
-	github.com/onsi/ginkgo/v2 v2.21.0
+	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.35.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.60.1
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.15.0
-	github.com/vmware/govmomi v0.46.1
+	github.com/vmware/govmomi v0.46.2
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	gopkg.in/ini.v1 v1.67.0
@@ -23,7 +23,7 @@ require (
 	k8s.io/client-go v0.31.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
-	sigs.k8s.io/controller-runtime v0.19.1
+	sigs.k8s.io/controller-runtime v0.19.2
 )
 
 require (
