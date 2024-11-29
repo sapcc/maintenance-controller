@@ -3,13 +3,13 @@ module github.com/sapcc/maintenance-controller
 go 1.23
 
 require (
-	github.com/PaesslerAG/gval v1.2.3
+	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
 	github.com/gophercloud/gophercloud/v2 v2.2.0
 	github.com/onsi/ginkgo/v2 v2.22.0
-	github.com/onsi/gomega v1.35.1
+	github.com/onsi/gomega v1.36.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.60.1
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
