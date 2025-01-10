@@ -21,10 +21,10 @@ package cache
 
 import (
 	"encoding/json"
+	"maps"
+	"slices"
 	"sync"
 	"time"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/sapcc/maintenance-controller/state"
 )
@@ -58,5 +58,5 @@ func (nic *nodeInfoCacheImpl) JSON() ([]byte, error) {
 	// pointers, which in turn open up for data races
 	nic.mutex.Lock()
 	defer nic.mutex.Unlock()
-	return json.Marshal(maps.Values(nic.nodes))
+	return json.Marshal(slices.Collect(maps.Values(nic.nodes)))
 }
