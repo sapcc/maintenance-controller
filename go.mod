@@ -2,8 +2,6 @@ module github.com/sapcc/maintenance-controller
 
 go 1.23.0
 
-toolchain go1.23.5
-
 require (
 	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
