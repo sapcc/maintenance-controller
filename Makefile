@@ -118,7 +118,7 @@ check-dependency-licenses: FORCE install-go-licence-detector
 
 goimports: FORCE
 	@printf "\e[1;36m>> goimports -w -local https://github.com/sapcc/maintenance-controller\e[0m\n"
-	@goimports -w -local https://github.com/sapcc/maintenance-controller internal/ $(patsubst $(shell awk '$$1 == "module" {print $$2}' go.mod)%,.%/*.go,$(shell go list ./...))
+	@goimports -w -local github.com/sapcc/maintenance-controller $(patsubst $(shell awk '$$1 == "module" {print $$2}' go.mod)%,.%/*.go,$(shell go list ./...))
 
 clean: FORCE
 	git clean -dxf build
