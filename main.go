@@ -76,11 +76,12 @@ type reconcilerConfig struct {
 
 func main() {
 	var reconcilerCfg reconcilerConfig
-	var kubecontext, probeAddr string
+	var kubecontext, probeAddr, pprofAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&reconcilerCfg.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&kubecontext, "kubecontext", "", "The context to use from the kubeconfig (defaults to current-context)")
 	flag.StringVar(&probeAddr, "health-addr", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&pprofAddr, "pprof-addr", "", "The address the pprof endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -114,6 +115,7 @@ func main() {
 		LeaderElectionID:           constants.LeaderElectionID,
 		RetryPeriod:                &leaderElectionRetry,
 		GracefulShutdownTimeout:    &shutdownTimeout,
+		PprofBindAddress:           pprofAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
