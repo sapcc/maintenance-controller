@@ -10,7 +10,7 @@ mkShell {
     addlicense
     ginkgo
     go-licence-detector
-    go_1_23
+    go_1_24
     golangci-lint
     gotools # goimports
     kubernetes-controller-tools # controller-gen
