@@ -40,6 +40,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/metrics"
@@ -176,6 +177,7 @@ var _ = BeforeSuite(func() {
 			BindAddress: "0",
 		},
 		EventBroadcaster: event.NewNodeBroadcaster(),
+		Cache:            common.DefaultKubernetesCacheOpts(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 

@@ -47,6 +47,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	// +kubebuilder:scaffold:imports
 )
@@ -181,6 +182,7 @@ var _ = BeforeSuite(func() {
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
 		},
+		Cache: common.DefaultKubernetesCacheOpts(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 

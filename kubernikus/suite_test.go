@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/event"
 )
@@ -101,6 +102,7 @@ var _ = BeforeSuite(func() {
 		},
 		EventBroadcaster: event.NewNodeBroadcaster(),
 		Logger:           GinkgoLogr,
+		Cache:            common.DefaultKubernetesCacheOpts(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 

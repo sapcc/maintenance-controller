@@ -47,6 +47,7 @@ import (
 
 	"github.com/sapcc/maintenance-controller/api"
 	"github.com/sapcc/maintenance-controller/cache"
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
@@ -116,6 +117,7 @@ func main() {
 		RetryPeriod:                &leaderElectionRetry,
 		GracefulShutdownTimeout:    &shutdownTimeout,
 		PprofBindAddress:           pprofAddr,
+		Cache:                      common.DefaultKubernetesCacheOpts(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
