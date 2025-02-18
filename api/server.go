@@ -194,12 +194,13 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 		s.writeError(err, w)
 		return
 	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			s.Log.Error(err, "failed to close connection with leading maintenance-controller")
+			return
+		}
+	}()
 	_, err = io.Copy(w, res.Body)
-	if err != nil {
-		s.writeError(err, w)
-		return
-	}
-	err = res.Body.Close()
 	if err != nil {
 		s.writeError(err, w)
 		return
@@ -211,17 +212,7 @@ func (s *Server) getNamespace() (string, error) {
 	if s.Namespace != "" {
 		return s.Namespace, nil
 	}
-	path := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-	// Check whether the namespace file exists.
-	// If not, we are not running in cluster so can't guess the namespace.
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return "", errors.New("namespace file does not exist")
-	} else if err != nil {
-		return "", fmt.Errorf("error checking namespace file: %w", err)
-	}
-
-	// Load the namespace file and return its content
-	namespace, err := os.ReadFile(path)
+	namespace, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", fmt.Errorf("error reading namespace file: %w", err)
 	}
