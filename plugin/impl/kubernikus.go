@@ -28,13 +28,15 @@ import (
 
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
 type KubernikusCount struct {
-	Cluster string
+	Cluster             string
+	CloudProviderSecret client.ObjectKey
 }
 
 type nodePool struct {
@@ -49,12 +51,17 @@ type kluster struct {
 
 func (kc *KubernikusCount) New(config *ucfgwrap.Config) (plugin.Checker, error) {
 	conf := struct {
-		Cluster string `config:"cluster" validate:"required"`
+		Cluster             string `config:"cluster" validate:"required"`
+		CloudProviderSecret struct {
+			Name      string `config:"name"`
+			Namespace string `config:"namespace"`
+		} `config:"cloudProviderSecret"`
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err
 	}
-	return &KubernikusCount{Cluster: conf.Cluster}, nil
+	secretKey := client.ObjectKey{Name: conf.CloudProviderSecret.Name, Namespace: conf.CloudProviderSecret.Namespace}
+	return &KubernikusCount{Cluster: conf.Cluster, CloudProviderSecret: secretKey}, nil
 }
 
 func (kc *KubernikusCount) ID() string {
@@ -82,7 +89,7 @@ func (kc *KubernikusCount) Check(params plugin.Parameters) (plugin.CheckResult, 
 }
 
 func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, error) {
-	osConf, err := common.LoadOpenStackConfig()
+	osConf, err := common.LoadOSConfig(params.Ctx, params.Client, kc.CloudProviderSecret)
 	if err != nil {
 		return kluster{}, err
 	}

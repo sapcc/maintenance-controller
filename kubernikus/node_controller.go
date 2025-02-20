@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"time"
 
-	semver "github.com/blang/semver/v4"
+	"github.com/blang/semver/v4"
 	"github.com/elastic/go-ucfg"
 	"github.com/go-logr/logr"
 	"github.com/gophercloud/gophercloud/v2/openstack"
@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
@@ -60,6 +61,10 @@ type Config struct {
 			Force   bool          `config:"force"`
 		} `config:"podEviction" validate:"required"`
 	}
+	CloudProviderSecret struct {
+		Name      string `config:"name"`
+		Namespace string `config:"namespace"`
+	} `config:"cloudProviderSecret"`
 }
 
 func (r *NodeReconciler) loadConfig() (Config, error) {
@@ -113,7 +118,11 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// delete if requested
 	shouldDelete, ok := node.Labels[constants.DeleteNodeLabelKey]
 	if ok && shouldDelete == constants.TrueStr {
-		err = r.deleteNode(ctx, node,
+		secretKey := client.ObjectKey{
+			Name:      conf.CloudProviderSecret.Name,
+			Namespace: conf.CloudProviderSecret.Namespace,
+		}
+		err = r.deleteNode(ctx, node, secretKey,
 			common.DrainParameters{
 				Client:    r.Client,
 				Clientset: kubernetes.NewForConfigOrDie(r.Conf),
@@ -179,30 +188,28 @@ func getAPIServerVersion(conf *rest.Config) (semver.Version, error) {
 	return common.GetAPIServerVersion(clientset)
 }
 
-func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, params common.DrainParameters) error {
+func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, secretKey client.ObjectKey, params common.DrainParameters) error {
 	r.Log.Info("Cordoning, draining and deleting node", "node", node.Name)
 	err := common.EnsureSchedulable(ctx, r.Client, node, false)
 	// In case of error just retry, cordoning is ensured again
 	if err != nil {
 		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
 	}
-	err = common.EnsureDrain(ctx, node, r.Log, params)
 	// In case of error just retry, draining is ensured again
-	if err != nil {
+	if err := common.EnsureDrain(ctx, node, r.Log, params); err != nil {
 		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
 	}
-	err = deleteVM(ctx, node.Name)
+	osConf, err := common.LoadOSConfig(ctx, r.Client, secretKey)
 	if err != nil {
+		return fmt.Errorf("failed to load OpenStack config: %w", err)
+	}
+	if err := deleteVM(ctx, node.Name, osConf); err != nil {
 		return fmt.Errorf("failed to delete VM backing node %s: %w", node.Name, err)
 	}
 	return nil
 }
 
-func deleteVM(ctx context.Context, nodeName string) error {
-	osConf, err := common.LoadOpenStackConfig()
-	if err != nil {
-		return fmt.Errorf("failed to parse cloudprovider.conf: %w", err)
-	}
+func deleteVM(ctx context.Context, nodeName string, osConf common.OpenStackConfig) error {
 	provider, endpointOpts, err := osConf.Connect(ctx)
 	if err != nil {
 		return fmt.Errorf("failed OpenStack authentification: %w", err)
@@ -244,7 +251,7 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// the same node is never reconciled more than once concurrently.
 			MaxConcurrentReconciles: ConcurrentReconciles,
 		}).
-		For(&v1.Node{}).
+		For(&v1.Node{}, builder.WithPredicates()).
 		Named("kubernikus").
 		Complete(r)
 }

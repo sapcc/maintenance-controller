@@ -118,6 +118,14 @@ func main() {
 		GracefulShutdownTimeout:    &shutdownTimeout,
 		PprofBindAddress:           pprofAddr,
 		Cache:                      common.DefaultKubernetesCacheOpts(),
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				// The only secret lookup is the optional lookup in the
+				// Kubernikus controller. To allow scoping RBAC to secrets
+				// with a resourceName, the cache needs to be disabled.
+				DisableFor: []client.Object{&v1.Secret{}},
+			},
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

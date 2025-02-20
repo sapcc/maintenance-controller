@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("The KubernikusCount plugin", func() {
@@ -35,6 +36,25 @@ var _ = Describe("The KubernikusCount plugin", func() {
 		Expect(err).To(Succeed())
 		Expect(plugin).To(Equal(&KubernikusCount{
 			Cluster: "aCluster",
+		}))
+	})
+
+	It("can parse its configuration with a cloudprovider secret", func() {
+		configStr := `cluster: aCluster
+cloudProviderSecret:
+  name: aSecret
+  namespace: aNamespace`
+		config, err := ucfgwrap.FromYAML([]byte(configStr))
+		Expect(err).To(Succeed())
+		var base KubernikusCount
+		plugin, err := base.New(&config)
+		Expect(err).To(Succeed())
+		Expect(plugin).To(Equal(&KubernikusCount{
+			Cluster: "aCluster",
+			CloudProviderSecret: client.ObjectKey{
+				Name:      "aSecret",
+				Namespace: "aNamespace",
+			},
 		}))
 	})
 })

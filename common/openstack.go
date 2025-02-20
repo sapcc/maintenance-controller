@@ -22,11 +22,13 @@ package common
 import (
 	"context"
 	"fmt"
-
-	"gopkg.in/ini.v1"
+	"os"
 
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
+	"gopkg.in/ini.v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/constants"
 )
@@ -40,7 +42,7 @@ type OpenStackConfig struct {
 	ProjectID  string
 }
 
-func LoadOpenStackConfig() (OpenStackConfig, error) {
+func parseOSConfig(data []byte) (OpenStackConfig, error) {
 	osConf := struct {
 		Global struct {
 			AuthURL    string `ini:"auth-url"`
@@ -51,9 +53,8 @@ func LoadOpenStackConfig() (OpenStackConfig, error) {
 			TenantID   string `ini:"tenant-id"`
 		} `ini:"Global"`
 	}{}
-	err := ini.MapTo(&osConf, constants.CloudProviderConfigFilePath)
-	if err != nil {
-		return OpenStackConfig{}, fmt.Errorf("failed to parese cloudprovider.conf: %w", err)
+	if err := ini.MapTo(&osConf, data); err != nil {
+		return OpenStackConfig{}, fmt.Errorf("failed to parse cloudprovider.conf: %w", err)
 	}
 	return OpenStackConfig{
 		Region:     osConf.Global.Region,
@@ -63,6 +64,30 @@ func LoadOpenStackConfig() (OpenStackConfig, error) {
 		Domainname: osConf.Global.Domainname,
 		ProjectID:  osConf.Global.TenantID,
 	}, nil
+}
+
+func LoadOSConfigFile() (OpenStackConfig, error) {
+	data, err := os.ReadFile(constants.CloudProviderConfigFilePath)
+	if err != nil {
+		return OpenStackConfig{}, fmt.Errorf("failed to read cloudprovider.conf: %w", err)
+	}
+	return parseOSConfig(data)
+}
+
+func LoadOSConfig(ctx context.Context, k8sClient client.Client, secretKey client.ObjectKey) (OpenStackConfig, error) {
+	if secretKey.Name == "" || secretKey.Namespace == "" {
+		return LoadOSConfigFile()
+	}
+	secret := &corev1.Secret{}
+	err := k8sClient.Get(ctx, secretKey, secret)
+	if err != nil {
+		return OpenStackConfig{}, fmt.Errorf("failed to retrieve secret %s: %w", secretKey, err)
+	}
+	cloudProviderConf, ok := secret.Data["cloudprovider.conf"]
+	if !ok {
+		return OpenStackConfig{}, fmt.Errorf("secret %s does not contain key 'cloudprovider.conf'", secretKey)
+	}
+	return parseOSConfig(cloudProviderConf)
 }
 
 func (osConf OpenStackConfig) Connect(ctx context.Context) (*gophercloud.ProviderClient, gophercloud.EndpointOpts, error) {

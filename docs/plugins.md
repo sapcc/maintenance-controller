@@ -51,6 +51,9 @@ Checks that the node count on the Kubernetes API is greater or equal to the node
 ```yaml
 config:
   cluster: Kubernikus cluster name, required
+  cloudProviderSecret: Reference to a secret containing a cloudprovider.conf key, optional
+    name: Name of such a secret
+    namespace: Namespace of such a secret
 ```
 
 ### maxMaintenance

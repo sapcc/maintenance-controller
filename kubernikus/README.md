@@ -27,10 +27,14 @@ intervals:
     period: 20s
     timeout: 5m
     force: false # If true and evictions do not succeed do normal DELETE calls
+cloudProviderSecret: # Optional reference to a secret containing a cloudprovider.conf key
+  name: Name of such a secret
+  namespace: Namespace of such a secret
 ```
 Also OpenStack credentials have to provided to delete the virtual machine backing a Kubernikus node.
 These have to be placed in `./provider/cloudprovider.conf`.
 Usually its enough to mount the `cloud-config` secret of the `kube-system` namespace of a Kubernikus cluster into the container.
+Alternatively, a reference to such a secret can be specified in the configuration and retrieved from the apiserver at runtime.
 ```ini
 [Global]
 auth-url="keystone endpoint url"
