@@ -8,7 +8,7 @@ require (
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
 	github.com/gophercloud/gophercloud/v2 v2.6.0
-	github.com/onsi/ginkgo/v2 v2.23.0
+	github.com/onsi/ginkgo/v2 v2.23.2
 	github.com/onsi/gomega v1.36.2
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/common v0.63.0
