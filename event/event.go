@@ -86,10 +86,7 @@ func recordToSink(sink record.EventSink, event *v1.Event,
 		return
 	}
 	tries := 0
-	for {
-		if recordEvent(sink, result.Event, result.Patch, result.Event.Count > 1, eventCorrelator) {
-			break
-		}
+	for !recordEvent(sink, result.Event, result.Patch, result.Event.Count > 1, eventCorrelator) {
 		tries++
 		if tries >= maxTriesPerEvent {
 			klog.Errorf("Unable to write event '%#v' (retry limit exceeded!)", event)

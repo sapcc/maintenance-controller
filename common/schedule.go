@@ -269,7 +269,7 @@ func waitForPodDeletion(ctx context.Context, k8sClient client.Client, pod corev1
 	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) { //nolint:staticcheck
 		var p corev1.Pod
 		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
-		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) {
+		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) { //nolint:staticcheck // "ObjectMeta" is an embedded field and could be omitted, but it would make the line less readable
 			return true, nil
 		} else if err != nil {
 			return false, err
