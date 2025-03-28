@@ -91,7 +91,7 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 		return
 	}
 	var nodes v1.NodeList
-	err = r.Client.List(ctx, &nodes, client.HasLabels{constants.HostLabelKey, constants.FailureDomainLabelKey})
+	err = r.List(ctx, &nodes, client.HasLabels{constants.HostLabelKey, constants.FailureDomainLabelKey})
 	if err != nil {
 		r.Log.Error(err, "Failed to retrieve list of cluster nodes.")
 		return
