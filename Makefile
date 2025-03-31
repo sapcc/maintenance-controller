@@ -83,6 +83,7 @@ generate: install-controller-gen
 
 run-golangci-lint: FORCE install-golangci-lint
 	@printf "\e[1;36m>> golangci-lint\e[0m\n"
+	@golangci-lint config verify
 	@golangci-lint run
 
 build/cover.out: FORCE install-ginkgo generate install-setup-envtest | build
