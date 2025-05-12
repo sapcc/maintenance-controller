@@ -12,7 +12,6 @@ mkShell {
     go-licence-detector
     go_1_24
     golangci-lint
-    goreleaser
     gotools # goimports
     kubernetes-controller-tools # controller-gen
     setup-envtest
