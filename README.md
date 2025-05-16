@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Maintenance Controller
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/sapcc/maintenance-controller/ci.yaml?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/sapcc/maintenance-controller/badge.svg)](https://coveralls.io/github/sapcc/maintenance-controller)

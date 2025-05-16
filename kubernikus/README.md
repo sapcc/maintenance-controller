@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Kubernikus Controller
 The Kubernikus controller does two things.
 Firstly it regularly compares a node's kubelet version with the API server version.

@@ -1,21 +1,5 @@
-/*******************************************************************************
-*
-* Copyright 2020 SAP SE
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You should have received a copy of the License along with this
-* program. If not, you may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*
-*******************************************************************************/
+// SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company
+// SPDX-License-Identifier: Apache-2.0
 
 package controllers
 
@@ -141,7 +125,7 @@ func (r *NodeReconciler) makeParams(config *Config, node *corev1.Node) reconcile
 
 // Ensures a new version of the specified resources arrives in the cache made by controller-runtime.
 func pollCacheUpdate(ctx context.Context, k8sClient client.Client, ref types.NamespacedName, targetVersion string) error {
-	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:gomnd,staticcheck
+	return wait.PollImmediate(20*time.Millisecond, 1*time.Second, func() (bool, error) { //nolint:staticcheck
 		var nextNode corev1.Node
 		if err := k8sClient.Get(ctx, ref, &nextNode); err != nil {
 			return false, err

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Motivation
 
 Nodes, which make up Kubernetes clusters, require maintenance to stay secure and up-to-date.

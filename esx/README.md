@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # ESX Controller
 The ESX controller does two things for Kubernetes nodes running on virtual machines managed by a VMware vCenter.
 Firstly it regularly checks whether a nodes underlying ESX host is or goes into maintenance mode.

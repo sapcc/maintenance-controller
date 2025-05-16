@@ -20,6 +20,23 @@ githubWorkflow:
   global:
     defaultBranch: master
 
+reuse:
+  annotations:
+  - SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company
+    SPDX-License-Identifier: Apache-2.0
+    paths:
+    - static/*
+    - PROJECT
+    - .github/.kubebuilder-version
+    - hack/boilerplate.go.txt
+    - e2e/cluster.json
+  - SPDX-FileCopyrightText: Copyright © 2019-2021 Caleb Porzio and contributors
+    SPDX-License-Identifier: MIT
+    paths: ["static/alpinejs*"]
+  - SPDX-FileCopyrightText: Copyright 2013 Yahoo!
+    SPDX-License-Identifier: BSD-3-Clause
+    paths: ["static/purecss*"]
+
 renovate:
   enabled: true
   assignees:

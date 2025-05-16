@@ -18,3 +18,28 @@ path = [
 ]
 SPDX-FileCopyrightText = "SAP SE or an SAP affiliate company"
 SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "static/*",
+  "PROJECT",
+  ".github/.kubebuilder-version",
+  "hack/boilerplate.go.txt",
+  "e2e/cluster.json",
+]
+SPDX-FileCopyrightText = "2020 SAP SE or an SAP affiliate company"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "static/alpinejs*",
+]
+SPDX-FileCopyrightText = "Copyright © 2019-2021 Caleb Porzio and contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+  "static/purecss*",
+]
+SPDX-FileCopyrightText = "Copyright 2013 Yahoo!"
+SPDX-License-Identifier = "BSD-3-Clause"
