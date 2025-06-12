@@ -6,15 +6,15 @@ require (
 	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/gophercloud/gophercloud/v2 v2.7.0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.64.0
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
-	github.com/slack-go/slack v0.16.0
-	github.com/vmware/govmomi v0.50.0
+	github.com/slack-go/slack v0.17.1
+	github.com/vmware/govmomi v0.51.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/ini.v1 v1.67.0
 	k8s.io/api v0.33.1
