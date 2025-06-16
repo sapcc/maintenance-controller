@@ -33,22 +33,22 @@ install-golangci-lint: FORCE
 install-modernize: FORCE
 	@if ! hash modernize 2>/dev/null; then printf "\e[1;36m>> Installing modernize (this may take a while)...\e[0m\n"; go install golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest; fi
 
+install-ginkgo: FORCE
+	@if ! hash ginkgo 2>/dev/null; then printf "\e[1;36m>> Installing ginkgo (this may take a while)...\e[0m\n"; go install github.com/onsi/ginkgo/v2/ginkgo@latest; fi
+
 install-go-licence-detector: FORCE
 	@if ! hash go-licence-detector 2>/dev/null; then printf "\e[1;36m>> Installing go-licence-detector (this may take a while)...\e[0m\n"; go install go.elastic.co/go-licence-detector@latest; fi
 
 install-addlicense: FORCE
 	@if ! hash addlicense 2>/dev/null; then printf "\e[1;36m>> Installing addlicense (this may take a while)...\e[0m\n"; go install github.com/google/addlicense@latest; fi
 
-prepare-static-check: FORCE install-golangci-lint install-modernize install-go-licence-detector install-addlicense
+prepare-static-check: FORCE install-golangci-lint install-modernize install-ginkgo install-go-licence-detector install-addlicense
 
 install-controller-gen: FORCE
 	@if ! hash controller-gen 2>/dev/null; then printf "\e[1;36m>> Installing controller-gen (this may take a while)...\e[0m\n"; go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest; fi
 
 install-setup-envtest: FORCE
 	@if ! hash setup-envtest 2>/dev/null; then printf "\e[1;36m>> Installing setup-envtest (this may take a while)...\e[0m\n"; go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest; fi
-
-install-ginkgo: FORCE
-	@if ! hash ginkgo 2>/dev/null; then printf "\e[1;36m>> Installing ginkgo (this may take a while)...\e[0m\n"; go install github.com/onsi/ginkgo/v2/ginkgo@latest; fi
 
 GO_BUILDFLAGS =
 GO_LDFLAGS =
@@ -170,12 +170,12 @@ help: FORCE
 	@printf "  \e[36minstall-goimports\e[0m             Install goimports required by goimports/static-check\n"
 	@printf "  \e[36minstall-golangci-lint\e[0m         Install golangci-lint required by run-golangci-lint/static-check\n"
 	@printf "  \e[36minstall-modernize\e[0m             Install modernize required by modernize/static-check\n"
+	@printf "  \e[36minstall-ginkgo\e[0m                Install ginkgo required when using it as test runner. This is used in CI before dropping privileges, you should probably install all the tools using your package manager\n"
 	@printf "  \e[36minstall-go-licence-detector\e[0m   Install-go-licence-detector required by check-dependency-licenses/static-check\n"
 	@printf "  \e[36minstall-addlicense\e[0m            Install addlicense required by check-license-headers/license-headers/static-check\n"
 	@printf "  \e[36mprepare-static-check\e[0m          Install any tools required by static-check. This is used in CI before dropping privileges, you should probably install all the tools using your package manager\n"
 	@printf "  \e[36minstall-controller-gen\e[0m        Install controller-gen required by static-check and build-all. This is used in CI before dropping privileges, you should probably install all the tools using your package manager\n"
 	@printf "  \e[36minstall-setup-envtest\e[0m         Install setup-envtest required by check. This is used in CI before dropping privileges, you should probably install all the tools using your package manager\n"
-	@printf "  \e[36minstall-ginkgo\e[0m                Install ginkgo required when using it as test runner. This is used in CI before dropping privileges, you should probably install all the tools using your package manager\n"
 	@printf "\n"
 	@printf "\e[1mBuild\e[0m\n"
 	@printf "  \e[36mbuild-all\e[0m                     Build all binaries.\n"
