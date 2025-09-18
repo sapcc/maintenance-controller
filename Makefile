@@ -6,7 +6,6 @@
 # SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company
 # SPDX-License-Identifier: Apache-2.0
 
-MAKEFLAGS=--warn-undefined-variables
 # /bin/sh is dash on Debian which does not support all features of ash/bash
 # to fix that we use /bin/bash only on Debian to not break Alpine
 ifneq (,$(wildcard /etc/os-release)) # check file existence
@@ -55,11 +54,11 @@ install-setup-envtest: FORCE
 
 # To add additional flags or values, specify the variable in the environment, e.g. `GO_BUILDFLAGS='-tags experimental' make`.
 # To override the default flags or values, specify the variable on the command line, e.g. `make GO_BUILDFLAGS='-tags experimental'`.
-GO_BUILDFLAGS +=
-GO_LDFLAGS +=
-GO_TESTFLAGS +=
-GO_TESTENV +=
-GO_BUILDENV +=
+GO_BUILDFLAGS := $(GO_BUILDFLAGS)
+GO_LDFLAGS := $(GO_LDFLAGS)
+GO_TESTFLAGS := $(GO_TESTFLAGS)
+GO_TESTENV := $(GO_TESTENV)
+GO_BUILDENV := $(GO_BUILDENV)
 
 build-all: build/maintenance-controller
 
@@ -171,6 +170,7 @@ vars: FORCE
 	@printf "GO_BUILDFLAGS=$(GO_BUILDFLAGS)\n"
 	@printf "GO_COVERPKGS=$(GO_COVERPKGS)\n"
 	@printf "GO_LDFLAGS=$(GO_LDFLAGS)\n"
+	@printf "GO_TESTENV=$(GO_TESTENV)\n"
 	@printf "GO_TESTFLAGS=$(GO_TESTFLAGS)\n"
 	@printf "GO_TESTPKGS=$(GO_TESTPKGS)\n"
 	@printf "MAKE=$(MAKE)\n"
