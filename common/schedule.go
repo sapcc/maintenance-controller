@@ -5,7 +5,6 @@ package common
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -246,7 +245,7 @@ func waitParallel(waiters []WaitFunc) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	return errors.New(errs.Join(" + "))
+	return errs.JoinedError(" + ")
 }
 
 // Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/agent/agent.go#L470

@@ -114,8 +114,8 @@ github.com/prometheus/procfs v0.17.0 h1:FuLQ+05u4ZI+SS/w9+BWEM2TXiHKsUQ9TADiRH7D
 github.com/prometheus/procfs v0.17.0/go.mod h1:oPQLaDAMRbA+u8H5Pbfq+dl3VDAvHxMUOVhe0wYB2zw=
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
-github.com/sapcc/go-bits v0.0.0-20251103130554-313749b69c7d h1:3xK8glHKm6tUBahl3CLJD8aFHYhq1TnZGVY1jx2FfzQ=
-github.com/sapcc/go-bits v0.0.0-20251103130554-313749b69c7d/go.mod h1:DMge7GidLysrU9IfPsWQNbIi6OvesTvj1hDXlTXEI+g=
+github.com/sapcc/go-bits v0.0.0-20251106135201-74610c076d51 h1:QDjmGtXOoAZE7WXhoYOwBIOZu/emOh8xE/YTKKMdsp0=
+github.com/sapcc/go-bits v0.0.0-20251106135201-74610c076d51/go.mod h1:DMge7GidLysrU9IfPsWQNbIi6OvesTvj1hDXlTXEI+g=
 github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359 h1:+WaEmX1MhwTnd4OzXPXPzzbY3HrX4BkpuoXkleKzo6M=
 github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359/go.mod h1:Sffk+MtZYoSaWPfxl9d9ZFUJLxlesm8tfZPb9LkHCd4=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
