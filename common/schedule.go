@@ -5,15 +5,17 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/blang/semver/v4"
 	"github.com/go-logr/logr"
+	"github.com/sapcc/go-bits/errext"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -150,7 +152,7 @@ func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod,
 	for i := range pods {
 		pod := pods[i]
 		err := k8sClient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: gracePeriodSeconds})
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			sumErr = fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, sumErr)
 		}
 	}
@@ -230,22 +232,21 @@ func waitParallel(waiters []WaitFunc) error {
 			errChan <- waiter()
 		}(waiter)
 	}
-	combinedMessage := ""
+	var errs errext.ErrorSet
 	count := 0
 	for err := range errChan {
 		if err != nil {
-			combinedMessage += fmt.Sprintf("%s + ", err)
+			errs.Add(err)
 		}
 		count++
 		if count == len(waiters) {
 			close(errChan)
 		}
 	}
-	if combinedMessage == "" {
+	if len(errs) == 0 {
 		return nil
 	}
-	combinedMessage = combinedMessage[:len(combinedMessage)-3]
-	return fmt.Errorf("%s", combinedMessage)
+	return errors.New(errs.Join(" + "))
 }
 
 // Shortened https://github.com/kinvolk/flatcar-linux-update-operator/blob/master/pkg/agent/agent.go#L470
@@ -253,7 +254,7 @@ func waitForPodDeletion(ctx context.Context, k8sClient client.Client, pod corev1
 	return wait.PollImmediate(params.Period, params.Timeout, func() (bool, error) { //nolint:staticcheck
 		var p corev1.Pod
 		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
-		if errors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) { //nolint:staticcheck // "ObjectMeta" is an embedded field and could be omitted, but it would make the line less readable
+		if k8serrors.IsNotFound(err) || (p.ObjectMeta.UID != pod.ObjectMeta.UID) { //nolint:staticcheck // "ObjectMeta" is an embedded field and could be omitted, but it would make the line less readable
 			return true, nil
 		} else if err != nil {
 			return false, err
