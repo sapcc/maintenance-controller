@@ -4,6 +4,7 @@
 package impl
 
 import (
+	"slices"
 	"time"
 
 	"github.com/sapcc/ucfgwrap"
@@ -128,12 +129,7 @@ func (we *WaitExclude) checkInternal(params *plugin.Parameters, now time.Time) p
 }
 
 func (we *WaitExclude) isExcluded(weekday time.Weekday) bool {
-	for _, excluded := range we.Exclude {
-		if weekday == excluded {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(we.Exclude, weekday)
 }
 
 func isSameDay(t, u time.Time) bool {

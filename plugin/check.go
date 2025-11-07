@@ -78,7 +78,7 @@ func (chain *CheckChain) Execute(params Parameters) (CheckChainResult, error) {
 		return result, nil
 	}
 	// execute all plugins and build gval parameter map
-	evalParams := make(map[string]interface{})
+	evalParams := make(map[string]any)
 	infos := make(map[string]CheckResult)
 	failedInstances := make([]string, 0)
 	for _, check := range chain.Plugins {

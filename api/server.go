@@ -120,7 +120,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) writeError(err error, w http.ResponseWriter) {
-	jsonBytes := []byte(fmt.Sprintf("{\"error\":\"%s\"}", err.Error()))
+	jsonBytes := fmt.Appendf(nil, `{"error":"%s"}`, err.Error())
 	_, err = w.Write(jsonBytes)
 	if err != nil {
 		s.Log.Error(err, "failed to write error reply to /api/v1/info")
