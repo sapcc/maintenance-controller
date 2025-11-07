@@ -118,7 +118,7 @@ func (r *Registry) NewCheckChain(config string) (CheckChain, error) {
 		return chain, nil
 	}
 	stripped := stripSymbols(config, AndSeparator, OrSeparator, "(", ")", "!")
-	for _, name := range strings.Split(stripped, " ") {
+	for name := range strings.SplitSeq(stripped, " ") {
 		// due to stripping multiple whitespace may pile up so that empty strings can be created while splitting
 		if name == "" {
 			continue
@@ -151,7 +151,7 @@ func (r *Registry) NewNotificationChain(config string) (NotificationChain, error
 	if config == "" {
 		return chain, nil
 	}
-	for _, name := range strings.Split(config, AndSeparator) {
+	for name := range strings.SplitSeq(config, AndSeparator) {
 		instance, ok := r.NotificationInstances[strings.Trim(name, " ")]
 		if !ok {
 			return chain, fmt.Errorf("the requested notification instance \"%v\" is not known to the registry", name)
@@ -167,7 +167,7 @@ func (r *Registry) NewTriggerChain(config string) (TriggerChain, error) {
 	if config == "" {
 		return chain, nil
 	}
-	for _, name := range strings.Split(config, AndSeparator) {
+	for name := range strings.SplitSeq(config, AndSeparator) {
 		instance, ok := r.TriggerInstances[strings.Trim(name, " ")]
 		if !ok {
 			return chain, fmt.Errorf("the requested trigger instance \"%v\" is not known to the registry", name)

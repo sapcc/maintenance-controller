@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -35,12 +36,7 @@ const profileSeparator string = "--"
 
 // Returns whether profile is contained in the profile label value.
 func ContainsProfile(allProfiles, profile string) bool {
-	for _, oneProfile := range strings.Split(allProfiles, profileSeparator) {
-		if profile == oneProfile {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Split(allProfiles, profileSeparator), profile)
 }
 
 // Returns whether s as NodeStateLabel if it is valid.
@@ -392,7 +388,7 @@ type ProfileSelector struct {
 // Skips a possible profile if profileStr contains a profile, which is not part of availableProfiles.
 func getProfiles(profilesStr string, availableProfiles map[string]Profile) []Profile {
 	profiles := make([]Profile, 0)
-	for _, iterProfile := range strings.Split(profilesStr, profileSeparator) {
+	for iterProfile := range strings.SplitSeq(profilesStr, profileSeparator) {
 		profile, ok := availableProfiles[iterProfile]
 		if !ok {
 			continue

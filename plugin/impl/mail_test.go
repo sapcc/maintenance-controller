@@ -48,7 +48,7 @@ var _ = Describe("The mail plugin", func() {
 	})
 
 	It("should send an email", func() {
-		done := make(chan interface{})
+		done := make(chan any)
 		messageArrived := make(chan bool, 1)
 		defer close(messageArrived)
 		// the goroutine simulates an smtp server

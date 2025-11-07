@@ -6,6 +6,7 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -165,14 +166,7 @@ func (ns *NotifyScheduled) ShouldNotify(params ShouldNotifyParams) bool {
 	last := params.Last
 	log := params.Log
 	// check that a notification can be triggered on the current weekday
-	containsWeekday := false
-	for _, weekday := range ns.Weekdays {
-		if weekday == current.Time.Weekday() {
-			containsWeekday = true
-			break
-		}
-	}
-	if !containsWeekday {
+	if !slices.Contains(ns.Weekdays, current.Time.Weekday()) {
 		if log.LogDetails {
 			log.Log.Info("NotifyScheduled: weekday not contained", "weekday", current.Time.Weekday())
 		}

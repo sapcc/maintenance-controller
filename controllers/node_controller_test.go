@@ -852,8 +852,7 @@ var _ = Describe("The api server", func() {
 	})
 
 	parseMetric := func(all, metric string) string {
-		splitted := strings.Split(all, "\n")
-		for _, line := range splitted {
+		for line := range strings.SplitSeq(all, "\n") {
 			if strings.HasPrefix(line, metric) {
 				return strings.Split(line, " ")[1]
 			}

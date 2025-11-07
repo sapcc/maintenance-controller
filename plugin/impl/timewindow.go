@@ -6,6 +6,7 @@ package impl
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/sapcc/ucfgwrap"
@@ -82,14 +83,7 @@ func (tw *TimeWindow) Check(params plugin.Parameters) (plugin.CheckResult, error
 
 // checkInternal expects a time in UTC.
 func (tw *TimeWindow) checkInternal(current time.Time) plugin.CheckResult {
-	containsWeekday := false
-	for _, weekday := range tw.Weekdays {
-		if weekday == current.Weekday() {
-			containsWeekday = true
-			break
-		}
-	}
-	if !containsWeekday {
+	if !slices.Contains(tw.Weekdays, current.Weekday()) {
 		return plugin.FailedWithReason("current day of week forbidden")
 	}
 	isExcluded := false

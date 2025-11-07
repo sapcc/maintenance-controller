@@ -140,7 +140,7 @@ func recordEvent(sink record.EventSink, event *v1.Event, patch []byte,
 
 // StartLogging starts sending events received from this EventBroadcaster to the given logging function.
 // The return value can be ignored or used to stop recording, if desired.
-func (e *eventBroadcasterImpl) StartLogging(logf func(format string, args ...interface{})) watch.Interface {
+func (e *eventBroadcasterImpl) StartLogging(logf func(format string, args ...any)) watch.Interface {
 	return e.StartEventWatcher(
 		func(e *v1.Event) {
 			logf("Event(%#v): type: '%v' reason: '%v' %v", e.InvolvedObject, e.Type, e.Reason, e.Message)
@@ -233,13 +233,13 @@ func (recorder *NodeRecorder) Event(object runtime.Object, eventtype, reason, me
 }
 
 func (recorder *NodeRecorder) Eventf(object runtime.Object,
-	eventtype, reason, messageFmt string, args ...interface{}) {
+	eventtype, reason, messageFmt string, args ...any) {
 
 	recorder.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
 
 func (recorder *NodeRecorder) AnnotatedEventf(object runtime.Object,
-	annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	annotations map[string]string, eventtype, reason, messageFmt string, args ...any) {
 
 	recorder.generateEvent(object, annotations, nil, eventtype, reason, fmt.Sprintf(messageFmt, args...))
 }
