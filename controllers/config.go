@@ -168,6 +168,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 		&impl.Condition{},
 		&impl.HasAnnotation{},
 		&impl.HasLabel{},
+		&impl.IsHypervisorEvicted{},
 		&impl.KubernikusCount{},
 		&impl.MaxMaintenance{},
 		&impl.NodeCount{},
@@ -186,7 +187,12 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 		registry.NotificationPlugins[notifier.ID()] = notifier
 	}
 
-	triggers := []plugin.Trigger{&impl.AlterAnnotation{}, &impl.AlterLabel{}, &impl.Eviction{}}
+	triggers := []plugin.Trigger{
+		&impl.AlterAnnotation{},
+		&impl.AlterHypervisorMaintenance{},
+		&impl.AlterLabel{},
+		&impl.Eviction{},
+	}
 	for _, trigger := range triggers {
 		registry.TriggerPlugins[trigger.ID()] = trigger
 	}
