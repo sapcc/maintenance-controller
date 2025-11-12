@@ -102,17 +102,6 @@ type Profile struct {
 	Chains map[NodeStateLabel]PluginChains
 }
 
-// Data represents global state which is saved with a node annotation.
-type Data struct {
-	LastTransition time.Time
-	// Maps a notification instance name to the last time it was triggered.
-	LastNotificationTimes map[string]time.Time
-	// Current states of assigned profiles
-	ProfileStates map[string]NodeStateLabel
-	// States of profiles of the previous reconciliation
-	PreviousStates map[string]NodeStateLabel
-}
-
 type ProfileData struct {
 	Transition time.Time
 	Current    NodeStateLabel
@@ -123,26 +112,6 @@ type DataV2 struct {
 	Profiles map[string]*ProfileData
 	// Maps a notification instance name to the last time it was triggered.
 	Notifications map[string]time.Time
-}
-
-func ParseData(dataStr string) (Data, error) {
-	// dataStr := node.Annotations[constants.DataAnnotationKey]
-	var data Data
-	if dataStr != "" {
-		decoder := json.NewDecoder(strings.NewReader(dataStr))
-		decoder.DisallowUnknownFields()
-		err := decoder.Decode(&data)
-		if err != nil {
-			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
-		}
-	}
-	if data.LastNotificationTimes == nil {
-		data.LastNotificationTimes = make(map[string]time.Time)
-	}
-	if data.PreviousStates == nil {
-		data.PreviousStates = make(map[string]NodeStateLabel)
-	}
-	return data, nil
 }
 
 func ParseDataV2(dataStr string) (DataV2, error) {
@@ -168,28 +137,8 @@ func ParseMigrateDataV2(dataStr string, log logr.Logger) (DataV2, error) {
 		return DataV2{}, nil
 	}
 	data2, err := ParseDataV2(dataStr)
-	if err == nil {
-		return data2, nil
-	}
-	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
-	data, err := ParseData(dataStr)
 	if err != nil {
 		return DataV2{}, err
-	}
-	data2 = DataV2{
-		Profiles:      make(map[string]*ProfileData),
-		Notifications: data.LastNotificationTimes,
-	}
-	for profile, current := range data.ProfileStates {
-		previous, ok := data.PreviousStates[profile]
-		if !ok {
-			previous = current
-		}
-		data2.Profiles[profile] = &ProfileData{
-			Transition: data.LastTransition,
-			Current:    current,
-			Previous:   previous,
-		}
 	}
 	return data2, nil
 }
@@ -381,7 +330,6 @@ type ProfileSelector struct {
 	NodeState         NodeStateLabel
 	NodeProfiles      string
 	AvailableProfiles map[string]Profile
-	Data              Data
 }
 
 // Parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).

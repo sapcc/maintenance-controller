@@ -297,22 +297,6 @@ var _ = Describe("Apply", func() {
 		Expect(result.Transitions).To(BeEmpty())
 		Expect(enter.Invoked).To(Equal(1))
 	})
-
-})
-
-var _ = Describe("ParseData", func() {
-
-	It("should initialize the notification times map", func() {
-		data, err := ParseData("{}")
-		Expect(err).To(Succeed())
-		Expect(data.LastNotificationTimes).ToNot(BeNil())
-	})
-
-	It("should fail with invalid json", func() {
-		_, err := ParseData("{{}")
-		Expect(err).ToNot(Succeed())
-	})
-
 })
 
 var _ = Describe("ParseDataV2", func() {
