@@ -164,6 +164,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	checkers := []plugin.Checker{
 		&impl.Affinity{},
 		&impl.AnyLabel{},
+		&impl.CheckHypervisor{},
 		&impl.ClusterSemver{},
 		&impl.Condition{},
 		&impl.HasAnnotation{},
@@ -186,7 +187,12 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 		registry.NotificationPlugins[notifier.ID()] = notifier
 	}
 
-	triggers := []plugin.Trigger{&impl.AlterAnnotation{}, &impl.AlterLabel{}, &impl.Eviction{}}
+	triggers := []plugin.Trigger{
+		&impl.AlterAnnotation{},
+		&impl.AlterHypervisor{},
+		&impl.AlterLabel{},
+		&impl.Eviction{},
+	}
 	for _, trigger := range triggers {
 		registry.TriggerPlugins[trigger.ID()] = trigger
 	}
