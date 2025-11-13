@@ -89,7 +89,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 		var nodes []corev1.Node
 
 		BeforeEach(func() {
-			data := state.DataV2{
+			data := state.Data{
 				Profiles: map[string]*state.ProfileData{
 					"profile": {
 						Transition: time.Now().Add(-20 * time.Second),

@@ -144,7 +144,7 @@ func pollCacheUpdate(ctx context.Context, k8sClient client.Client, ref types.Nam
 
 func reconcileInternal(ctx context.Context, params reconcileParameters) error {
 	dataStr := params.node.Annotations[constants.DataAnnotationKey]
-	data, err := state.ParseMigrateDataV2(dataStr, params.log)
+	data, err := state.ParseMigrateData(dataStr, params.log)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func reconcileInternal(ctx context.Context, params reconcileParameters) error {
 	return writeData(params.node, data)
 }
 
-func writeData(node *corev1.Node, data state.DataV2) error {
+func writeData(node *corev1.Node, data state.Data) error {
 	dataBytes, err := json.Marshal(&data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal internal data: %w", err)

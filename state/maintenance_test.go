@@ -22,7 +22,7 @@ var _ = Describe("InMaintenance State", func() {
 
 		It("transitions to in-maintenance", func() {
 			im := newInMaintenance(PluginChains{})
-			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(InMaintenance))
 		})
@@ -56,14 +56,14 @@ var _ = Describe("InMaintenance State", func() {
 
 		It("executes the triggers", func() {
 			im := newInMaintenance(chains)
-			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Operational, &DataV2{})
+			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Operational, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("fails to transition if target state is not defined", func() {
 			im := newInMaintenance(chains)
-			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Required, &DataV2{})
+			err := im.Trigger(plugin.Parameters{Log: GinkgoLogr}, Required, &Data{})
 			Expect(err).ToNot(Succeed())
 			Expect(trigger.Invoked).To(Equal(0))
 		})
@@ -72,7 +72,7 @@ var _ = Describe("InMaintenance State", func() {
 			im := newInMaintenance(chains)
 			err := im.Notify(
 				plugin.Parameters{Log: GinkgoLogr, Profile: "p"},
-				&DataV2{
+				&Data{
 					Profiles:      map[string]*ProfileData{"p": {Current: InMaintenance, Previous: InMaintenance}},
 					Notifications: make(map[string]time.Time),
 				},
@@ -84,7 +84,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to in operational if checks pass", func() {
 			check.Result = true
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
@@ -95,7 +95,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to inMaintenance if checks do not pass", func() {
 			check.Result = false
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(InMaintenance))
 			Expect(result.Infos).To(HaveLen(1))
@@ -106,7 +106,7 @@ var _ = Describe("InMaintenance State", func() {
 		It("transitions to inMaintenance if checks fail", func() {
 			check.Fail = true
 			im := newInMaintenance(chains)
-			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := im.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(HaveOccurred())
 			Expect(result.Next).To(Equal(InMaintenance))
 			Expect(result.Infos).To(HaveLen(1))
@@ -118,7 +118,7 @@ var _ = Describe("InMaintenance State", func() {
 			chain, enter := mockTriggerChain()
 			chains.Enter = chain
 			im := newInMaintenance(chains)
-			err := im.Enter(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			err := im.Enter(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(enter.Invoked).To(Equal(1))
 		})

@@ -24,15 +24,15 @@ func (s *operational) Label() NodeStateLabel {
 	return s.label
 }
 
-func (s *operational) Enter(params plugin.Parameters, data *DataV2) error {
+func (s *operational) Enter(params plugin.Parameters, data *Data) error {
 	return s.chains.Enter.Execute(params)
 }
 
-func (s *operational) Notify(params plugin.Parameters, data *DataV2) error {
+func (s *operational) Notify(params plugin.Parameters, data *Data) error {
 	return notifyDefault(params, data, &s.chains.Notification)
 }
 
-func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, data *DataV2) error {
+func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error {
 	for _, transition := range s.chains.Transitions {
 		if transition.Next == next {
 			return transition.Trigger.Execute(params)
@@ -41,6 +41,6 @@ func (s *operational) Trigger(params plugin.Parameters, next NodeStateLabel, dat
 	return fmt.Errorf("could not find triggers from %s to %s", s.Label(), next)
 }
 
-func (s *operational) Transition(params plugin.Parameters, data *DataV2) (TransitionsResult, error) {
+func (s *operational) Transition(params plugin.Parameters, data *Data) (TransitionsResult, error) {
 	return transitionDefault(params, s.Label(), s.chains.Transitions)
 }
