@@ -9,7 +9,7 @@
 version: "2"
 run:
   modules-download-mode: readonly
-  timeout: 3m0s # none by default in v2
+  timeout: 6m0s # none by default in v2
 
 formatters:
   enable:
@@ -145,6 +145,10 @@ linters:
       enable-all: true
     nolintlint:
       require-specific: true
+    modernize:
+      disable:
+        # omitzero requires removing omitempty tags in kubernetes api struct types which are nested, which is intepreted by controller-gen and breaks the CRDs.
+        - omitzero
     perfsprint:
       # modernize generates nicer fix code
       concat-loop: false
