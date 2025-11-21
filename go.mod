@@ -7,12 +7,12 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.2
-	github.com/gophercloud/gophercloud/v2 v2.8.0
+	github.com/gophercloud/gophercloud/v2 v2.9.0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.2
-	github.com/sapcc/go-bits v0.0.0-20251106135743-875cf285580d
+	github.com/prometheus/common v0.67.3
+	github.com/sapcc/go-bits v0.0.0-20251119215428-a048ca8f6eba
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.16.0
 	github.com/vmware/govmomi v0.50.0
