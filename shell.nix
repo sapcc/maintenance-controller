@@ -8,7 +8,6 @@ with pkgs;
 mkShell {
   nativeBuildInputs = [
     addlicense
-    ginkgo
     go-licence-detector
     go_1_25
     golangci-lint
