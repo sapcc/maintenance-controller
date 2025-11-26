@@ -328,6 +328,9 @@ func notifyDefault(params plugin.Parameters, data *DataV2, chain *plugin.Notific
 		if notifyInstance.Schedule == nil {
 			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyInstance.Name)
 		}
+		if data.Notifications == nil {
+			data.Notifications = make(map[string]time.Time)
+		}
 		_, ok := data.Notifications[notifyInstance.Name]
 		if !ok {
 			data.Notifications[notifyInstance.Name] = time.Time{}
