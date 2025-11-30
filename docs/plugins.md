@@ -175,6 +175,14 @@ config:
   remove: boolean value, if true the annotation is removed, if false the annotation is added or changed, optional
 ```
 
+### alterFinalizer
+Adds or removes a finalizer.
+```yaml
+config:
+  key: the finalizer key to add or remove, required
+  remove: boolean value, if true the finalizer is removed, if false the finalizer is added, optional
+```
+
 ### alterLabel
 Adds, changes or removes a label.
 ```yaml
