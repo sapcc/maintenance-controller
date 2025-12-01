@@ -189,6 +189,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 
 	triggers := []plugin.Trigger{
 		&impl.AlterAnnotation{},
+		&impl.AlterFinalizer{},
 		&impl.AlterHypervisor{},
 		&impl.AlterLabel{},
 		&impl.Eviction{},
