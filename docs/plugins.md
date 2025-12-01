@@ -35,6 +35,13 @@ config:
   value: the expected label value, if empty only the key is checked, optional
 ```
 
+### checkHypervisor
+Checks if a key property of the hypervisor CRO of the node matches the expected value.
+```yaml
+config:
+  <key>: <expected value>
+```
+
 ### clusterSemver
 Checks if a label containing a semantic version is less than the most up-to-date value in the cluster.
 Requires the checked node to have the specified label.
@@ -175,6 +182,13 @@ config:
   key: the labels key, required
   value: the value to set, optional
   remove: boolean value, if true the label is removed, if false the label is added or changed, optional
+```
+
+### alterHypervisor
+Alters a property of the hypervisor CRO of the node.
+```yaml
+config:
+  <key>: <new value>
 ```
 
 ### eviction

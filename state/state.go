@@ -125,17 +125,41 @@ func ParseData(dataStr string) (Data, error) {
 			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
+	if data.LastNotificationTimes == nil {
+		data.LastNotificationTimes = make(map[string]time.Time)
+	}
+	if data.PreviousStates == nil {
+		data.PreviousStates = make(map[string]NodeStateLabel)
+	}
+	return data, nil
+}
+
+func ParseDataV2(dataStr string) (DataV2, error) {
+	var data DataV2
+	if dataStr != "" {
+		decoder := json.NewDecoder(strings.NewReader(dataStr))
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&data)
+		if err != nil {
+			return DataV2{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
+		}
+	}
 	if data.Notifications == nil {
 		data.Notifications = make(map[string]time.Time)
 	}
 	return data, nil
 }
 
-func ParseMigrateData(dataStr string, log logr.Logger) (Data, error) {
+func ParseMigrateDataV2(dataStr string, log logr.Logger) (DataV2, error) {
 	// dataStr := node.Annotations[constants.DataAnnotationKey]
 	if dataStr == "" {
-		return Data{}, nil
+		return DataV2{}, nil
 	}
+	data2, err := ParseDataV2(dataStr)
+	if err == nil {
+		return data2, nil
+	}
+	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
 	data, err := ParseData(dataStr)
 	if err != nil {
 		return Data{}, err

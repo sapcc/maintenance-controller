@@ -14,6 +14,7 @@ golang:
 
 golangciLint:
   createConfig: true
+  timeout: 6m
 
 githubWorkflow:
   ci:
