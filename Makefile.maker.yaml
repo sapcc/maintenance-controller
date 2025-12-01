@@ -9,7 +9,7 @@ binaries:
     installTo:   bin/
 
 golang:
-  autoupdateableDeps: ^github.com/(?:sapcc|sap-cloud-infrastructure)/
+  autoupdateableDeps: ^github.com/(?:sapcc|sap-cloud-infrastructure|cobaltcore-dev)/
   setGoModVersion: true
 
 golangciLint:
