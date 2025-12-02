@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/sapcc/maintenance-controller/constants"
@@ -127,23 +126,6 @@ func ParseData(dataStr string) (Data, error) {
 	}
 	if data.Notifications == nil {
 		data.Notifications = make(map[string]time.Time)
-	}
-	return data, nil
-}
-
-func ParseMigrateData(dataStr string, log logr.Logger) (Data, error) {
-	// dataStr := node.Annotations[constants.DataAnnotationKey]
-	if dataStr == "" {
-		return Data{}, nil
-	}
-	data2, err := ParseData(dataStr)
-	if err == nil {
-		return data2, nil
-	}
-	log.Info("failed to parse annotation as data v1, will try to migrate", "err", err)
-	data, err := ParseData(dataStr)
-	if err != nil {
-		return Data{}, err
 	}
 	return data, nil
 }

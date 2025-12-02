@@ -144,7 +144,7 @@ func pollCacheUpdate(ctx context.Context, k8sClient client.Client, ref types.Nam
 
 func reconcileInternal(ctx context.Context, params reconcileParameters) error {
 	dataStr := params.node.Annotations[constants.DataAnnotationKey]
-	data, err := state.ParseMigrateData(dataStr, params.log)
+	data, err := state.ParseData(dataStr)
 	if err != nil {
 		return err
 	}

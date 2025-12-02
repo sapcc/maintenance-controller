@@ -312,23 +312,6 @@ var _ = Describe("ParseData", func() {
 	})
 })
 
-var _ = Describe("ParseMigrateData", func() {
-	It("should migrate data", func() {
-		content := `{
-			"LastTransition":"2023-06-01T14:00:00Z",
-			"LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},
-			"ProfileStates":{"p":"operational"},
-			"PreviousStates":{"p":"in-maintenance"}
-		}`
-		data, err := ParseMigrateData(content, GinkgoLogr)
-		Expect(err).To(Succeed())
-		Expect(data.Profiles["p"].Current).To(Equal(Operational))
-		Expect(data.Profiles["p"].Previous).To(Equal(InMaintenance))
-		Expect(data.Profiles["p"].Transition).To(Equal(time.Date(2023, 6, 1, 14, 0, 0, 0, time.UTC)))
-		Expect(data.Notifications["n"]).To(Equal(time.Date(2023, 6, 1, 15, 0, 0, 0, time.UTC)))
-	})
-})
-
 var _ = Describe("ValidateLabel", func() {
 	It("fails on invalid input", func() {
 		_, err := ValidateLabel("hello")

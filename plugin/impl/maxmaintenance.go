@@ -124,7 +124,7 @@ func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node, log logr.Lo
 	for i := range nodes {
 		node := nodes[i]
 		dataStr := node.Annotations[constants.DataAnnotationKey]
-		stateData, err := state.ParseMigrateData(dataStr, log)
+		stateData, err := state.ParseData(dataStr)
 		if err != nil {
 			return nil, err
 		}
