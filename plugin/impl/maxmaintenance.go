@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -91,7 +90,7 @@ func (m *MaxMaintenance) checkInternal(params plugin.Parameters, nodes []corev1.
 		info["scope"] = fmt.Sprintf("nodes matching the %s label selector", strings.Join(consideredLabels, ","))
 	}
 	if int64(m.SkipAfter) != 0 {
-		filtered, err := m.filterRecentTransition(nodes, params.Log)
+		filtered, err := m.filterRecentTransition(nodes)
 		if err != nil {
 			return plugin.Failed(nil), err
 		}
@@ -119,7 +118,7 @@ func (m *MaxMaintenance) filterProfileName(nodes []corev1.Node) []corev1.Node {
 	return matching
 }
 
-func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node, log logr.Logger) ([]corev1.Node, error) {
+func (m *MaxMaintenance) filterRecentTransition(nodes []corev1.Node) ([]corev1.Node, error) {
 	matching := make([]corev1.Node, 0)
 	for i := range nodes {
 		node := nodes[i]
