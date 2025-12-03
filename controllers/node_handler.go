@@ -15,7 +15,7 @@ import (
 	"github.com/sapcc/maintenance-controller/state"
 )
 
-type NodeHandler = func(ctx context.Context, params reconcileParameters, data *state.DataV2) error
+type NodeHandler = func(ctx context.Context, params reconcileParameters, data *state.Data) error
 
 var handlers []NodeHandler = []NodeHandler{
 	EnsureLabelMap,
@@ -24,7 +24,7 @@ var handlers []NodeHandler = []NodeHandler{
 	UpdateMaintenanceStateLabel,
 }
 
-func HandleNode(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
+func HandleNode(ctx context.Context, params reconcileParameters, data *state.Data) error {
 	for _, handler := range handlers {
 		if err := handler(ctx, params, data); err != nil {
 			return err
@@ -33,7 +33,7 @@ func HandleNode(ctx context.Context, params reconcileParameters, data *state.Dat
 	return nil
 }
 
-func EnsureLabelMap(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
+func EnsureLabelMap(ctx context.Context, params reconcileParameters, data *state.Data) error {
 	if params.node.Labels == nil {
 		params.node.Labels = make(map[string]string)
 	}
@@ -41,14 +41,14 @@ func EnsureLabelMap(ctx context.Context, params reconcileParameters, data *state
 }
 
 // ensure a profile is assigned beforehand.
-func MaintainProfileStates(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
+func MaintainProfileStates(ctx context.Context, params reconcileParameters, data *state.Data) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	data.MaintainProfileStates(profilesStr, params.config.Profiles)
 	return nil
 }
 
 // ensure a profile is assigned and profile states have been maintained beforehand.
-func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
+func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.Data) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
@@ -122,7 +122,7 @@ func filterNodeLabels(nodeLabels map[string]string, keys []string) map[string]st
 	return result
 }
 
-func UpdateMaintenanceStateLabel(ctx context.Context, params reconcileParameters, data *state.DataV2) error {
+func UpdateMaintenanceStateLabel(ctx context.Context, params reconcileParameters, data *state.Data) error {
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	if params.node.Labels == nil {

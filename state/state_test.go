@@ -152,7 +152,7 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should not execute the notification chain if the interval has not passed", func() {
 		chain, notification := mockNotificationChain(1)
-		data := DataV2{
+		data := Data{
 			Profiles:      makeProfileMap(Operational, Operational),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
@@ -163,7 +163,7 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should execute the notification chain if the interval has passed", func() {
 		chain, notification := mockNotificationChain(1)
-		data := DataV2{
+		data := Data{
 			Profiles:      makeProfileMap(Operational, InMaintenance),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
@@ -178,7 +178,7 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should not execute the notification chain if the interval has passed in operational state", func() {
 		chain, notification := mockNotificationChain(1)
-		data := DataV2{
+		data := Data{
 			Profiles:      makeProfileMap(Operational, Operational),
 			Notifications: map[string]time.Time{"mock0": time.Now().UTC()},
 		}
@@ -193,7 +193,7 @@ var _ = Describe("NotifyDefault", func() {
 
 	It("should execute each notification instance once", func() {
 		chain, notification := mockNotificationChain(3)
-		data := DataV2{
+		data := Data{
 			Profiles: makeProfileMap(InMaintenance, InMaintenance),
 			Notifications: map[string]time.Time{
 				"mock0": time.Date(2000, time.April, 13, 2, 3, 4, 9, time.UTC),
@@ -228,7 +228,7 @@ var _ = Describe("Apply", func() {
 				Notification: chain,
 			},
 		}
-		result, err := Apply(&nodeState, &v1.Node{}, &DataV2{Notifications: make(map[string]time.Time)}, buildParams())
+		result, err := Apply(&nodeState, &v1.Node{}, &Data{Notifications: make(map[string]time.Time)}, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
 		Expect(result.Transitions).To(BeEmpty())
@@ -249,7 +249,7 @@ var _ = Describe("Apply", func() {
 				},
 			},
 		}
-		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
+		data := Data{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
 		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
@@ -274,7 +274,7 @@ var _ = Describe("Apply", func() {
 				},
 			},
 		}
-		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
+		data := Data{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: Operational}}}
 		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
 		Expect(err).To(HaveOccurred())
 		Expect(result.Next).To(Equal(Operational))
@@ -290,7 +290,7 @@ var _ = Describe("Apply", func() {
 				Enter: chain,
 			},
 		}
-		data := DataV2{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: InMaintenance}}}
+		data := Data{Profiles: map[string]*ProfileData{"profile": {Current: Operational, Previous: InMaintenance}}}
 		result, err := Apply(&nodeState, &v1.Node{}, &data, buildParams())
 		Expect(err).To(Succeed())
 		Expect(result.Next).To(Equal(Operational))
@@ -301,47 +301,15 @@ var _ = Describe("Apply", func() {
 })
 
 var _ = Describe("ParseData", func() {
-
 	It("should initialize the notification times map", func() {
 		data, err := ParseData("{}")
-		Expect(err).To(Succeed())
-		Expect(data.LastNotificationTimes).ToNot(BeNil())
-	})
-
-	It("should fail with invalid json", func() {
-		_, err := ParseData("{{}")
-		Expect(err).ToNot(Succeed())
-	})
-
-})
-
-var _ = Describe("ParseDataV2", func() {
-	It("should initialize the notification times map", func() {
-		data, err := ParseDataV2("{}")
 		Expect(err).To(Succeed())
 		Expect(data.Notifications).ToNot(BeNil())
 	})
 
 	It("should fail with invalid json", func() {
-		_, err := ParseDataV2("{{}")
+		_, err := ParseData("{{}")
 		Expect(err).ToNot(Succeed())
-	})
-})
-
-var _ = Describe("ParseMigrateDataV2", func() {
-	It("should migrate data", func() {
-		content := `{
-			"LastTransition":"2023-06-01T14:00:00Z",
-			"LastNotificationTimes":{"n":"2023-06-01T15:00:00Z"},
-			"ProfileStates":{"p":"operational"},
-			"PreviousStates":{"p":"in-maintenance"}
-		}`
-		data, err := ParseMigrateDataV2(content, GinkgoLogr)
-		Expect(err).To(Succeed())
-		Expect(data.Profiles["p"].Current).To(Equal(Operational))
-		Expect(data.Profiles["p"].Previous).To(Equal(InMaintenance))
-		Expect(data.Profiles["p"].Transition).To(Equal(time.Date(2023, 6, 1, 14, 0, 0, 0, time.UTC)))
-		Expect(data.Notifications["n"]).To(Equal(time.Date(2023, 6, 1, 15, 0, 0, 0, time.UTC)))
 	})
 })
 

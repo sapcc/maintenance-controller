@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/sapcc/maintenance-controller/constants"
@@ -102,31 +101,19 @@ type Profile struct {
 	Chains map[NodeStateLabel]PluginChains
 }
 
-// Data represents global state which is saved with a node annotation.
-type Data struct {
-	LastTransition time.Time
-	// Maps a notification instance name to the last time it was triggered.
-	LastNotificationTimes map[string]time.Time
-	// Current states of assigned profiles
-	ProfileStates map[string]NodeStateLabel
-	// States of profiles of the previous reconciliation
-	PreviousStates map[string]NodeStateLabel
-}
-
 type ProfileData struct {
 	Transition time.Time
 	Current    NodeStateLabel
 	Previous   NodeStateLabel
 }
 
-type DataV2 struct {
+type Data struct {
 	Profiles map[string]*ProfileData
 	// Maps a notification instance name to the last time it was triggered.
 	Notifications map[string]time.Time
 }
 
 func ParseData(dataStr string) (Data, error) {
-	// dataStr := node.Annotations[constants.DataAnnotationKey]
 	var data Data
 	if dataStr != "" {
 		decoder := json.NewDecoder(strings.NewReader(dataStr))
@@ -136,57 +123,10 @@ func ParseData(dataStr string) (Data, error) {
 			return Data{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
 		}
 	}
-	if data.LastNotificationTimes == nil {
-		data.LastNotificationTimes = make(map[string]time.Time)
-	}
-	if data.PreviousStates == nil {
-		data.PreviousStates = make(map[string]NodeStateLabel)
-	}
-	return data, nil
-}
-
-func ParseDataV2(dataStr string) (DataV2, error) {
-	var data DataV2
-	if dataStr != "" {
-		decoder := json.NewDecoder(strings.NewReader(dataStr))
-		decoder.DisallowUnknownFields()
-		err := decoder.Decode(&data)
-		if err != nil {
-			return DataV2{}, fmt.Errorf("failed to parse json value in data annotation: %w", err)
-		}
-	}
 	if data.Notifications == nil {
 		data.Notifications = make(map[string]time.Time)
 	}
 	return data, nil
-}
-
-func ParseMigrateDataV2(dataStr string, log logr.Logger) (DataV2, error) {
-	data2, err := ParseDataV2(dataStr)
-	if err == nil {
-		return data2, nil
-	}
-	log.Info("failed to parse annotation as data v2, will try to migrate", "err", err)
-	data, err := ParseData(dataStr)
-	if err != nil {
-		return DataV2{}, err
-	}
-	data2 = DataV2{
-		Profiles:      make(map[string]*ProfileData),
-		Notifications: data.LastNotificationTimes,
-	}
-	for profile, current := range data.ProfileStates {
-		previous, ok := data.PreviousStates[profile]
-		if !ok {
-			previous = current
-		}
-		data2.Profiles[profile] = &ProfileData{
-			Transition: data.LastTransition,
-			Current:    current,
-			Previous:   previous,
-		}
-	}
-	return data2, nil
 }
 
 // NodeState represents the state a node can be in.
@@ -195,14 +135,14 @@ type NodeState interface {
 	Label() NodeStateLabel
 	// Enter is executed when a node enters a new state.
 	// Its not executed when a profile gets freshly attached.
-	Enter(params plugin.Parameters, data *DataV2) error
+	Enter(params plugin.Parameters, data *Data) error
 	// Notify executes the notification chain if required
-	Notify(params plugin.Parameters, data *DataV2) error
+	Notify(params plugin.Parameters, data *Data) error
 	// Trigger executes the trigger chain
-	Trigger(params plugin.Parameters, next NodeStateLabel, data *DataV2) error
+	Trigger(params plugin.Parameters, next NodeStateLabel, data *Data) error
 	// Trigger executes the check chain and determines, which state should be the next one.
 	// If an error is returned the NodeStateLabel must match the current state.
-	Transition(params plugin.Parameters, data *DataV2) (TransitionsResult, error)
+	Transition(params plugin.Parameters, data *Data) (TransitionsResult, error)
 }
 
 // FromLabel creates a new NodeState instance identified by the label with given chains and notification interval.
@@ -222,7 +162,7 @@ func FromLabel(label NodeStateLabel, chains PluginChains) (NodeState, error) {
 // and invokes all trigger plugins if a transitions happens.
 // Returns the next node state.
 // In case of an error state.Label() is retuned alongside with the error.
-func Apply(state NodeState, node *v1.Node, data *DataV2, params plugin.Parameters) (ApplyResult, error) {
+func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters) (ApplyResult, error) {
 	recorder := params.Recorder
 	result := ApplyResult{Next: state.Label(), Transitions: []TransitionResult{}}
 
@@ -318,7 +258,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 
 // notifyDefault is a default NodeState.Notify implemention that executes
 // the notification chain again after a specified interval.
-func notifyDefault(params plugin.Parameters, data *DataV2, chain *plugin.NotificationChain) error {
+func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.NotificationChain) error {
 	for _, notifyInstance := range chain.Plugins {
 		if notifyInstance.Schedule == nil {
 			return fmt.Errorf("notification plugin instance %s has no schedule assigned", notifyInstance.Name)
@@ -376,7 +316,6 @@ type ProfileSelector struct {
 	NodeState         NodeStateLabel
 	NodeProfiles      string
 	AvailableProfiles map[string]Profile
-	Data              Data
 }
 
 // Parses the value ProfileLabelKey into a slice of profiles (which are sourced from the available Profiles).
@@ -413,7 +352,7 @@ func (t *Transition) Execute(params plugin.Parameters) (TransitionResult, error)
 // Returns a Profile instance with its corresponding state for each profile named in profileStr.
 // If profileStr is an empty string, falls back to the default profile.
 // Call MaintainProfileStates before.
-func (d *DataV2) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
+func (d *Data) GetProfilesWithState(profilesStr string, availableProfiles map[string]Profile) []ProfileState {
 	// if no profile is attached, use the default profile
 	if profilesStr == "" {
 		profilesStr = constants.DefaultProfileName
@@ -431,7 +370,7 @@ func (d *DataV2) GetProfilesWithState(profilesStr string, availableProfiles map[
 }
 
 // Removes state data for removed profile and initializes it for added profiles.
-func (d *DataV2) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
+func (d *Data) MaintainProfileStates(profilesStr string, availableProfiles map[string]Profile) {
 	if d.Profiles == nil {
 		d.Profiles = make(map[string]*ProfileData)
 	}
