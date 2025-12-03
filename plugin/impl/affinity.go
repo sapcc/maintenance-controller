@@ -80,7 +80,7 @@ func buildNodeStates(params *plugin.Parameters) (nodeStateMap, error) {
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
 		dataStr := node.Annotations[constants.DataAnnotationKey]
-		nodeData, err := state.ParseMigrateDataV2(dataStr, params.Log)
+		nodeData, err := state.ParseData(dataStr)
 		if err != nil {
 			params.Log.Error(err, "failed to parse node data")
 			continue

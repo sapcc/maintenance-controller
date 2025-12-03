@@ -22,7 +22,7 @@ var _ = Describe("Operational State", func() {
 
 		It("transitions to Operational", func() {
 			op := newOperational(PluginChains{})
-			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Operational))
 		})
@@ -56,14 +56,14 @@ var _ = Describe("Operational State", func() {
 
 		It("executes the triggers", func() {
 			op := newOperational(chains)
-			err := op.Trigger(plugin.Parameters{Log: GinkgoLogr}, Required, &DataV2{})
+			err := op.Trigger(plugin.Parameters{Log: GinkgoLogr}, Required, &Data{})
 			Expect(err).To(Succeed())
 			Expect(trigger.Invoked).To(Equal(1))
 		})
 
 		It("fails to transition if target state is not defined", func() {
 			op := newOperational(chains)
-			err := op.Trigger(plugin.Parameters{Log: GinkgoLogr}, InMaintenance, &DataV2{})
+			err := op.Trigger(plugin.Parameters{Log: GinkgoLogr}, InMaintenance, &Data{})
 			Expect(err).ToNot(Succeed())
 			Expect(trigger.Invoked).To(Equal(0))
 		})
@@ -73,7 +73,7 @@ var _ = Describe("Operational State", func() {
 			// we set in-maintenance as previous state below, so the special case in NotifyPeriodic does not apply
 			err := op.Notify(
 				plugin.Parameters{Log: GinkgoLogr, Profile: "p"},
-				&DataV2{
+				&Data{
 					Profiles:      map[string]*ProfileData{"p": {Current: Operational, Previous: InMaintenance}},
 					Notifications: make(map[string]time.Time),
 				},
@@ -85,7 +85,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to required if checks pass", func() {
 			check.Result = true
 			op := newOperational(chains)
-			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Required))
 			Expect(result.Infos).To(HaveLen(1))
@@ -96,7 +96,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to operational if checks do not pass", func() {
 			check.Result = false
 			op := newOperational(chains)
-			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
@@ -107,7 +107,7 @@ var _ = Describe("Operational State", func() {
 		It("transitions to operational if checks fail", func() {
 			check.Fail = true
 			op := newOperational(chains)
-			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			result, err := op.Transition(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(HaveOccurred())
 			Expect(result.Next).To(Equal(Operational))
 			Expect(result.Infos).To(HaveLen(1))
@@ -119,7 +119,7 @@ var _ = Describe("Operational State", func() {
 			chain, enter := mockTriggerChain()
 			chains.Enter = chain
 			op := newOperational(chains)
-			err := op.Enter(plugin.Parameters{Log: GinkgoLogr}, &DataV2{})
+			err := op.Enter(plugin.Parameters{Log: GinkgoLogr}, &Data{})
 			Expect(err).To(Succeed())
 			Expect(enter.Invoked).To(Equal(1))
 		})
@@ -128,7 +128,7 @@ var _ = Describe("Operational State", func() {
 
 	It("should execute the notification chain if the state has changed", func() {
 		chain, notification := mockNotificationChain(1)
-		data := DataV2{
+		data := Data{
 			Notifications: map[string]time.Time{"mock": time.Now().UTC()},
 			Profiles: map[string]*ProfileData{
 				"mock": {
@@ -148,7 +148,7 @@ var _ = Describe("Operational State", func() {
 
 	It("should not execute the notification chain if the state has not changed", func() {
 		chain, notification := mockNotificationChain(1)
-		data := DataV2{
+		data := Data{
 			Notifications: map[string]time.Time{"mock": time.Now().UTC()},
 			Profiles: map[string]*ProfileData{
 				"mock": {

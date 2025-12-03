@@ -106,7 +106,7 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels["alter"]).To(Equal(constants.TrueStr))
-		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+		data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["test"].Current).To(Equal(state.Required))
 		events := &corev1.EventList{}
@@ -132,7 +132,7 @@ var _ = Describe("The controller", func() {
 		err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+		data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
 		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
@@ -162,7 +162,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 		Expect(err).To(Succeed())
 		Expect(node.Labels).To(HaveKey("alter"))
-		data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+		data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["block"].Current).To(Equal(state.Required))
 		Expect(data.Profiles["multi"].Current).To(Equal(state.InMaintenance))
@@ -176,7 +176,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+			data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			return data.Profiles
 		}).Should(SatisfyAll(
@@ -199,7 +199,7 @@ var _ = Describe("The controller", func() {
 		Consistently(func(g Gomega) int {
 			var node corev1.Node
 			g.Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)).To(Succeed())
-			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+			data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			var maintenanceCounter int
 			for _, val := range data.Profiles {
@@ -219,7 +219,7 @@ var _ = Describe("The controller", func() {
 			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: targetNodeName}, &node)
 			g.Expect(err).To(Succeed())
 
-			data, err := state.ParseDataV2(node.Annotations[constants.DataAnnotationKey])
+			data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 			g.Expect(err).To(Succeed())
 			return data.Profiles
 		}).Should(HaveLen(1))
