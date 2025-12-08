@@ -113,6 +113,11 @@ run-shellcheck: FORCE install-shellcheck
 	@printf "\e[1;36m>> shellcheck\e[0m\n"
 	@find .  -type f \( -name '*.bash' -o -name '*.ksh' -o -name '*.zsh' -o -name '*.sh' -o -name '*.shlib' \) -exec shellcheck  {} +
 
+run-typos: FORCE
+	@printf "\e[1;36m>> typos\e[0m\n"
+	@printf "\e[1;36m>> Typos install instructions can be found here https://github.com/crate-ci/typos#install \e[0m\n"
+	@typos
+
 build/cover.out: FORCE generate install-setup-envtest | build
 	@printf "\e[1;36m>> Running tests\e[0m\n"
 	KUBEBUILDER_ASSETS=$$(setup-envtest use 1.34 -p path) go run github.com/onsi/ginkgo/v2/ginkgo run --randomize-all -output-dir=build $(GO_BUILDFLAGS) -ldflags '-s -w $(GO_LDFLAGS)' -covermode=count -coverpkg=$(subst $(space),$(comma),$(GO_COVERPKGS)) $(GO_TESTFLAGS) $(GO_TESTPKGS)
@@ -208,6 +213,7 @@ help: FORCE
 	@printf "  \e[36mgenerate\e[0m                      Generate code for Kubernetes CRDs and deepcopy.\n"
 	@printf "  \e[36mrun-golangci-lint\e[0m             Install and run golangci-lint. Installing is used in CI, but you should probably install golangci-lint using your package manager.\n"
 	@printf "  \e[36mrun-shellcheck\e[0m                Install and run shellcheck. Installing is used in CI, but you should probably install shellcheck using your package manager.\n"
+	@printf "  \e[36mrun-typos\e[0m                     Check for spelling errors using typos.\n"
 	@printf "  \e[36mbuild/cover.out\e[0m               Run tests and generate coverage report.\n"
 	@printf "  \e[36mbuild/cover.html\e[0m              Generate an HTML file with source code annotations from the coverage report.\n"
 	@printf "  \e[36mcheck-addlicense\e[0m              Check license headers in all non-vendored .go files with addlicense.\n"

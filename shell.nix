@@ -16,6 +16,7 @@ mkShell {
     renovate
     reuse
     setup-envtest
+    typos
     # keep this line if you use bash
     bashInteractive
   ];
