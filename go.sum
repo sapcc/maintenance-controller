@@ -10,8 +10,8 @@ github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20251205094830-016c808d433d h1:wH9BCW8BQ+hwXVWEaVfUsOkhOhpBvrD2skuxrmbk6Mk=
-github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20251205094830-016c808d433d/go.mod h1:y1Ko8/Eov4+R9eVjMrxDYUI+mXPmS8F8Dk3puO0JJpE=
+github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20251209194118-84221928ac61 h1:5nWIXubSdnKpRrQ65MhOUuJ8BqTv3nsqL2XwEHGUDvY=
+github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20251209194118-84221928ac61/go.mod h1:fBdTD4aqJ7o8QhxS9Hfu20mZYg4nu5RnrK8jestmL9c=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
@@ -131,8 +131,8 @@ github.com/prometheus/procfs v0.17.0 h1:FuLQ+05u4ZI+SS/w9+BWEM2TXiHKsUQ9TADiRH7D
 github.com/prometheus/procfs v0.17.0/go.mod h1:oPQLaDAMRbA+u8H5Pbfq+dl3VDAvHxMUOVhe0wYB2zw=
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
-github.com/sapcc/go-bits v0.0.0-20251204133412-746f1e02903e h1:h/NPe/nGGZ6/gO52XK4bEuzmLarzu8Tg4uGVMfkbfCA=
-github.com/sapcc/go-bits v0.0.0-20251204133412-746f1e02903e/go.mod h1:/4xXSAuH6QpwA8fdg+igq6SNsHaayjxXXOwvQvrNr08=
+github.com/sapcc/go-bits v0.0.0-20251211170253-467ecb6aaf3d h1:nzVLvt8l7/zNntiUqaFGD7bge+FQelsIMG/BibHLq1A=
+github.com/sapcc/go-bits v0.0.0-20251211170253-467ecb6aaf3d/go.mod h1:/4xXSAuH6QpwA8fdg+igq6SNsHaayjxXXOwvQvrNr08=
 github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359 h1:+WaEmX1MhwTnd4OzXPXPzzbY3HrX4BkpuoXkleKzo6M=
 github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359/go.mod h1:Sffk+MtZYoSaWPfxl9d9ZFUJLxlesm8tfZPb9LkHCd4=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
