@@ -79,6 +79,9 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		// Assigning true to unschedulable here is a sanity action.
 		// The user should configure to run the cordon action before running the drain action.
 		params.Node.Spec.Unschedulable = true
+		// Initiate asynchronous pod draining without waiting for completion.
+		// The drain process is tracked in the node's annotation state and will be
+		// checked/retried in each reconcile loop by a dedicated handler.
 		return common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
 			AwaitDeletion: common.WaitParameters{
 				Period:  defaultPeriod,

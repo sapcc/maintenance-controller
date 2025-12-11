@@ -71,7 +71,8 @@ type DrainParameters struct {
 	GracePeriodSeconds *int64
 }
 
-// Drains Pods from the given node, if required.
+// Drains Pods from the given node - should be done asynchronously.
+// This finction should initiate eviction/deletion of pods but return immediately without waiting and stopping the reconcile loop.
 func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
 	checkReady(node, log)
 	deletable, err := GetPodsForDrain(ctx, params.Client, node.Name)
