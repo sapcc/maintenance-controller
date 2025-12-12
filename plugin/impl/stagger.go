@@ -102,7 +102,7 @@ func (s *Stagger) getOrCreateLease(idx int, params *plugin.Parameters) (coordina
 	return lease, nil
 }
 
-// If the whole check chain passed, the lease needs to be grabed, so other nodes are blocked from progressing.
+// If the whole check chain passed, the lease needs to be grabbed, so other nodes are blocked from progressing.
 func (s *Stagger) OnTransition(params plugin.Parameters) error {
 	if s.grabIndex == noGrab {
 		return nil

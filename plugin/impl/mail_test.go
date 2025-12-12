@@ -63,7 +63,7 @@ var _ = Describe("The mail plugin", func() {
 			Expect(err).To(Succeed())
 			var request bytes.Buffer
 			isDataBlock := false
-			// the loop asembles client requests and replies to them after reading a \n
+			// the loop assembles client requests and replies to them after reading a \n
 			for {
 				buf := make([]byte, 1)
 				_, err = conn.Read(buf)
@@ -78,7 +78,7 @@ var _ = Describe("The mail plugin", func() {
 						reply = ""
 					}
 					switch request.String() {
-					// assert that the message has been tranmitted
+					// assert that the message has been transmitted
 					case "themessage\r":
 						messageArrived <- true
 					// data block starts

@@ -79,7 +79,7 @@ func (kc *KubernikusCount) fetchKluster(params *plugin.Parameters) (kluster, err
 	}
 	provider, _, err := osConf.Connect(params.Ctx)
 	if err != nil {
-		return kluster{}, fmt.Errorf("failed OpenStack authentification: %w", err)
+		return kluster{}, fmt.Errorf("failed OpenStack authentication: %w", err)
 	}
 	kubernikusURL := fmt.Sprintf("https://kubernikus.%s.cloud.sap/api/v1/clusters/%s", osConf.Region, kc.Cluster)
 	req, err := http.NewRequestWithContext(params.Ctx, http.MethodGet, kubernikusURL, strings.NewReader(""))

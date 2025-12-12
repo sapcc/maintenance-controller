@@ -145,7 +145,7 @@ func stripSymbols(base string, symbols ...string) string {
 	return base
 }
 
-// NewNotificationChain creates a NotificaitonChain based the given config string.
+// NewNotificationChain creates a NotificationChain based the given config string.
 func (r *Registry) NewNotificationChain(config string) (NotificationChain, error) {
 	var chain NotificationChain
 	if config == "" {

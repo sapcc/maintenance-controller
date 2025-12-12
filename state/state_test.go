@@ -57,12 +57,12 @@ func mockTriggerChain() (plugin.TriggerChain, *mockTrigger) {
 	return chain, p
 }
 
-type mockNotificaiton struct {
+type mockNotification struct {
 	Invoked int
 	Fail    bool
 }
 
-func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
+func (n *mockNotification) Notify(params plugin.Parameters) error {
 	n.Invoked++
 	if n.Fail {
 		return errors.New("mocked fail")
@@ -70,19 +70,19 @@ func (n *mockNotificaiton) Notify(params plugin.Parameters) error {
 	return nil
 }
 
-func (n *mockNotificaiton) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
-	return &mockNotificaiton{}, nil
+func (n *mockNotification) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
+	return &mockNotification{}, nil
 }
 
-func (n *mockNotificaiton) ID() string {
+func (n *mockNotification) ID() string {
 	return "mock"
 }
 
-func mockNotificationChain(instanceCount int) (plugin.NotificationChain, *mockNotificaiton) {
+func mockNotificationChain(instanceCount int) (plugin.NotificationChain, *mockNotification) {
 	if instanceCount < 0 {
 		panic("mockNotificationChain requires at least zero instances.")
 	}
-	p := &mockNotificaiton{}
+	p := &mockNotification{}
 	instances := make([]plugin.NotificationInstance, 0)
 	for i := range instanceCount {
 		instances = append(instances, plugin.NotificationInstance{

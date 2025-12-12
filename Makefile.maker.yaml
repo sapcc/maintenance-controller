@@ -47,3 +47,9 @@ renovate:
 
 testPackages:
   except: e2e
+
+typos:
+  extendExcludes:
+  - static/alpinejs@3.11.1.js
+  - static/purecss-responsive@3.0.0.css
+  - static/purecss@3.0.0.css
