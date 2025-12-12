@@ -18,7 +18,7 @@ import (
 	"github.com/sapcc/maintenance-controller/plugin"
 )
 
-// NodeStateLabel reprensents labels which nodes a marked with.
+// NodeStateLabel represents labels which nodes a marked with.
 type NodeStateLabel string
 
 // Operational is a label that marks a node which is operational.
@@ -30,7 +30,7 @@ const Required NodeStateLabel = "maintenance-required"
 // InMaintenance is a label that marks a node which is currently in maintenance.
 const InMaintenance NodeStateLabel = "in-maintenance"
 
-// profileSeparator is used to split the maintenance profile label string into multple profile names.
+// profileSeparator is used to split the maintenance profile label string into multiple profile names.
 const profileSeparator string = "--"
 
 // Returns whether profile is contained in the profile label value.
@@ -226,8 +226,8 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Transition) (TransitionsResult, error) {
 	results := make([]TransitionResult, 0)
 	errs := make([]error, 0)
-	for _, transtition := range ts {
-		result, err := transtition.Execute(params)
+	for _, transition := range ts {
+		result, err := transition.Execute(params)
 		results = append(results, result)
 		if err != nil {
 			errs = append(errs, err)
@@ -256,7 +256,7 @@ func transitionDefault(params plugin.Parameters, current NodeStateLabel, ts []Tr
 	return final, nil
 }
 
-// notifyDefault is a default NodeState.Notify implemention that executes
+// notifyDefault is a default NodeState.Notify implementation that executes
 // the notification chain again after a specified interval.
 func notifyDefault(params plugin.Parameters, data *Data, chain *plugin.NotificationChain) error {
 	for _, notifyInstance := range chain.Plugins {

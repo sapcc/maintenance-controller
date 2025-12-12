@@ -196,7 +196,7 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, secretKe
 func deleteVM(ctx context.Context, nodeName string, osConf common.OpenStackConfig) error {
 	provider, endpointOpts, err := osConf.Connect(ctx)
 	if err != nil {
-		return fmt.Errorf("failed OpenStack authentification: %w", err)
+		return fmt.Errorf("failed OpenStack authentication: %w", err)
 	}
 	compute, err := openstack.NewComputeV2(provider, endpointOpts)
 	if err != nil {

@@ -39,14 +39,14 @@ func (r *Runnable) loadConfig() (Config, error) {
 	yamlConf, err := ucfgwrap.FromYAMLFile(constants.EsxConfigFilePath, ucfg.VarExp, ucfg.ResolveEnv)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (syntax error)")
-		// the controller is missconfigured, no need to requeue before the configuration is fixed
+		// the controller is misconfigured, no need to requeue before the configuration is fixed
 		return Config{}, err
 	}
 	var conf Config
 	err = yamlConf.Unpack(&conf)
 	if err != nil {
 		r.Log.Error(err, "Failed to parse configuration file (semantic error)")
-		// the controller is missconfigured, no need to requeue before the configuration is fixed
+		// the controller is misconfigured, no need to requeue before the configuration is fixed
 		return Config{}, err
 	}
 	return conf, nil
@@ -89,18 +89,18 @@ func (r *Runnable) Reconcile(ctx context.Context) {
 		err = r.FetchVersion(ctx, &conf.VCenters, esx)
 		if err != nil {
 			r.Log.Error(err, "Failed to update ESX version labels.",
-				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+				"esx", esx.Name, "availabilityZone", esx.AvailabilityZone)
 		}
 		err = r.CheckMaintenance(ctx, &conf, esx)
 		if err != nil {
 			r.Log.Error(err, "Failed to update ESX maintenance labels.",
-				"esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+				"esx", esx.Name, "availabilityZone", esx.AvailabilityZone)
 			continue
 		}
 		r.StartNodes(ctx, &conf.VCenters, esx)
 		err = r.ShutdownNodes(ctx, &conf, esx)
 		if err != nil {
-			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availablityZone", esx.AvailabilityZone)
+			r.Log.Error(err, "Failed to shutdown nodes on ESX.", "esx", esx.Name, "availabilityZone", esx.AvailabilityZone)
 			continue
 		}
 	}
