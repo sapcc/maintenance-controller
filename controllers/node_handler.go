@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/metrics"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -21,6 +26,8 @@ var handlers []NodeHandler = []NodeHandler{
 	EnsureLabelMap,
 	MaintainProfileStates,
 	ApplyProfiles,
+	SaveDrainedPods,
+	CheckDrainProgress,
 	UpdateMaintenanceStateLabel,
 }
 
@@ -142,4 +149,140 @@ func UpdateMaintenanceStateLabel(ctx context.Context, params reconcileParameters
 	}
 	params.node.Labels[constants.StateLabelKey] = string(state.Operational)
 	return nil
+}
+
+// SaveDrainedPods saves the pods currently on the node to the drain state after a drain trigger has been executed.
+// This handler stores the pods so they can be tracked for completion in subsequent reconcile loops.
+func SaveDrainedPods(ctx context.Context, params reconcileParameters, data *state.Data) error {
+	profilesStr := params.node.Labels[constants.ProfileLabelKey]
+	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
+
+	for _, ps := range profileStates {
+		profileName := ps.Profile.Name
+		// Only track pods for profiles that are or were recently in maintenance
+		if ps.State != state.InMaintenance {
+			continue
+		}
+
+		// Check if we already have pods tracked for this profile
+		_, alreadyTracking := data.Drain.Pods[profileName]
+		if alreadyTracking {
+			// Already tracking, don't overwrite
+			continue
+		}
+
+		// Get all pods for this node
+		var podList corev1.PodList
+		err := params.client.List(ctx, &podList, client.MatchingFields{"spec.nodeName": params.node.Name})
+		if err != nil {
+			params.log.Error(err, "failed to list pods for drain tracking", "profile", profileName)
+			continue
+		}
+
+		// Filter pods similar to GetPodsForDrain
+		filteredPods := make([]corev1.Pod, 0)
+		for _, pod := range podList.Items {
+			// skip mirror pods
+			if _, ok := pod.Annotations[corev1.MirrorPodAnnotationKey]; ok {
+				continue
+			}
+			// skip daemonsets
+			skip := false
+			for _, ref := range pod.OwnerReferences {
+				if ref.Kind == "DaemonSet" {
+					skip = true
+				}
+			}
+			if skip {
+				continue
+			}
+			filteredPods = append(filteredPods, pod)
+		}
+
+		// Save the pods to track
+		if len(filteredPods) > 0 {
+			data.Drain.Pods[profileName] = convertPodsToReferences(filteredPods)
+			data.Drain.InitiatedAt[profileName] = time.Now().UTC()
+			params.log.Info("Saved pods for drain tracking", "profile", profileName, "podCount", len(filteredPods))
+		}
+	}
+
+	return nil
+}
+
+// CheckDrainProgress monitors ongoing drain operations and retries eviction/deletion
+// for pods that are still present. This handler runs in every reconcile loop.
+func CheckDrainProgress(ctx context.Context, params reconcileParameters, data *state.Data) error {
+	profilesStr := params.node.Labels[constants.ProfileLabelKey]
+	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
+
+	for _, ps := range profileStates {
+		profileName := ps.Profile.Name
+		pods, hasPendingPods := data.Drain.Pods[profileName]
+		if !hasPendingPods || len(pods) == 0 {
+			continue
+		}
+
+		// Check if any of the tracked pods are still present
+		stillPending := make([]corev1.Pod, 0)
+		for _, podRef := range pods {
+			var pod corev1.Pod
+			err := params.client.Get(ctx, client.ObjectKey{Namespace: podRef.Namespace, Name: podRef.Name}, &pod)
+			if err != nil {
+				if !k8serrors.IsNotFound(err) {
+					params.log.Error(err, "failed to check pod status during drain", "pod", podRef.Name, "namespace", podRef.Namespace)
+				}
+				// Pod is gone or we can't check, skip
+				continue
+			}
+			// Pod still exists
+			stillPending = append(stillPending, pod)
+		}
+
+		// If there are still pods, retry the drain
+		if len(stillPending) > 0 {
+			params.log.Info("Retrying drain for still-pending pods", "profile", profileName, "podCount", len(stillPending), "node", params.node.Name)
+			hasPendingAfterRetry, err := common.EnsureDrain(ctx, params.node, params.log, common.DrainParameters{
+				AwaitDeletion: common.WaitParameters{
+					Period:  common.DefaultDrainRetryPeriod,
+					Timeout: 30 * time.Second,
+				},
+				Eviction: common.WaitParameters{
+					Period:  common.DefaultDrainRetryPeriod,
+					Timeout: 10 * time.Second,
+				},
+				Client:        params.client,
+				Clientset:     params.clientset,
+				ForceEviction: true,
+			})
+			if err != nil {
+				params.log.Error(err, "failed to retry drain", "profile", profileName)
+			}
+			if hasPendingAfterRetry {
+				// Update the tracked pods
+				data.Drain.Pods[profileName] = convertPodsToReferences(stillPending)
+			} else {
+				// All pods are gone, clean up the drain state
+				delete(data.Drain.Pods, profileName)
+				delete(data.Drain.InitiatedAt, profileName)
+			}
+		} else {
+			// All tracked pods are gone
+			delete(data.Drain.Pods, profileName)
+			delete(data.Drain.InitiatedAt, profileName)
+		}
+	}
+
+	return nil
+}
+
+func convertPodsToReferences(pods []corev1.Pod) []state.PodReference {
+	refs := make([]state.PodReference, len(pods))
+	for i, pod := range pods {
+		refs[i] = state.PodReference{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+		}
+	}
+	return refs
 }

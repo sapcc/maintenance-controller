@@ -107,10 +107,24 @@ type ProfileData struct {
 	Previous   NodeStateLabel
 }
 
+type DrainState struct {
+	// Maps profile name to the list of pods currently being drained
+	Pods map[string][]PodReference `json:"pods"`
+	// Maps profile name to when the drain was initiated
+	InitiatedAt map[string]time.Time `json:"initiatedAt"`
+}
+
+type PodReference struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
 type Data struct {
 	Profiles map[string]*ProfileData
 	// Maps a notification instance name to the last time it was triggered.
 	Notifications map[string]time.Time
+	// Tracks ongoing drain operations per profile
+	Drain DrainState `json:"drain"`
 }
 
 func ParseData(dataStr string) (Data, error) {
@@ -125,6 +139,12 @@ func ParseData(dataStr string) (Data, error) {
 	}
 	if data.Notifications == nil {
 		data.Notifications = make(map[string]time.Time)
+	}
+	if data.Drain.Pods == nil {
+		data.Drain.Pods = make(map[string][]PodReference)
+	}
+	if data.Drain.InitiatedAt == nil {
+		data.Drain.InitiatedAt = make(map[string]time.Time)
 	}
 	return data, nil
 }

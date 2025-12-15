@@ -164,7 +164,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) e
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
-		err = common.EnsureDrain(ctx, node, r.Log,
+		_, err = common.EnsureDrain(ctx, node, r.Log,
 			common.DrainParameters{
 				Client:    r.Client,
 				Clientset: kubernetes.NewForConfigOrDie(r.Conf),

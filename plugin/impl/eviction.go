@@ -82,7 +82,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		// Initiate asynchronous pod draining without waiting for completion.
 		// The drain process is tracked in the node's annotation state and will be
 		// checked/retried in each reconcile loop by a dedicated handler.
-		return common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
+		hasPending, err := common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
 			AwaitDeletion: common.WaitParameters{
 				Period:  defaultPeriod,
 				Timeout: e.DeletionTimeout,
@@ -95,6 +95,12 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 			Clientset:     params.Clientset,
 			ForceEviction: e.ForceEviction,
 		})
+		if err != nil {
+			return err
+		}
+		// If there are still pods pending, we'll retry in the next reconcile loop
+		_ = hasPending
+		return nil
 	}
 	return fmt.Errorf("invalid eviction action: %s", e.Action)
 }

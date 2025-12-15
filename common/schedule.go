@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const DefaultDrainRetryPeriod = 5 * time.Second
+
 type evictionVersion string
 
 const none evictionVersion = "none"
@@ -72,19 +74,21 @@ type DrainParameters struct {
 }
 
 // Drains Pods from the given node - should be done asynchronously.
-// This finction should initiate eviction/deletion of pods but return immediately without waiting and stopping the reconcile loop.
-func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
+// This function initiates eviction/deletion of pods but returns immediately without waiting.
+// The actual pod deletion is checked in each reconcile loop and retried if needed.
+// Returns true if there are still pods pending deletion.
+func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
 	checkReady(node, log)
 	deletable, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
-		return fmt.Errorf("failed to fetch deletable pods: %w", err)
+		return false, fmt.Errorf("failed to fetch deletable pods: %w", err)
 	}
 	if len(deletable) == 0 {
-		return nil
+		return false, nil
 	}
 	version, err := fetchEvictionVersion(params.Clientset)
 	if err != nil {
-		return err
+		return true, err
 	}
 	if version == none {
 		log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
@@ -98,15 +102,11 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("failed to delete/evict at least one pod: %w", err)
+		return true, fmt.Errorf("failed to delete/evict at least one pod: %w", err)
 	}
-	log.Info("Awaiting pod deletion.", "period", params.AwaitDeletion.Period,
-		"timeout", params.AwaitDeletion.Timeout, "count", len(deletable), "node", node.Name)
-	err = WaitForPodDeletions(ctx, params.Client, deletable, params.AwaitDeletion)
-	if err != nil {
-		return fmt.Errorf("failed to await pod deletions: %w", err)
-	}
-	return nil
+	log.Info("Initiated pod eviction/deletion.", "count", len(deletable), "node", node.Name)
+	// Return true to indicate that pods are still pending deletion and should be checked in the next reconcile
+	return true, nil
 }
 
 func checkReady(node *corev1.Node, log logr.Logger) {
@@ -261,4 +261,28 @@ func waitForPodDeletion(ctx context.Context, k8sClient client.Client, pod corev1
 		}
 		return false, nil
 	})
+}
+
+// CheckDrainProgress checks if pods referenced in the list are still present on the node.
+// Returns true if there are still pods to be deleted, false if all are gone.
+func CheckDrainProgress(ctx context.Context, k8sClient client.Client, pods []corev1.Pod) (bool, error) {
+	if len(pods) == 0 {
+		return false, nil
+	}
+	for _, pod := range pods {
+		var p corev1.Pod
+		err := k8sClient.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}, &p)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				// Pod is gone, continue checking others
+				continue
+			}
+			// Other errors should be logged but we continue
+			continue
+		}
+		// Pod still exists
+		return true, nil
+	}
+	// All pods are gone
+	return false, nil
 }
