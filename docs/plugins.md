@@ -59,6 +59,14 @@ config:
   status: the expected condition status (usually one of True, False or Unknown), required
 ```
 
+### hypervisorCondition
+Checks if a hypervisor CRO condition has the defined status.
+```yaml
+config:
+  type: the hypervisor conditions type, required
+  status: the expected condition status (usually one of True, False or Unknown), required
+```
+
 ### kubernikusCount
 Checks that the node count on the Kubernetes API is greater or equal to the nodes specified on the Kubernikus API.
 ```yaml

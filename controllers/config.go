@@ -169,6 +169,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 		&impl.Condition{},
 		&impl.HasAnnotation{},
 		&impl.HasLabel{},
+		&impl.HypervisorCondition{},
 		&impl.KubernikusCount{},
 		&impl.MaxMaintenance{},
 		&impl.NodeCount{},

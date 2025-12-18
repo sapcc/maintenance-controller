@@ -160,6 +160,85 @@ var _ = Describe("The hypervisor plugin", func() {
 		})
 	})
 
+	Describe("HypervisorCondition", func() {
+		It("parses with correct config", func() {
+			config, err := ucfgwrap.FromYAML([]byte("type: Ready\nstatus: \"True\""))
+			Expect(err).To(Succeed())
+
+			var base HypervisorCondition
+			plugin, err := base.New(&config)
+			Expect(err).To(Succeed())
+			Expect(plugin).To(Equal(&HypervisorCondition{
+				Type:   "Ready",
+				Status: "True",
+			}))
+		})
+
+		It("fails parsing incorrect config", func() {
+			_, err := ucfgwrap.FromYAML([]byte("invalid_yaml"))
+			errMsg := "type 'string' is not supported on top level of config, only dictionary or list"
+			Expect(err).To(MatchError(errMsg))
+
+			config, err := ucfgwrap.FromYAML([]byte("testest: test"))
+			Expect(err).To(Succeed())
+
+			var base HypervisorCondition
+			_, err = base.New(&config)
+			Expect(err).To(MatchError("string value is not set accessing 'type'"))
+		})
+
+		It("fails without a matching hypervisor", func(ctx SpecContext) {
+			checker := &HypervisorCondition{
+				Type:   "Ready",
+				Status: "True",
+			}
+			result, err := checker.Check(plugin.Parameters{Client: k8sclient, Ctx: ctx, Node: testNode})
+			Expect(err).To(MatchError("hypervisors.kvm.cloud.sap \"test-node\" not found"))
+			Expect(result.Passed).To(BeFalse())
+		})
+
+		It("succeeds if the hypervisor matches the expected fields", func(ctx SpecContext) {
+			By("Running the check with a matching hypervisor")
+			hypervisor := &kvmv1.Hypervisor{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Status: kvmv1.HypervisorStatus{
+					Conditions: []metav1.Condition{
+						{Type: "Ready", Status: metav1.ConditionTrue},
+					},
+				},
+			}
+			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
+
+			checker := &HypervisorCondition{
+				Type:   "Ready",
+				Status: "True",
+			}
+			result, err := checker.Check(plugin.Parameters{Client: k8sclient, Ctx: ctx, Node: testNode})
+
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeTrue())
+			Expect(k8sclient.Delete(ctx, hypervisor)).To(Succeed())
+		})
+
+		It("not passes if the field doesn't exist", func(ctx SpecContext) {
+			By("Running the check with a non-existing field")
+			hypervisor := &kvmv1.Hypervisor{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+			}
+			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
+
+			checker := &HypervisorCondition{
+				Type:   "NonExistingField",
+				Status: "True",
+			}
+			result, err := checker.Check(plugin.Parameters{Client: k8sclient, Ctx: ctx, Node: testNode})
+			Expect(err).To(Succeed())
+			Expect(result.Passed).To(BeFalse())
+			Expect(result.Info["reason"]).To(Equal("condition NonExistingField not present"))
+			Expect(k8sclient.Delete(ctx, hypervisor)).To(Succeed())
+		})
+	})
+
 	Describe("AlterHypervisor", func() {
 		It("fails parsing incorrect config", func() {
 			_, err := ucfgwrap.FromYAML([]byte("invalid_yaml"))
