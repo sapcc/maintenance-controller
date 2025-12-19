@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/cobaltcore-dev/openstack-hypervisor-operator/api/v1"
 	"github.com/sapcc/ucfgwrap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -92,6 +93,49 @@ func (i *CheckHypervisor) Check(params plugin.Parameters) (plugin.CheckResult, e
 	}
 
 	return plugin.Passed(nil), nil
+}
+
+// HypervisorCondition is a check plugin that checks if a hypervisor
+// has a certain status for a defined condition.
+type HypervisorCondition struct {
+	Type   string
+	Status string
+}
+
+// New creates a new HypervisorCondition instance with the given config.
+func (c *HypervisorCondition) New(config *ucfgwrap.Config) (plugin.Checker, error) {
+	conf := struct {
+		Type   string `config:"type" validate:"required"`
+		Status string `config:"status" validate:"required"`
+	}{}
+	if err := config.Unpack(&conf); err != nil {
+		return nil, err
+	}
+	return &HypervisorCondition{Type: conf.Type, Status: conf.Status}, nil
+}
+
+func (c *HypervisorCondition) ID() string {
+	return "hypervisorCondition"
+}
+
+// Check asserts that the given status matches the specified condition.
+func (c *HypervisorCondition) Check(params plugin.Parameters) (plugin.CheckResult, error) {
+	var hypervisor v1.Hypervisor
+	if err := params.Client.Get(params.Ctx, types.NamespacedName{Name: params.Node.Name}, &hypervisor); err != nil {
+		return plugin.Failed(nil), err
+	}
+
+	for _, condition := range hypervisor.Status.Conditions {
+		if condition.Type == c.Type {
+			info := map[string]any{"current": condition.Status, "expected": c.Status}
+			return plugin.CheckResult{Passed: condition.Status == metav1.ConditionStatus(c.Status), Info: info}, nil
+		}
+	}
+	return plugin.FailedWithReason(fmt.Sprintf("condition %s not present", c.Type)), nil
+}
+
+func (c *HypervisorCondition) OnTransition(params plugin.Parameters) error {
+	return nil
 }
 
 // AlterHypervisor is a trigger plugin, which can alter properties of the hypervisor CRO of the node.
