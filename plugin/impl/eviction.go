@@ -80,7 +80,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		// Assigning true to unschedulable here is a sanity action.
 		// The user should configure to run the cordon action before running the drain action.
 		params.Node.Spec.Unschedulable = true
-		drained, err := common.EnsureDrainNonBlocking(params.Ctx, params.Node, params.Log, common.DrainParameters{
+		drained, err := common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
 			AwaitDeletion: common.WaitParameters{
 				Period:  defaultPeriod,
 				Timeout: e.DeletionTimeout,

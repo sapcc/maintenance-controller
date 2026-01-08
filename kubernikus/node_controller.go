@@ -180,7 +180,7 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, secretKe
 		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
 	}
 	// In case of error just retry, draining is ensured again
-	if err := common.EnsureDrain(ctx, node, r.Log, params); err != nil {
+	if _, err := common.EnsureDrain(ctx, node, r.Log, params); err != nil {
 		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
 	}
 	osConf, err := common.LoadOSConfig(ctx, r.Client, secretKey)

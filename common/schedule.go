@@ -72,18 +72,7 @@ type DrainParameters struct {
 	GracePeriodSeconds *int64
 }
 
-// EnsureDrainNonBlocking triggers pod eviction/delete and returns immediately.
-func EnsureDrainNonBlocking(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
-	return ensureDrain(ctx, node, log, params, false)
-}
-
-// EnsureDrain drains pods from the given node and waits until no candidates are left.
-func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
-	_, err := ensureDrain(ctx, node, log, params, true)
-	return err
-}
-
-func ensureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters, waitForCompletion bool) (bool, error) {
+func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
 	checkReady(node, log)
 	pending, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
@@ -121,9 +110,6 @@ func ensureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 	}
 	if len(remaining) > 0 {
 		log.Info("Waiting for pods to terminate after eviction.", "count", len(remaining), "node", node.Name)
-		if waitForCompletion {
-			return false, fmt.Errorf("pods still present on node %s: %s", node.Name, podNames(remaining))
-		}
 		return false, nil
 	}
 	return true, nil
