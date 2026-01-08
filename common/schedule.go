@@ -6,6 +6,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -71,41 +72,61 @@ type DrainParameters struct {
 	GracePeriodSeconds *int64
 }
 
-// Drains Pods from the given node, if required.
+// EnsureDrainNonBlocking triggers pod eviction/delete and returns immediately.
+func EnsureDrainNonBlocking(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
+	return ensureDrain(ctx, node, log, params, false)
+}
+
+// EnsureDrain drains pods from the given node and waits until no candidates are left.
 func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
+	_, err := ensureDrain(ctx, node, log, params, true)
+	return err
+}
+
+func ensureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters, waitForCompletion bool) (bool, error) {
 	checkReady(node, log)
-	deletable, err := GetPodsForDrain(ctx, params.Client, node.Name)
+	pending, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
-		return fmt.Errorf("failed to fetch deletable pods: %w", err)
+		return false, fmt.Errorf("failed to fetch deletable pods: %w", err)
 	}
-	if len(deletable) == 0 {
-		return nil
+	active, terminating := splitDrainCandidates(pending)
+	if len(active) == 0 && len(terminating) == 0 {
+		return true, nil
 	}
-	version, err := fetchEvictionVersion(params.Clientset)
-	if err != nil {
-		return err
-	}
-	if version == none {
-		log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
-		err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
-	} else {
-		log.Info("Going to evict pods from node.", "count", len(deletable), "node", node.Name)
-		err = evictPods(ctx, params.Clientset, deletable, version, params.Eviction, params.GracePeriodSeconds)
-		if err != nil && params.ForceEviction {
-			log.Info("Eviction failed, going to delete pods", "err", err)
-			err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
+
+	if len(active) > 0 {
+		version, err := fetchEvictionVersion(params.Clientset)
+		if err != nil {
+			return false, err
+		}
+		if version == none {
+			log.Info("Going to delete pods from node.", "count", len(active), "node", node.Name)
+			err = deletePods(ctx, params.Client, active, params.GracePeriodSeconds)
+		} else {
+			log.Info("Going to evict pods from node.", "count", len(active), "node", node.Name)
+			err = evictPods(ctx, params.Clientset, active, version, params.Eviction, params.GracePeriodSeconds)
+			if err != nil && params.ForceEviction {
+				log.Info("Eviction failed, going to delete pods", "err", err)
+				err = deletePods(ctx, params.Client, active, params.GracePeriodSeconds)
+			}
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to delete/evict at least one pod: %w", err)
 		}
 	}
+
+	remaining, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
-		return fmt.Errorf("failed to delete/evict at least one pod: %w", err)
+		return false, fmt.Errorf("failed to verify pending pods: %w", err)
 	}
-	log.Info("Awaiting pod deletion.", "period", params.AwaitDeletion.Period,
-		"timeout", params.AwaitDeletion.Timeout, "count", len(deletable), "node", node.Name)
-	err = WaitForPodDeletions(ctx, params.Client, deletable, params.AwaitDeletion)
-	if err != nil {
-		return fmt.Errorf("failed to await pod deletions: %w", err)
+	if len(remaining) > 0 {
+		log.Info("Waiting for pods to terminate after eviction.", "count", len(remaining), "node", node.Name)
+		if waitForCompletion {
+			return false, fmt.Errorf("pods still present on node %s: %s", node.Name, podNames(remaining))
+		}
+		return false, nil
 	}
-	return nil
+	return true, nil
 }
 
 func checkReady(node *corev1.Node, log logr.Logger) {
@@ -114,6 +135,29 @@ func checkReady(node *corev1.Node, log logr.Logger) {
 			log.Info("Node is not ready before drain", "node", node.Name, "ready", condition.Status)
 		}
 	}
+}
+
+func splitDrainCandidates(pods []corev1.Pod) (active []corev1.Pod, terminating []corev1.Pod) {
+	active = make([]corev1.Pod, 0)
+	terminating = make([]corev1.Pod, 0)
+	for i := range pods {
+		pod := pods[i]
+		if pod.DeletionTimestamp != nil {
+			terminating = append(terminating, pod)
+			continue
+		}
+		active = append(active, pod)
+	}
+	return active, terminating
+}
+
+func podNames(pods []corev1.Pod) string {
+	names := make([]string, 0, len(pods))
+	for i := range pods {
+		pod := pods[i]
+		names = append(names, fmt.Sprintf("%s/%s", pod.Namespace, pod.Name))
+	}
+	return strings.Join(names, ",")
 }
 
 // Gets a list of pods to be deleted for a node to be considered drained.
