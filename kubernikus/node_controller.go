@@ -179,9 +179,14 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, secretKe
 	if err != nil {
 		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
 	}
-	// In case of error just retry, draining is ensured again
-	if err := common.EnsureDrain(ctx, node, r.Log, params); err != nil {
+	// In case of error or node not empty just retry, draining is ensured again
+	drained, err := common.EnsureDrain(ctx, node, r.Log, params)
+	if err != nil {
 		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
+	}
+	if !drained {
+		r.Log.Info("Node drain still in progress; will continue in next reconcile", "node", node.Name)
+		return nil
 	}
 	osConf, err := common.LoadOSConfig(ctx, r.Client, secretKey)
 	if err != nil {
