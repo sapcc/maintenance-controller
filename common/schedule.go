@@ -225,8 +225,7 @@ type WaitParameters struct {
 	Timeout time.Duration
 }
 
-func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
-	version evictionVersion, gracePeriodSeconds *int64) error {
+func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod, version evictionVersion, gracePeriodSeconds *int64) error {
 	var err error
 	if version == v1beta1 {
 		eviction := policyv1beta1.Eviction{}
