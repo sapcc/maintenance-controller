@@ -82,6 +82,35 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		return true, nil
 	}
 
+	// Check if terminating pods have exceeded their grace period and force delete them
+	if len(terminating) > 0 && params.ForceEviction {
+		now := time.Now()
+		podsToForceDelete := make([]corev1.Pod, 0)
+		for i := range terminating {
+			pod := terminating[i]
+			if pod.DeletionTimestamp == nil {
+				continue
+			}
+			// graceperiod is in params.GracePeriodSeconds
+			graceperiod := params.GracePeriodSeconds
+			var deadline time.Time
+			if pod.DeletionTimestamp != nil && graceperiod == nil {
+				deadline = pod.DeletionTimestamp.Add(time.Duration(*graceperiod) * time.Second)
+			}
+			if now.After(deadline) {
+				podsToForceDelete = append(podsToForceDelete, pod)
+			}
+		}
+		if len(podsToForceDelete) > 0 {
+			log.Info("Force deleting pods that exceeded grace period", "count", len(podsToForceDelete), "node", node.Name)
+			gracePeriodZero := int64(0)
+			err = deletePods(ctx, params.Client, podsToForceDelete, &gracePeriodZero)
+			if err != nil {
+				log.Info("Force deletion had errors", "err", err)
+			}
+		}
+	}
+
 	if len(active) > 0 {
 		version, err := fetchEvictionVersion(params.Clientset)
 		if err != nil {
