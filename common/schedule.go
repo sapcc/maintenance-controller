@@ -103,12 +103,8 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		}
 	}
 
-	remaining, err := GetPodsForDrain(ctx, params.Client, node.Name)
-	if err != nil {
-		return false, fmt.Errorf("failed to verify pending pods: %w", err)
-	}
-	if len(remaining) > 0 {
-		log.Info("Waiting for pods to terminate after eviction.", "count", len(remaining), "node", node.Name)
+	if len(pending) > 0 {
+		log.Info("Waiting for pods to terminate after eviction.", "count", len(pending), "node", node.Name)
 		return false, nil
 	}
 	return true, nil
