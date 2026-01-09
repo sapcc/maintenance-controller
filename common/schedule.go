@@ -94,7 +94,7 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 			// graceperiod is in params.GracePeriodSeconds
 			graceperiod := params.GracePeriodSeconds
 			var deadline time.Time
-			if pod.DeletionTimestamp != nil && graceperiod == nil {
+			if pod.DeletionTimestamp != nil && graceperiod != nil {
 				deadline = pod.DeletionTimestamp.Add(time.Duration(*graceperiod) * time.Second)
 			}
 			if now.After(deadline) {
