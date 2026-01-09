@@ -92,10 +92,9 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 			err = deletePods(ctx, params.Client, active, params.GracePeriodSeconds)
 		} else {
 			log.Info("Going to evict pods from node.", "count", len(active), "node", node.Name)
-			err = evictPods(ctx, params.Clientset, active, version, params.Eviction, params.GracePeriodSeconds)
-			if err != nil && params.ForceEviction {
-				log.Info("Eviction failed, going to delete pods", "err", err)
-				err = deletePods(ctx, params.Client, active, params.GracePeriodSeconds)
+			err = evictPods(ctx, params.Clientset, active, version, params.GracePeriodSeconds)
+			if err != nil {
+				log.Info("Eviction had errors", "err", err)
 			}
 		}
 		if err != nil {
@@ -175,20 +174,21 @@ func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod,
 }
 
 func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
-	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
+	version evictionVersion, gracePeriodSeconds *int64) error {
 
 	if len(pods) == 0 {
 		return nil
 	}
-	waiters := make([]WaitFunc, 0)
+	var sumErr error
 	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
-		waiters = append(waiters, func() error {
-			return evictPod(ctx, ki, pod, version, params, gracePeriodSeconds)
-		})
+		err := evictPod(ctx, ki, pod, version, gracePeriodSeconds)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			sumErr = fmt.Errorf("failed to evict pod %s: %w", pod.Name, sumErr)
+		}
 	}
-	return waitParallel(waiters)
+	return sumErr
 }
 
 type WaitParameters struct {
@@ -197,29 +197,23 @@ type WaitParameters struct {
 }
 
 func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
-	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
-
-	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) { //nolint:staticcheck,lll
-		var err error
-		if version == v1beta1 {
-			eviction := policyv1beta1.Eviction{}
-			eviction.Name = pod.Name
-			eviction.Namespace = pod.Namespace
-			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
-			err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
-		}
-		if version == v1 {
-			eviction := policyv1.Eviction{}
-			eviction.Name = pod.Name
-			eviction.Namespace = pod.Namespace
-			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
-			err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
-		}
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
+	version evictionVersion, gracePeriodSeconds *int64) error {
+	var err error
+	if version == v1beta1 {
+		eviction := policyv1beta1.Eviction{}
+		eviction.Name = pod.Name
+		eviction.Namespace = pod.Namespace
+		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
+	}
+	if version == v1 {
+		eviction := policyv1.Eviction{}
+		eviction.Name = pod.Name
+		eviction.Namespace = pod.Namespace
+		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
+	}
+	return err
 }
 
 // Deletes the given pods and awaits there deletion.
