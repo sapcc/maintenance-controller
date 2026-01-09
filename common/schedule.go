@@ -6,7 +6,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -135,15 +134,6 @@ func splitDrainCandidates(pods []corev1.Pod) (active []corev1.Pod, terminating [
 		active = append(active, pod)
 	}
 	return active, terminating
-}
-
-func podNames(pods []corev1.Pod) string {
-	names := make([]string, 0, len(pods))
-	for i := range pods {
-		pod := pods[i]
-		names = append(names, fmt.Sprintf("%s/%s", pod.Namespace, pod.Name))
-	}
-	return strings.Join(names, ",")
 }
 
 // Gets a list of pods to be deleted for a node to be considered drained.
