@@ -164,7 +164,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) e
 			r.Log.Error(err, "Failed to cordon node.", "node", node.Name)
 			continue
 		}
-		_, err = common.EnsureDrain(ctx, node, r.Log,
+		isEmpty, err := common.EnsureDrain(ctx, node, r.Log,
 			common.DrainParameters{
 				Client:    r.Client,
 				Clientset: kubernetes.NewForConfigOrDie(r.Conf),
@@ -184,6 +184,11 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) e
 			r.Log.Error(err, "Failed to drain node.", "node", node.Name)
 			continue
 		}
+		if !isEmpty {
+			r.Log.Info("Node is still not empty after drain. Will retry in next reconcile.", "node", node.Name)
+			continue
+		}
+
 		r.Log.Info("Ensuring VM is shut off. Will shutdown if necessary.", "node", node.Name)
 		err = EnsureVMOff(ctx, ShutdownParams{
 			VCenters: &conf.VCenters,
