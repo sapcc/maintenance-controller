@@ -180,11 +180,11 @@ func (r *NodeReconciler) deleteNode(ctx context.Context, node *v1.Node, secretKe
 		return fmt.Errorf("failed to cordon node %s: %w", node.Name, err)
 	}
 	// In case of error or node not empty just retry, draining is ensured again
-	isEmpty, err := common.EnsureDrain(ctx, node, r.Log, params)
+	drained, err := common.EnsureDrain(ctx, node, r.Log, params)
 	if err != nil {
 		return fmt.Errorf("failed to drain node %s: %w", node.Name, err)
 	}
-	if !isEmpty {
+	if !drained {
 		r.Log.Info("Node drain still in progress; will continue in next reconcile", "node", node.Name)
 		return nil
 	}
