@@ -122,7 +122,7 @@ func checkReady(node *corev1.Node, log logr.Logger) {
 	}
 }
 
-func splitDrainCandidates(pods []corev1.Pod) (active []corev1.Pod, terminating []corev1.Pod) {
+func splitDrainCandidates(pods []corev1.Pod) (active, terminating []corev1.Pod) {
 	active = make([]corev1.Pod, 0)
 	terminating = make([]corev1.Pod, 0)
 	for i := range pods {
