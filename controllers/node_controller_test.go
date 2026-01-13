@@ -1191,4 +1191,17 @@ var _ = Describe("The eviction plugin", func() {
 		}).ShouldNot(BeNil())
 	})
 
+	// new test to include the case of force eviction
+	It("should force evict pods with the drain action", func(ctx SpecContext) {
+		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute, ForceEviction: true}
+		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
+		err := eviction.Trigger(params)
+		Expect(err).To(Succeed()) // awaiting the pod deletions fails because there is no kubelet running
+		Expect(node.Spec.Unschedulable).To(BeTrue())
+		Eventually(func(g Gomega) *metav1.Time {
+			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(pod), pod)
+			g.Expect(err).To(Succeed())
+			return pod.DeletionTimestamp
+		}).ShouldNot(BeNil())
+	})
 })
