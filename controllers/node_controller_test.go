@@ -1148,11 +1148,15 @@ var _ = Describe("The eviction plugin", func() {
 	})
 
 	AfterEach(func() {
-		Expect(k8sClient.Delete(
-			context.Background(),
-			pod,
-			&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
-		)).To(Succeed())
+		pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(context.Background(), metav1.ListOptions{})
+		Expect(err).To(Succeed())
+		for _, p := range pods.Items {
+			Expect(k8sClient.Delete(
+				context.Background(),
+				&p,
+				&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
+			)).To(Succeed())
+		}
 		Eventually(func(g Gomega) []corev1.Pod {
 			pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(context.Background(), metav1.ListOptions{})
 			g.Expect(err).To(Succeed())
