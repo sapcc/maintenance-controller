@@ -5,6 +5,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -88,15 +89,10 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		podsToForceDelete := make([]corev1.Pod, 0)
 		for i := range terminating {
 			pod := terminating[i]
-			if pod.DeletionTimestamp == nil {
+			if pod.DeletionTimestamp == nil || pod.DeletionGracePeriodSeconds == nil {
 				continue
 			}
-			// graceperiod is in params.GracePeriodSeconds
-			graceperiod := params.GracePeriodSeconds
-			var deadline time.Time
-			if pod.DeletionTimestamp != nil && graceperiod != nil {
-				deadline = pod.DeletionTimestamp.Add(time.Duration(*graceperiod) * time.Second)
-			}
+			deadline := pod.DeletionTimestamp.Add(time.Duration(*pod.DeletionGracePeriodSeconds) * time.Second)
 			if now.After(deadline) {
 				podsToForceDelete = append(podsToForceDelete, pod)
 			}
@@ -190,16 +186,16 @@ func GetPodsForDrain(ctx context.Context, k8sClient client.Client, nodeName stri
 }
 
 func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod, gracePeriodSeconds *int64) error {
-	var sumErr error
+	var errs []error
 	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
 		err := k8sClient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: gracePeriodSeconds})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			sumErr = fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, sumErr)
+			errs = append(errs, fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, err))
 		}
 	}
-	return sumErr
+	return errors.Join(errs...)
 }
 
 func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
@@ -208,16 +204,16 @@ func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
 	if len(pods) == 0 {
 		return nil
 	}
-	var sumErr error
+	var errs []error
 	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
 		err := evictPod(ctx, ki, pod, version, gracePeriodSeconds)
 		if err != nil && !k8serrors.IsNotFound(err) {
-			sumErr = fmt.Errorf("failed to evict pod %s: %w", pod.Name, sumErr)
+			errs = append(errs, fmt.Errorf("failed to evict pod %s: %w", pod.Name, err))
 		}
 	}
-	return sumErr
+	return errors.Join(errs...)
 }
 
 type WaitParameters struct {
