@@ -1183,7 +1183,7 @@ var _ = Describe("The eviction plugin", func() {
 		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute}
 		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
 		err := eviction.Trigger(params)
-		Expect(err).To(Succeed()) // awaiting the pod deletions fails because there is no kubelet running
+		Expect(err).To(Succeed())
 		Expect(node.Spec.Unschedulable).To(BeTrue())
 		Eventually(func(g Gomega) *metav1.Time {
 			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(pod), pod)
@@ -1192,7 +1192,6 @@ var _ = Describe("The eviction plugin", func() {
 		}).ShouldNot(BeNil())
 	})
 
-	// new test to include the case of force eviction
 	It("should force evict pods with the drain action", func(ctx SpecContext) {
 		terminatingPod := &corev1.Pod{}
 		terminatingPod.Name = "terminating-pod"
@@ -1204,10 +1203,10 @@ var _ = Describe("The eviction plugin", func() {
 				Image: "nginx",
 			},
 		}
-		Expect(k8sClient.Create(context.Background(), terminatingPod)).To(Succeed())
+		Expect(k8sClient.Create(ctx, terminatingPod)).To(Succeed())
 
 		gracePeriod := int64(10)
-		Expect(k8sClient.Delete(context.Background(), terminatingPod, &client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
+		Expect(k8sClient.Delete(ctx, terminatingPod, &client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
 
 		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute, ForceEviction: true}
 		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
