@@ -98,6 +98,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		}
 		if !drained {
 			params.Log.Info("Drain still in progress; will continue in next reconcile", "node", params.Node.Name)
+			return &plugin.RetryError{Message: "drain still in progress"}
 		}
 		return nil
 	}
