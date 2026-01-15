@@ -96,10 +96,7 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			data.Profiles[ps.Profile.Name].Transition = time.Now().UTC()
 			data.Profiles[ps.Profile.Name].Current = result.Applied.Next
 		}
-		// track the state of this reconciliation for the next run
-		if len(errs) == 0 {
-			data.Profiles[ps.Profile.Name].Previous = result.State
-		}
+		data.Profiles[ps.Profile.Name].Previous = result.State
 	}
 	return nil
 }
