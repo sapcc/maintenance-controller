@@ -424,32 +424,45 @@ var _ = Describe("The slack thread plugin", func() {
 	var server *slacktest.Server
 	var url string
 	var leaseName types.NamespacedName
+	var rtm *slack.RTM
+	var receivedMessages []slack.MessageEvent
 
 	BeforeEach(func() {
 		leaseName = types.NamespacedName{
 			Name:      "slack-lease",
 			Namespace: metav1.NamespaceDefault,
 		}
+		receivedMessages = make([]slack.MessageEvent, 0)
+
 		server = slacktest.NewTestServer()
 		server.Start()
 		url = server.GetAPIURL()
+
+		api := slack.New("test-token", slack.OptionAPIURL(url))
+		rtm = api.NewRTM()
+		go rtm.ManageConnection()
+
+		go func() {
+			for msg := range rtm.IncomingEvents {
+				switch ev := msg.Data.(type) {
+				case *slack.MessageEvent:
+					receivedMessages = append(receivedMessages, *ev)
+				}
+			}
+		}()
 	})
 
 	AfterEach(func() {
+		err := rtm.Disconnect()
+		Expect(err).To(Succeed())
 		lease := &coordinationv1.Lease{}
 		Expect(k8sClient.Get(context.Background(), leaseName, lease)).To(Succeed())
 		Expect(k8sClient.Delete(context.Background(), lease)).To(Succeed())
 		server.Stop()
 	})
 
-	fetchMessages := func(g Gomega) []slack.Msg {
-		msgs := make([]slack.Msg, 0)
-		for _, outbound := range server.GetSeenOutboundMessages() {
-			msg := slack.Msg{}
-			g.Expect(json.Unmarshal([]byte(outbound), &msg)).To(Succeed())
-			msgs = append(msgs, msg)
-		}
-		return msgs
+	fetchMessages := func(_ Gomega) []slack.MessageEvent {
+		return receivedMessages
 	}
 
 	It("should send a message and create its lease", func() {
@@ -464,7 +477,7 @@ var _ = Describe("The slack thread plugin", func() {
 		thread.SetTestURL(url)
 		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.Msg) bool {
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.MessageEvent) bool {
 			return msgs[0].Timestamp == msgs[1].ThreadTimestamp &&
 				msgs[0].Text == "title" && msgs[1].Text == "msg"
 		})))
@@ -489,7 +502,7 @@ var _ = Describe("The slack thread plugin", func() {
 		Expect(err).To(Succeed())
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.Msg) bool {
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.MessageEvent) bool {
 			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp
 		})))
 	})
@@ -509,7 +522,7 @@ var _ = Describe("The slack thread plugin", func() {
 		time.Sleep(2 * time.Second)
 		err = thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
 		Expect(err).To(Succeed())
-		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.Msg) bool {
+		Eventually(fetchMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.MessageEvent) bool {
 			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
 		})))
 	})
