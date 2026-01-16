@@ -52,6 +52,9 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
+	profilesWithRetryError := make(map[string]bool)
+	retryErrors := make([]error, 0)
+
 	for _, ps := range profileStates {
 		err := metrics.TouchShuffles(ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
@@ -77,8 +80,11 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			Name:    ps.Profile.Name,
 			State:   stateObj.Label(),
 		})
-		if err != nil {
+		if err != nil && !plugin.IsRetryError(err) {
 			errs = append(errs, err)
+		} else if err != nil && plugin.IsRetryError(err) {
+			profilesWithRetryError[ps.Profile.Name] = true
+			retryErrors = append(retryErrors, err)
 		}
 	}
 	params.nodeInfoCache.Update(state.NodeInfo{
@@ -90,6 +96,9 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 		return fmt.Errorf("failed to apply current state: %w", errors.Join(errs...))
 	}
 	for i, ps := range profileStates {
+		if profilesWithRetryError[ps.Profile.Name] {
+			continue
+		}
 		result := profileResults[i]
 		// check if a transition happened
 		if ps.State != result.Applied.Next {
@@ -97,6 +106,9 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			data.Profiles[ps.Profile.Name].Current = result.Applied.Next
 		}
 		data.Profiles[ps.Profile.Name].Previous = result.State
+	}
+	if len(retryErrors) > 0 {
+		return errors.Join(retryErrors...)
 	}
 	return nil
 }
