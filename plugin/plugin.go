@@ -49,14 +49,6 @@ func (e *RetryError) Error() string {
 	return e.Message
 }
 
-func IsRetryError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var retryErr *RetryError
-	return errors.As(err, &retryErr)
-}
-
 // Specifies the configuration for a Scheduler.
 type ScheduleDescriptor struct {
 	Type   string

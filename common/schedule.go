@@ -118,9 +118,6 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		} else {
 			log.Info("Going to evict pods from node.", "count", len(active), "node", node.Name)
 			err = evictPods(ctx, params.Clientset, active, version, params.GracePeriodSeconds)
-			if err != nil {
-				log.Info("Eviction had errors", "err", err)
-			}
 		}
 		if err != nil {
 			return false, fmt.Errorf("failed to delete/evict at least one pod: %w", err)

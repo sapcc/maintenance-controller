@@ -52,8 +52,7 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
-	profilesWithRetryError := make(map[string]bool)
-	retryErrors := make([]error, 0)
+	profilesWithRetryError := make(map[string]struct{})
 
 	for _, ps := range profileStates {
 		err := metrics.TouchShuffles(ctx, params.client, params.node, ps.Profile.Name)
@@ -80,11 +79,11 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			Name:    ps.Profile.Name,
 			State:   stateObj.Label(),
 		})
-		if err != nil && !plugin.IsRetryError(err) {
+		var retryErr *plugin.RetryError
+		if err != nil && !errors.As(err, &retryErr) {
 			errs = append(errs, err)
-		} else if err != nil && plugin.IsRetryError(err) {
-			profilesWithRetryError[ps.Profile.Name] = true
-			retryErrors = append(retryErrors, err)
+		} else if err != nil && errors.As(err, &retryErr) {
+			profilesWithRetryError[ps.Profile.Name] = struct{}{}
 		}
 	}
 	params.nodeInfoCache.Update(state.NodeInfo{
@@ -96,7 +95,7 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 		return fmt.Errorf("failed to apply current state: %w", errors.Join(errs...))
 	}
 	for i, ps := range profileStates {
-		if profilesWithRetryError[ps.Profile.Name] {
+		if _, ok := profilesWithRetryError[ps.Profile.Name]; ok {
 			continue
 		}
 		result := profileResults[i]
@@ -106,9 +105,6 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			data.Profiles[ps.Profile.Name].Current = result.Applied.Next
 		}
 		data.Profiles[ps.Profile.Name].Previous = result.State
-	}
-	if len(retryErrors) > 0 {
-		return errors.Join(retryErrors...)
 	}
 	return nil
 }
