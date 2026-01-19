@@ -80,10 +80,13 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			State:   stateObj.Label(),
 		})
 		var retryErr *plugin.RetryError
-		if err != nil && !errors.As(err, &retryErr) {
-			errs = append(errs, err)
-		} else if err != nil && errors.As(err, &retryErr) {
+		if err == nil {
+			continue
+		}
+		if errors.Is(err, retryErr) {
 			profilesWithRetryError[ps.Profile.Name] = struct{}{}
+		} else {
+			errs = append(errs, err)
 		}
 	}
 	params.nodeInfoCache.Update(state.NodeInfo{
