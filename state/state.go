@@ -190,7 +190,11 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 		return result, err
 	}
 	if stateInfo.Previous != stateInfo.Current {
-		if err := state.Enter(params, data); err != nil {
+		err := state.Enter(params, data)
+		if errors.Is(err, &plugin.RetryError{}) {
+			return result, err
+		}
+		if err != nil {
 			return handleTransitionError(err, fmt.Sprintf("Failed to enter state %s", state.Label()))
 		}
 	}
