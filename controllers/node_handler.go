@@ -52,6 +52,8 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 	profilesStr := params.node.Labels[constants.ProfileLabelKey]
 	profileStates := data.GetProfilesWithState(profilesStr, params.config.Profiles)
 	profileResults, errs := make([]state.ProfileResult, 0), make([]error, 0)
+	profilesWithRetryError := make(map[string]struct{})
+
 	for _, ps := range profileStates {
 		err := metrics.TouchShuffles(ctx, params.client, params.node, ps.Profile.Name)
 		if err != nil {
@@ -77,7 +79,13 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 			Name:    ps.Profile.Name,
 			State:   stateObj.Label(),
 		})
-		if err != nil {
+		var retryErr *plugin.RetryError
+		if err == nil {
+			continue
+		}
+		if errors.Is(err, retryErr) {
+			profilesWithRetryError[ps.Profile.Name] = struct{}{}
+		} else {
 			errs = append(errs, err)
 		}
 	}
@@ -90,13 +98,15 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 		return fmt.Errorf("failed to apply current state: %w", errors.Join(errs...))
 	}
 	for i, ps := range profileStates {
+		if _, ok := profilesWithRetryError[ps.Profile.Name]; ok {
+			continue
+		}
 		result := profileResults[i]
 		// check if a transition happened
 		if ps.State != result.Applied.Next {
 			data.Profiles[ps.Profile.Name].Transition = time.Now().UTC()
 			data.Profiles[ps.Profile.Name].Current = result.Applied.Next
 		}
-		// track the state of this reconciliation for the next run
 		data.Profiles[ps.Profile.Name].Previous = result.State
 	}
 	return nil

@@ -19,6 +19,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -1146,18 +1147,22 @@ var _ = Describe("The eviction plugin", func() {
 		Expect(k8sClient.Create(context.Background(), pod)).To(Succeed())
 	})
 
-	AfterEach(func() {
-		Expect(k8sClient.Delete(
-			context.Background(),
-			pod,
-			&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
-		)).To(Succeed())
+	AfterEach(func(ctx SpecContext) {
+		pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(ctx, metav1.ListOptions{})
+		Expect(err).To(Succeed())
+		for _, p := range pods.Items {
+			Expect(k8sClient.Delete(
+				ctx,
+				&p,
+				&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
+			)).To(Succeed())
+		}
 		Eventually(func(g Gomega) []corev1.Pod {
-			pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(context.Background(), metav1.ListOptions{})
+			pods, err := k8sClientset.CoreV1().Pods(metav1.NamespaceDefault).List(ctx, metav1.ListOptions{})
 			g.Expect(err).To(Succeed())
 			return pods.Items
 		}).Should(BeEmpty())
-		Expect(k8sClient.Delete(context.Background(), node)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, node)).To(Succeed())
 	})
 
 	It("should mark a node as unschedulable with cordon action", func(ctx SpecContext) {
@@ -1181,8 +1186,9 @@ var _ = Describe("The eviction plugin", func() {
 	It("should evict pods with the drain action", func(ctx SpecContext) {
 		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute}
 		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
+		// Drain returns RetryError as pods are still terminating (expected in test environment)
 		err := eviction.Trigger(params)
-		Expect(err).To(HaveOccurred()) // awaiting the pod deletions fails because there is no kubelet running
+		Expect(err).To(MatchError("drain still in progress"))
 		Expect(node.Spec.Unschedulable).To(BeTrue())
 		Eventually(func(g Gomega) *metav1.Time {
 			err := k8sClient.Get(context.Background(), client.ObjectKeyFromObject(pod), pod)
@@ -1191,4 +1197,32 @@ var _ = Describe("The eviction plugin", func() {
 		}).ShouldNot(BeNil())
 	})
 
+	It("should force evict pods with the drain action", func(ctx SpecContext) {
+		terminatingPod := &corev1.Pod{}
+		terminatingPod.Name = "terminating-pod"
+		terminatingPod.Namespace = metav1.NamespaceDefault
+		terminatingPod.Spec.NodeName = node.Name
+		terminatingPod.Spec.Containers = []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx",
+			},
+		}
+		Expect(k8sClient.Create(ctx, terminatingPod)).To(Succeed())
+
+		gracePeriod := int64(10)
+		Expect(k8sClient.Delete(ctx, terminatingPod, &client.DeleteOptions{GracePeriodSeconds: &gracePeriod})).To(Succeed())
+
+		eviction := impl.Eviction{Action: impl.Drain, DeletionTimeout: time.Second, EvictionTimeout: time.Minute, ForceEviction: true}
+		params := plugin.Parameters{Ctx: ctx, Client: k8sClient, Clientset: k8sClientset, Node: node, Log: GinkgoLogr}
+		err := eviction.Trigger(params)
+		Expect(err).To(MatchError("drain still in progress"))
+		Expect(node.Spec.Unschedulable).To(BeTrue())
+		// Pod should either have a DeletionTimestamp or be already deleted (NotFound)
+		Eventually(func(g Gomega) bool {
+			fetchedPod := &corev1.Pod{}
+			err := k8sClient.Get(ctx, client.ObjectKeyFromObject(terminatingPod), fetchedPod)
+			return k8serrors.IsNotFound(err) || fetchedPod.DeletionTimestamp != nil
+		}).Should(BeTrue())
+	})
 })

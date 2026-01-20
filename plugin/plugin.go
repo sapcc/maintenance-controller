@@ -40,6 +40,15 @@ func (e *ChainError) Unwrap() error {
 	return e.Err
 }
 
+// RetryError indicates that an operation should be retried without changing state.
+type RetryError struct {
+	Message string
+}
+
+func (e *RetryError) Error() string {
+	return e.Message
+}
+
 // Specifies the configuration for a Scheduler.
 type ScheduleDescriptor struct {
 	Type   string

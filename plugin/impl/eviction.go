@@ -70,6 +70,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		params.Node.Spec.Unschedulable = false
 		return nil
 	case Drain:
+		// original comment:
 		// The implementation below is technically wrong.
 		// Just assigning true to Unschedulable does not patch the node object on the api server.
 		// This done at the end of the reconciliation loop.
@@ -79,7 +80,7 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 		// Assigning true to unschedulable here is a sanity action.
 		// The user should configure to run the cordon action before running the drain action.
 		params.Node.Spec.Unschedulable = true
-		return common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
+		drained, err := common.EnsureDrain(params.Ctx, params.Node, params.Log, common.DrainParameters{
 			AwaitDeletion: common.WaitParameters{
 				Period:  defaultPeriod,
 				Timeout: e.DeletionTimeout,
@@ -92,6 +93,14 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 			Clientset:     params.Clientset,
 			ForceEviction: e.ForceEviction,
 		})
+		if err != nil {
+			return err
+		}
+		if !drained {
+			params.Log.Info("Drain still in progress; will continue in next reconcile", "node", params.Node.Name)
+			return &plugin.RetryError{Message: "drain still in progress"}
+		}
+		return nil
 	}
 	return fmt.Errorf("invalid eviction action: %s", e.Action)
 }

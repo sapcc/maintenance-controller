@@ -5,6 +5,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -71,41 +72,63 @@ type DrainParameters struct {
 	GracePeriodSeconds *int64
 }
 
-// Drains Pods from the given node, if required.
-func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) error {
+func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
 	checkReady(node, log)
-	deletable, err := GetPodsForDrain(ctx, params.Client, node.Name)
+	pending, err := GetPodsForDrain(ctx, params.Client, node.Name)
 	if err != nil {
-		return fmt.Errorf("failed to fetch deletable pods: %w", err)
+		return false, fmt.Errorf("failed to fetch deletable pods: %w", err)
 	}
-	if len(deletable) == 0 {
-		return nil
+	active, terminating := splitDrainCandidates(pending)
+	if len(active) == 0 && len(terminating) == 0 {
+		return true, nil
 	}
-	version, err := fetchEvictionVersion(params.Clientset)
-	if err != nil {
-		return err
-	}
-	if version == none {
-		log.Info("Going to delete pods from node.", "count", len(deletable), "node", node.Name)
-		err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
-	} else {
-		log.Info("Going to evict pods from node.", "count", len(deletable), "node", node.Name)
-		err = evictPods(ctx, params.Clientset, deletable, version, params.Eviction, params.GracePeriodSeconds)
-		if err != nil && params.ForceEviction {
-			log.Info("Eviction failed, going to delete pods", "err", err)
-			err = deletePods(ctx, params.Client, deletable, params.GracePeriodSeconds)
+
+	// Check if terminating pods have exceeded their grace period and force delete them
+	if len(terminating) > 0 && params.ForceEviction {
+		now := time.Now()
+		podsToForceDelete := make([]corev1.Pod, 0)
+		for i := range terminating {
+			pod := terminating[i]
+			if pod.DeletionTimestamp == nil || pod.DeletionGracePeriodSeconds == nil {
+				continue
+			}
+			deadline := pod.DeletionTimestamp.Add(time.Duration(*pod.DeletionGracePeriodSeconds) * time.Second)
+			if now.After(deadline) {
+				podsToForceDelete = append(podsToForceDelete, pod)
+			}
+		}
+		if len(podsToForceDelete) > 0 {
+			log.Info("Force deleting pods that exceeded grace period", "count", len(podsToForceDelete), "node", node.Name)
+			gracePeriodZero := int64(0)
+			err = deletePods(ctx, params.Client, podsToForceDelete, &gracePeriodZero)
+			if err != nil {
+				log.Info("Force deletion had errors", "err", err)
+			}
 		}
 	}
-	if err != nil {
-		return fmt.Errorf("failed to delete/evict at least one pod: %w", err)
+
+	if len(active) > 0 {
+		version, err := fetchEvictionVersion(params.Clientset)
+		if err != nil {
+			return false, err
+		}
+		if version == none {
+			log.Info("Going to delete pods from node.", "count", len(active), "node", node.Name)
+			err = deletePods(ctx, params.Client, active, params.GracePeriodSeconds)
+		} else {
+			log.Info("Going to evict pods from node.", "count", len(active), "node", node.Name)
+			err = evictPods(ctx, params.Clientset, active, version, params.GracePeriodSeconds)
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to delete/evict at least one pod: %w", err)
+		}
 	}
-	log.Info("Awaiting pod deletion.", "period", params.AwaitDeletion.Period,
-		"timeout", params.AwaitDeletion.Timeout, "count", len(deletable), "node", node.Name)
-	err = WaitForPodDeletions(ctx, params.Client, deletable, params.AwaitDeletion)
-	if err != nil {
-		return fmt.Errorf("failed to await pod deletions: %w", err)
+
+	if len(pending) > 0 {
+		log.Info("Waiting for pods to terminate after eviction.", "count", len(pending), "node", node.Name)
+		return false, nil
 	}
-	return nil
+	return true, nil
 }
 
 func checkReady(node *corev1.Node, log logr.Logger) {
@@ -114,6 +137,20 @@ func checkReady(node *corev1.Node, log logr.Logger) {
 			log.Info("Node is not ready before drain", "node", node.Name, "ready", condition.Status)
 		}
 	}
+}
+
+func splitDrainCandidates(pods []corev1.Pod) (active, terminating []corev1.Pod) {
+	active = make([]corev1.Pod, 0)
+	terminating = make([]corev1.Pod, 0)
+	for i := range pods {
+		pod := pods[i]
+		if pod.DeletionTimestamp != nil {
+			terminating = append(terminating, pod)
+			continue
+		}
+		active = append(active, pod)
+	}
+	return active, terminating
 }
 
 // Gets a list of pods to be deleted for a node to be considered drained.
@@ -146,33 +183,34 @@ func GetPodsForDrain(ctx context.Context, k8sClient client.Client, nodeName stri
 }
 
 func deletePods(ctx context.Context, k8sClient client.Client, pods []corev1.Pod, gracePeriodSeconds *int64) error {
-	var sumErr error
+	var errs []error
 	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
 		err := k8sClient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: gracePeriodSeconds})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			sumErr = fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, sumErr)
+			errs = append(errs, fmt.Errorf("failed to delete pod %s from node: %w", pod.Name, err))
 		}
 	}
-	return sumErr
+	return errors.Join(errs...)
 }
 
 func evictPods(ctx context.Context, ki kubernetes.Interface, pods []corev1.Pod,
-	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
+	version evictionVersion, gracePeriodSeconds *int64) error {
 
 	if len(pods) == 0 {
 		return nil
 	}
-	waiters := make([]WaitFunc, 0)
+	var errs []error
 	// Do not use a direct iteration variable loop due to implicit aliasing in for loops
 	for i := range pods {
 		pod := pods[i]
-		waiters = append(waiters, func() error {
-			return evictPod(ctx, ki, pod, version, params, gracePeriodSeconds)
-		})
+		err := evictPod(ctx, ki, pod, version, gracePeriodSeconds)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			errs = append(errs, fmt.Errorf("failed to evict pod %s: %w", pod.Name, err))
+		}
 	}
-	return waitParallel(waiters)
+	return errors.Join(errs...)
 }
 
 type WaitParameters struct {
@@ -180,30 +218,23 @@ type WaitParameters struct {
 	Timeout time.Duration
 }
 
-func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod,
-	version evictionVersion, params WaitParameters, gracePeriodSeconds *int64) error {
-
-	return wait.PollImmediateWithContext(ctx, params.Period, params.Timeout, func(ctx context.Context) (bool, error) { //nolint:staticcheck,lll
-		var err error
-		if version == v1beta1 {
-			eviction := policyv1beta1.Eviction{}
-			eviction.Name = pod.Name
-			eviction.Namespace = pod.Namespace
-			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
-			err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
-		}
-		if version == v1 {
-			eviction := policyv1.Eviction{}
-			eviction.Name = pod.Name
-			eviction.Namespace = pod.Namespace
-			eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
-			err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
-		}
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
+func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod, version evictionVersion, gracePeriodSeconds *int64) error {
+	var err error
+	if version == v1beta1 {
+		eviction := policyv1beta1.Eviction{}
+		eviction.Name = pod.Name
+		eviction.Namespace = pod.Namespace
+		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
+	}
+	if version == v1 {
+		eviction := policyv1.Eviction{}
+		eviction.Name = pod.Name
+		eviction.Namespace = pod.Namespace
+		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
+	}
+	return err
 }
 
 // Deletes the given pods and awaits there deletion.
