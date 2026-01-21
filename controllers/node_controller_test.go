@@ -441,35 +441,16 @@ var _ = Describe("The slack thread plugin", func() {
 		go rtm.ManageConnection()
 	})
 
-	AfterEach(func() {
+	AfterEach(func(ctx SpecContext) {
 		err := rtm.Disconnect()
 		Expect(err).To(Succeed())
 		lease := &coordinationv1.Lease{}
-		Expect(k8sClient.Get(context.Background(), leaseName, lease)).To(Succeed())
-		Expect(k8sClient.Delete(context.Background(), lease)).To(Succeed())
+		Expect(k8sClient.Get(ctx, leaseName, lease)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, lease)).To(Succeed())
 		server.Stop()
 	})
 
-	collectMessages := func() []slack.MessageEvent {
-		messages := []slack.MessageEvent{}
-		for {
-			select {
-			case msg := <-rtm.IncomingEvents:
-				if ev, ok := msg.Data.(*slack.MessageEvent); ok {
-					messages = append(messages, *ev)
-				}
-			case <-time.After(10 * time.Millisecond):
-				return messages
-			}
-		}
-	}
-
-	notifyThread := func(thread *impl.SlackThread) {
-		err := thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: context.Background()})
-		Expect(err).To(Succeed())
-	}
-
-	It("should send a message and create its lease", func() {
+	It("should send a message and create its lease", func(ctx SpecContext) {
 		thread := impl.SlackThread{
 			Token:     "",
 			Title:     "title",
@@ -479,19 +460,21 @@ var _ = Describe("The slack thread plugin", func() {
 			Period:    1 * time.Second,
 		}
 		thread.SetTestURL(url)
-		notifyThread(&thread)
-		Eventually(collectMessages).Should(SatisfyAll(HaveLen(2), Satisfy(func(msgs []slack.MessageEvent) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp &&
-				msgs[0].Text == "title" && msgs[1].Text == "msg"
-		})))
+		Expect(thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: ctx})).To(Succeed())
+		var firstMsg slack.RTMEvent
+		Eventually(rtm.IncomingEvents).Should(Receive(&firstMsg, HaveField("Data.Msg.Text", "title")))
+		Eventually(rtm.IncomingEvents).Should(Receive(SatisfyAll(
+			HaveField("Data.Msg.Text", "msg"),
+			HaveField("Data.Msg.ThreadTimestamp", firstMsg.Data.(*slack.MessageEvent).Timestamp),
+		)))
 		Eventually(func() error {
 			var lease coordinationv1.Lease
-			err := k8sClient.Get(context.Background(), thread.LeaseName, &lease)
+			err := k8sClient.Get(ctx, thread.LeaseName, &lease)
 			return err
 		}).Should(Succeed())
 	})
 
-	It("should use replies if the lease did not timeout", func() {
+	It("should use replies if the lease did not timeout", func(ctx SpecContext) {
 		thread := impl.SlackThread{
 			Token:     "",
 			Title:     "title",
@@ -501,14 +484,15 @@ var _ = Describe("The slack thread plugin", func() {
 			Period:    5 * time.Second,
 		}
 		thread.SetTestURL(url)
-		notifyThread(&thread)
-		notifyThread(&thread)
-		Eventually(collectMessages).Should(SatisfyAll(HaveLen(3), Satisfy(func(msgs []slack.MessageEvent) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[0].Timestamp == msgs[2].ThreadTimestamp
-		})))
+		Expect(thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: ctx})).To(Succeed())
+		Expect(thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: ctx})).To(Succeed())
+		var firstMsg slack.RTMEvent
+		Eventually(rtm.IncomingEvents).Should(Receive(&firstMsg, HaveField("Data.Msg.Text", "title")))
+		Eventually(rtm.IncomingEvents).Should(Receive(HaveField("Data.Msg.ThreadTimestamp", firstMsg.Data.(*slack.MessageEvent).Timestamp)))
+		Eventually(rtm.IncomingEvents).Should(Receive(HaveField("Data.Msg.ThreadTimestamp", firstMsg.Data.(*slack.MessageEvent).Timestamp)))
 	})
 
-	It("creates a new thread once the lease times out", func() {
+	It("creates a new thread once the lease times out", func(ctx SpecContext) {
 		thread := impl.SlackThread{
 			Token:     "",
 			Title:     "title",
@@ -518,12 +502,21 @@ var _ = Describe("The slack thread plugin", func() {
 			Period:    1 * time.Second,
 		}
 		thread.SetTestURL(url)
-		notifyThread(&thread)
-		time.Sleep(2 * time.Second)
-		notifyThread(&thread)
-		Eventually(collectMessages).Should(SatisfyAll(HaveLen(4), Satisfy(func(msgs []slack.MessageEvent) bool {
-			return msgs[0].Timestamp == msgs[1].ThreadTimestamp && msgs[2].Timestamp == msgs[3].ThreadTimestamp
-		})))
+		Expect(thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: ctx})).To(Succeed())
+		time.Sleep(1100 * time.Millisecond)
+		Expect(thread.Notify(plugin.Parameters{Client: k8sClient, Ctx: ctx})).To(Succeed())
+		var firstMsg slack.RTMEvent
+		Eventually(rtm.IncomingEvents).Should(Receive(&firstMsg, HaveField("Data.Msg.Text", "title")))
+		Eventually(rtm.IncomingEvents).Should(Receive(SatisfyAll(
+			HaveField("Data.Msg.Text", "msg"),
+			HaveField("Data.Msg.ThreadTimestamp", firstMsg.Data.(*slack.MessageEvent).Timestamp),
+		)))
+		var secondMsg slack.RTMEvent
+		Eventually(rtm.IncomingEvents).Should(Receive(&secondMsg, HaveField("Data.Msg.Text", "title")))
+		Eventually(rtm.IncomingEvents).Should(Receive(SatisfyAll(
+			HaveField("Data.Msg.Text", "msg"),
+			HaveField("Data.Msg.ThreadTimestamp", secondMsg.Data.(*slack.MessageEvent).Timestamp),
+		)))
 	})
 })
 
