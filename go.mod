@@ -15,10 +15,10 @@ require (
 	github.com/prometheus/common v0.67.5
 	github.com/sapcc/go-bits v0.0.0-20260116110244-dee8151c1378
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
-	github.com/slack-go/slack v0.16.0
-	github.com/vmware/govmomi v0.50.0
+	github.com/slack-go/slack v0.17.3
+	github.com/vmware/govmomi v0.52.0
 	go.uber.org/zap v1.27.1
-	gopkg.in/ini.v1 v1.67.0
+	gopkg.in/ini.v1 v1.67.1
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
