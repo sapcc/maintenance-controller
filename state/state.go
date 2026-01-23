@@ -175,7 +175,8 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			"node", node.Name,
 		)
 		recorder.Eventf(
-			node, "Normal", "ChangeMaintenanceStateFailed",
+			node, nil, v1.EventTypeNormal,
+			"ChangeMaintenanceStateFailed", "ChangeMaintenanceState",
 			"%v for profile %v: Will stay in %v state",
 			prefix, params.Profile, params.State,
 		)
@@ -216,7 +217,8 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 			return handleTransitionError(err, "At least one trigger plugin failed")
 		}
 		params.Log.Info("Moved node to next state", "state", string(transitions.Next), "profile", params.Profile)
-		recorder.Eventf(node, "Normal", "ChangedMaintenanceState",
+		recorder.Eventf(node, nil, v1.EventTypeNormal,
+			"ChangedMaintenanceState", "ChangeMaintenanceState",
 			"The node is now in the %v state caused by profile %v", string(transitions.Next), params.Profile)
 		result.Next = transitions.Next
 		return result, nil

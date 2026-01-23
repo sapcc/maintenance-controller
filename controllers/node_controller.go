@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -35,7 +35,7 @@ type NodeReconciler struct {
 	Clientset     *kubernetes.Clientset
 	Log           logr.Logger
 	Scheme        *runtime.Scheme
-	Recorder      record.EventRecorder
+	Recorder      events.EventRecorder
 	NodeInfoCache cache.NodeInfoCache
 }
 
@@ -44,7 +44,7 @@ type reconcileParameters struct {
 	clientset     kubernetes.Interface
 	config        *Config
 	log           logr.Logger
-	recorder      record.EventRecorder
+	recorder      events.EventRecorder
 	node          *corev1.Node
 	nodeInfoCache cache.NodeInfoCache
 }

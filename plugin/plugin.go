@@ -16,7 +16,7 @@ import (
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -93,7 +93,7 @@ type Parameters struct {
 	Clientset      kubernetes.Interface
 	Ctx            context.Context //nolint: containedctx
 	Log            logr.Logger
-	Recorder       record.EventRecorder
+	Recorder       events.EventRecorder
 	LastTransition time.Time
 }
 
