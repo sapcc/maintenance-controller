@@ -184,7 +184,7 @@ var _ = BeforeSuite(func() {
 		Client:        k8sManager.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:        k8sManager.GetScheme(),
-		Recorder:      k8sManager.GetEventRecorderFor("controller"),
+		Recorder:      k8sManager.GetEventRecorder("controller"),
 		NodeInfoCache: nodeInfoCache,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

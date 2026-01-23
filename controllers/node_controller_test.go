@@ -114,7 +114,7 @@ var _ = Describe("The controller", func() {
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
 		Expect(events.Items).ToNot(BeEmpty())
-		Expect(events.Items[0].InvolvedObject.UID).To(BeEquivalentTo(targetNodeName))
+		Expect(events.Items[0].InvolvedObject.Name).To(BeEquivalentTo(targetNodeName))
 	})
 
 	It("should follow profiles concurrently", func() {

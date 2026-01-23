@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -212,7 +212,7 @@ var _ = Describe("Apply", func() {
 
 	buildParams := func() plugin.Parameters {
 		return plugin.Parameters{
-			Recorder: record.NewFakeRecorder(128),
+			Recorder: events.NewFakeRecorder(128),
 			Profile:  "profile",
 			State:    string(Operational),
 			Log:      GinkgoLogr,

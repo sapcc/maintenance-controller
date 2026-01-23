@@ -167,7 +167,7 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 		Clientset:     kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 		Log:           ctrl.Log.WithName("controllers").WithName("maintenance"),
 		Scheme:        mgr.GetScheme(),
-		Recorder:      mgr.GetEventRecorderFor("maintenance"),
+		Recorder:      mgr.GetEventRecorder("maintenance"),
 		NodeInfoCache: nodeInfoCache,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("failed to setup maintenance controller node reconciler: %w", err)
