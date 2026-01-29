@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260122134704-121720962840
+	github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260129144138-c1a22b815ff9
 	github.com/elastic/go-ucfg v0.8.8
 	github.com/go-logr/logr v1.4.3
 	github.com/gophercloud/gophercloud/v2 v2.10.0
@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.39.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
-	github.com/sapcc/go-bits v0.0.0-20260116110244-dee8151c1378
+	github.com/sapcc/go-bits v0.0.0-20260129131511-4f0cd43323e7
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.17.3
 	github.com/vmware/govmomi v0.52.0
@@ -24,7 +24,7 @@ require (
 	k8s.io/client-go v0.35.0
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
-	sigs.k8s.io/controller-runtime v0.23.0
+	sigs.k8s.io/controller-runtime v0.23.1
 )
 
 require (
@@ -83,6 +83,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.1 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.2-0.20260122202528-d9cc6641c482 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
