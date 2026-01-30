@@ -187,13 +187,13 @@ SPDX-License-Identifier: Apache-2.0
                         <tr>
                             <td x-text="node.node"></td>
                             <template x-for="(val, key) in labels">
-                                <td x-data="{get text() 
+                                <td x-data="{get text()
                                     {
                                         if (node.labels === undefined) {
                                             return '';
                                         }
                                         return node.labels[key] === undefined ? '' : node.labels[key];
-                                    } 
+                                    }
                                 }" x-text="text"></td>
                             </template>
                         </tr>
