@@ -74,6 +74,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	var theNode corev1.Node
 	err = r.Get(ctx, req.NamespacedName, &theNode)
 	if errors.IsNotFound(err) {
+		r.NodeInfoCache.Delete(req.Name)
 		r.Log.Info("Could not find node on the API server, maybe it has been deleted?", "node", req.NamespacedName)
 		return ctrl.Result{}, nil
 	} else if err != nil {

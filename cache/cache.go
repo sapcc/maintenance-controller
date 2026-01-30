@@ -15,6 +15,7 @@ import (
 
 type NodeInfoCache interface {
 	Update(state.NodeInfo)
+	Delete(string)
 	JSON() ([]byte, error)
 }
 
@@ -35,6 +36,12 @@ func (nic *nodeInfoCacheImpl) Update(info state.NodeInfo) {
 	defer nic.mutex.Unlock()
 	info.Updated = time.Now()
 	nic.nodes[info.Node] = info
+}
+
+func (nic *nodeInfoCacheImpl) Delete(node string) {
+	nic.mutex.Lock()
+	defer nic.mutex.Unlock()
+	delete(nic.nodes, node)
 }
 
 func (nic *nodeInfoCacheImpl) JSON() ([]byte, error) {
