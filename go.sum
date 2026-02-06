@@ -10,8 +10,8 @@ github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260203105320-987b4a26d732 h1:zS7HPw51dRX4N74+4uURZhTdJu1pU2B11aIW+V33N8U=
-github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260203105320-987b4a26d732/go.mod h1:km3aM6c3RJVcDM9x4/5GdUn4nxdQkGHsG7bkpwJsxTY=
+github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260205162610-ca866d614be7 h1:4d9LZJSsAgHyew+nc4RNdT2U7MXuF/IG2/vjzmv6Tqw=
+github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260205162610-ca866d614be7/go.mod h1:km3aM6c3RJVcDM9x4/5GdUn4nxdQkGHsG7bkpwJsxTY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
