@@ -22,7 +22,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/api"
@@ -1159,7 +1158,7 @@ var _ = Describe("The eviction plugin", func() {
 			Expect(k8sClient.Delete(
 				ctx,
 				&p,
-				&client.DeleteOptions{GracePeriodSeconds: ptr.To(int64(0))},
+				&client.DeleteOptions{GracePeriodSeconds: new(int64(0))},
 			)).To(Succeed())
 		}
 		Eventually(func(g Gomega) []corev1.Pod {
