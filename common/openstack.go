@@ -21,7 +21,7 @@ type OpenStackConfig struct {
 	Region     string
 	AuthURL    string
 	Username   string
-	Password   string
+	Password   string // #nosec G117 - intentional passing of secret credential
 	Domainname string
 	ProjectID  string
 }
@@ -31,7 +31,7 @@ func parseOSConfig(data []byte) (OpenStackConfig, error) {
 		Global struct {
 			AuthURL    string `ini:"auth-url"`
 			Username   string `ini:"username"`
-			Password   string `ini:"password"`
+			Password   string `ini:"password"` // #nosec G117 - intentional passing of secret credential
 			Region     string `ini:"region"`
 			Domainname string `ini:"domain-name"`
 			TenantID   string `ini:"tenant-id"`
