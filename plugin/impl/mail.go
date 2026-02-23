@@ -22,7 +22,7 @@ type Mail struct {
 	To       []string
 	Identity string
 	User     string
-	Password string
+	Password string // #nosec G117 - intentional passing of secret credential
 }
 
 // New creates a new Mail instance with the given config.
@@ -36,7 +36,7 @@ func (m *Mail) New(config *ucfgwrap.Config) (plugin.Notifier, error) {
 		To       []string `config:"to" validate:"required"`
 		Identity string   `config:"identity"`
 		User     string   `config:"user"`
-		Password string   `config:"password"`
+		Password string   `config:"password"` // #nosec G117 - intentional passing of secret credential
 	}{}
 	if err := config.Unpack(&conf); err != nil {
 		return nil, err

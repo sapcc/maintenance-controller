@@ -51,7 +51,7 @@ func (c *Config) AlarmsAsSet() map[string]struct{} {
 
 type Credential struct {
 	Username string `config:"username" validate:"required"`
-	Password string `config:"password"`
+	Password string `config:"password"` // #nosec G117 - intentional passing of secret credential
 }
 
 // VCenters contains connection information to regional vCenters.
