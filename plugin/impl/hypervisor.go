@@ -217,8 +217,7 @@ func (a *AlterHypervisor) Trigger(params plugin.Parameters) error {
 func mapToStructFields(fields map[string]any, t reflect.Type) (map[string]any, error) {
 	// Validate that all provided fields exist in HypervisorSpec and map json tag names to struct field names
 	var jsonToStructField = make(map[string]string, t.NumField())
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		jsonName := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
 		jsonToStructField[jsonName] = f.Name
 	}
