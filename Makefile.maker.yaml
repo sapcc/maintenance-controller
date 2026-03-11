@@ -21,6 +21,14 @@ githubWorkflow:
     enabled: true
   global:
     defaultBranch: master
+  pushContainerToGhcr:
+    enabled: true
+    platforms: "linux/amd64"
+    tagStrategy:
+      - edge
+      - latest
+      - semver
+      - sha
 
 reuse:
   annotations:
