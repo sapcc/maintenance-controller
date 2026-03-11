@@ -136,7 +136,7 @@ var _ = Describe("The hypervisor plugin", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
 				Status: kvmv1.HypervisorStatus{
 					Evicted:      false,
-					Aggregates:   []string{"agg1", "agg2"},
+					Aggregates:   []kvmv1.Aggregate{{Name: "agg1"}, {Name: "agg2"}},
 					NumInstances: 42,
 				},
 			}
@@ -144,7 +144,6 @@ var _ = Describe("The hypervisor plugin", func() {
 
 			fields := map[string]any{
 				"Evicted":      true,
-				"Aggregates":   []string{"agg1", "agg2", "agg3"},
 				"NumInstances": 10,
 				"HypervisorID": "some-id",
 			}

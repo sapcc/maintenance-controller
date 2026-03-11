@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260227140710-c8c9db4ca196
+	github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260311083729-2256a066c976
 	github.com/elastic/go-ucfg v0.9.0
 	github.com/go-logr/logr v1.4.3
 	github.com/gophercloud/gophercloud/v2 v2.10.0
