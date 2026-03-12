@@ -164,6 +164,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 	checkers := []plugin.Checker{
 		&impl.Affinity{},
 		&impl.AnyLabel{},
+		&impl.CheckDynamicResource{},
 		&impl.CheckHypervisor{},
 		&impl.ClusterSemver{},
 		&impl.Condition{},
@@ -190,6 +191,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 
 	triggers := []plugin.Trigger{
 		&impl.AlterAnnotation{},
+		&impl.AlterDynamicResource{},
 		&impl.AlterFinalizer{},
 		&impl.AlterHypervisor{},
 		&impl.AlterLabel{},

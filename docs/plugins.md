@@ -42,6 +42,21 @@ config:
   <key>: <expected value>
 ```
 
+### checkDynamicResource
+Fetches an arbitrary Kubernetes object identified by group, version, kind and name, then evaluates a [CEL](https://github.com/google/cel-go) expression against it.
+The `name` and `namespace` fields can be plain strings or CEL expressions referencing the current node.
+CEL expressions must be wrapped in `{{= }}`.
+The CEL environment provides a `node` variable (the current node) and an `object` variable (the fetched resource) as unstructured maps.
+```yaml
+config:
+  group: the API group of the resource (e.g. "apps"), use empty string for core resources, optional
+  version: the API version of the resource (e.g. "v1"), required
+  kind: the kind of the resource (e.g. "ConfigMap"), required
+  namespace: the namespace of the resource, plain string or CEL expression, optional
+  name: the name of the resource, plain string or CEL expression, required
+  check: a CEL expression that must evaluate to a boolean, required
+```
+
 ### clusterSemver
 Checks if a label containing a semantic version is less than the most up-to-date value in the cluster.
 Requires the checked node to have the specified label.
@@ -181,6 +196,23 @@ config:
   key: the annotations key, required
   value: the value to set, optional
   remove: boolean value, if true the annotation is removed, if false the annotation is added or changed, optional
+```
+
+### alterDynamicResource
+Fetches an arbitrary Kubernetes object identified by group, version, kind and name, evaluates a [CEL](https://github.com/google/cel-go) expression to produce a merge fragment, and patches the object.
+The `name` and `namespace` fields can be plain strings or CEL expressions referencing the current node.
+CEL expressions must be wrapped in `{{= }}`.
+The CEL environment provides a `node` variable (the current node) and an `object` variable (the fetched resource) as unstructured maps.
+The `modify` expression must return a map that is deep-merged into the existing object.
+Uses optimistic locking via `resourceVersion` to handle concurrent modifications.
+```yaml
+config:
+  group: the API group of the resource (e.g. "apps"), use empty string for core resources, optional
+  version: the API version of the resource (e.g. "v1"), required
+  kind: the kind of the resource (e.g. "ConfigMap"), required
+  namespace: the namespace of the resource, plain string or CEL expression, optional
+  name: the name of the resource, plain string or CEL expression, required
+  modify: a CEL expression that must evaluate to a map representing the fields to merge, required
 ```
 
 ### alterFinalizer
