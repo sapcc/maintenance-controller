@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/PaesslerAG/gval v1.2.4
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cobaltcore-dev/openstack-hypervisor-operator v0.0.0-20260312093116-66c055fa880c
+	github.com/cobaltcore-dev/openstack-hypervisor-operator v1.0.1
 	github.com/elastic/go-ucfg v0.9.1
 	github.com/go-logr/logr v1.4.3
 	github.com/gophercloud/gophercloud/v2 v2.11.1
@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
-	github.com/sapcc/go-bits v0.0.0-20260312170110-034b497ebb7e
+	github.com/sapcc/go-bits v0.0.0-20260324094323-0c68f5c1e7d6
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.17.3
 	github.com/vmware/govmomi v0.52.0
