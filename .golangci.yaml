@@ -93,7 +93,7 @@ linters:
         - pattern: ^http\.Handle(?:Func)?$
         - pkg: ^gopkg\.in/square/go-jose\.v2
           msg: gopk.in/square/go-jose is archived and has CVEs. Replace it with gopkg.in/go-jose/go-jose.v2
-        - pkg: ^github\.com/coreos/go-oidc
+        - pkg: ^github\.com/coreos/go-oidc$
           msg: github.com/coreos/go-oidc depends on gopkg.in/square/go-jose which has CVEs. Replace it with github.com/coreos/go-oidc/v3
         - pkg: ^github\.com/howeyc/gopass
           msg: github.com/howeyc/gopass is archived, use golang.org/x/term instead
@@ -132,6 +132,8 @@ linters:
         - github.com/mdlayher/arp
         # for github.com/sapcc/vpa_butler
         - k8s.io/client-go
+        # for github.com/sapcc/keppel et al
+        - github.com/go-gorp/gorp/v3
       toolchain-forbidden: true
       go-version-pattern: 1\.\d+(\.0)?$
     gosec:
