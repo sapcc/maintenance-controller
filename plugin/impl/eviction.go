@@ -92,6 +92,8 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 			Client:        params.Client,
 			Clientset:     params.Clientset,
 			ForceEviction: e.ForceEviction,
+			Recorder:      params.Recorder,
+			Node:          params.Node,
 		})
 		if err != nil {
 			return err
