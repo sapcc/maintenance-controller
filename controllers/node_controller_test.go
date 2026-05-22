@@ -19,6 +19,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +43,7 @@ var _ = Describe("The controller", func() {
 		targetNode.Name = targetNodeName
 		Expect(k8sClient.Create(context.Background(), targetNode)).To(Succeed())
 
-		events := &corev1.EventList{}
+		events := &eventsv1.EventList{}
 		Expect(k8sClient.List(context.Background(), events)).To(Succeed())
 		for i := range events.Items {
 			Expect(k8sClient.Delete(context.Background(), &events.Items[i])).To(Succeed())
@@ -109,11 +110,11 @@ var _ = Describe("The controller", func() {
 		data, err := state.ParseData(node.Annotations[constants.DataAnnotationKey])
 		Expect(err).To(Succeed())
 		Expect(data.Profiles["test"].Current).To(Equal(state.Required))
-		events := &corev1.EventList{}
+		events := &eventsv1.EventList{}
 		err = k8sClient.List(context.Background(), events)
 		Expect(err).To(Succeed())
 		Expect(events.Items).ToNot(BeEmpty())
-		Expect(events.Items[0].InvolvedObject.Name).To(BeEquivalentTo(targetNodeName))
+		Expect(events.Items[0].Regarding.Name).To(BeEquivalentTo(targetNodeName))
 	})
 
 	It("should follow profiles concurrently", func() {
