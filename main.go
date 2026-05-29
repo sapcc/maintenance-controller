@@ -38,7 +38,6 @@ import (
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/controllers"
 	"github.com/sapcc/maintenance-controller/esx"
-	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/kubernikus"
 	"github.com/sapcc/maintenance-controller/metrics"
 	//+kubebuilder:scaffold:imports
@@ -98,7 +97,6 @@ func main() {
 		Metrics:                    server.Options{BindAddress: "0"}, // disable inbuilt metrics server
 		WebhookServer:              webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress:     probeAddr,
-		EventBroadcaster:           event.NewNodeBroadcaster(),
 		LeaderElectionResourceLock: "leases",
 		LeaderElection:             enableLeaderElection,
 		LeaderElectionID:           constants.LeaderElectionID,
