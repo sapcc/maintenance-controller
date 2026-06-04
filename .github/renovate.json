@@ -3,8 +3,7 @@
   "extends": [
     "config:recommended",
     "default:pinDigestsDisabled",
-    "mergeConfidence:all-badges",
-    "docker:disable"
+    "mergeConfidence:all-badges"
   ],
   "assignees": [
     "Nuckal777",

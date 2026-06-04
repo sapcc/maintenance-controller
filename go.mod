@@ -12,8 +12,8 @@ require (
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.5
-	github.com/sapcc/go-bits v0.0.0-20260529151418-8d2b33444f03
+	github.com/prometheus/common v0.68.1
+	github.com/sapcc/go-bits v0.0.0-20260604095421-6bd206943957
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.17.3
 	github.com/vmware/govmomi v0.52.0
@@ -61,11 +61,11 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/oauth2 v0.35.0 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
