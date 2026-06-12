@@ -192,7 +192,8 @@ func Apply(state NodeState, node *v1.Node, data *Data, params plugin.Parameters)
 	}
 	if stateInfo.Previous != stateInfo.Current {
 		err := state.Enter(params, data)
-		if errors.Is(err, &plugin.RetryError{}) {
+		var retryErr *plugin.RetryError
+		if errors.As(err, &retryErr) {
 			return result, err
 		}
 		if err != nil {
