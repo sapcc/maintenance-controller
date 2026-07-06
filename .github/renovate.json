@@ -3,8 +3,8 @@
   "extends": [
     "config:recommended",
     "default:pinDigestsDisabled",
-    "mergeConfidence:all-badges",
-    "docker:disable"
+    "docker:pinDigests",
+    "mergeConfidence:all-badges"
   ],
   "assignees": [
     "Nuckal777",
@@ -58,6 +58,15 @@
         "major"
       ],
       "dependencyDashboardApproval": true
+    },
+    {
+      "matchFileNames": [
+        ".github/workflows/checks.yaml",
+        ".github/workflows/ci.yaml",
+        ".github/workflows/codeql.yaml",
+        ".github/workflows/container-registry-ghcr.yaml"
+      ],
+      "enabled": false
     },
     {
       "matchPackageNames": [
