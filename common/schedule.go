@@ -71,9 +71,8 @@ type DrainParameters struct {
 	// on pods afterwards.
 	ForceEviction      bool
 	GracePeriodSeconds *int64
-	// optional recorder to emit events on evicted pods
+	// optional recorder to emit events on evicted pods; paired with the node passed to EnsureDrain
 	Recorder events.EventRecorder
-	Node     *corev1.Node
 }
 
 func recordDrainEvent(recorder events.EventRecorder, pod *corev1.Pod, node *corev1.Node, reason, note string) {

@@ -181,7 +181,6 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) e
 				ForceEviction:      conf.Intervals.PodEviction.Force,
 				GracePeriodSeconds: nodeGracePeriod(node),
 				Recorder:           r.Recorder,
-				Node:               node,
 			},
 		)
 		if err != nil {

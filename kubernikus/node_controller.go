@@ -122,7 +122,6 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				},
 				ForceEviction: conf.Intervals.PodEviction.Force,
 				Recorder:      r.Recorder,
-				Node:          node,
 			},
 		)
 		if err != nil {
