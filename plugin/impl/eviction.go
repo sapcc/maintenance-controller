@@ -94,7 +94,8 @@ func (e *Eviction) Trigger(params plugin.Parameters) error {
 			ForceEviction: e.ForceEviction,
 		})
 		if err != nil {
-			return err
+			params.Log.Error(err, "Drain encountered errors; will retry next reconcile", "node", params.Node.Name)
+			return &plugin.RetryError{Message: err.Error()}
 		}
 		if !drained {
 			params.Log.Info("Drain still in progress; will continue in next reconcile", "node", params.Node.Name)
