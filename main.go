@@ -203,10 +203,11 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 	if cfg.enableKubernikusMaintenance {
 		setupLog.Info("Kubernikus integration is enabled")
 		if err := (&kubernikus.NodeReconciler{
-			Client: mgr.GetClient(),
-			Log:    ctrl.Log.WithName("controllers").WithName("kubernikus"),
-			Scheme: mgr.GetScheme(),
-			Conf:   mgr.GetConfig(),
+			Client:   mgr.GetClient(),
+			Log:      ctrl.Log.WithName("controllers").WithName("kubernikus"),
+			Scheme:   mgr.GetScheme(),
+			Conf:     mgr.GetConfig(),
+			Recorder: mgr.GetEventRecorder("kubernikus-maintenance"),
 		}).SetupWithManager(mgr); err != nil {
 			return fmt.Errorf("failed to setup kubernikus node reconciler: %w", err)
 		}
@@ -215,9 +216,10 @@ func setupReconcilers(mgr manager.Manager, cfg *reconcilerConfig) error {
 	if cfg.enableESXMaintenance {
 		setupLog.Info("ESX integration is enabled")
 		controller := esx.Runnable{
-			Client: mgr.GetClient(),
-			Conf:   mgr.GetConfig(),
-			Log:    ctrl.Log.WithName("controllers").WithName("esx"),
+			Client:   mgr.GetClient(),
+			Conf:     mgr.GetConfig(),
+			Log:      ctrl.Log.WithName("controllers").WithName("esx"),
+			Recorder: mgr.GetEventRecorder("esx-maintenance"),
 		}
 		if err := mgr.Add(&controller); err != nil {
 			return fmt.Errorf("failed to create ESX reconciler: %w", err)

@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,9 +70,10 @@ func (r *NodeReconciler) loadConfig() (Config, error) {
 // NodeReconciler reconciles a Node object.
 type NodeReconciler struct {
 	client.Client
-	Conf   *rest.Config
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Conf     *rest.Config
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder events.EventRecorder
 }
 
 // Reconcile reconciles the given request.
@@ -119,6 +121,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					Timeout: conf.Intervals.PodEviction.Timeout,
 				},
 				ForceEviction: conf.Intervals.PodEviction.Force,
+				Recorder:      r.Recorder,
 			},
 		)
 		if err != nil {

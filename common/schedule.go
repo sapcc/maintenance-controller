@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -70,6 +71,15 @@ type DrainParameters struct {
 	// on pods afterwards.
 	ForceEviction      bool
 	GracePeriodSeconds *int64
+	// optional recorder to emit events on evicted pods; paired with the node passed to EnsureDrain
+	Recorder events.EventRecorder
+}
+
+func recordDrainEvent(recorder events.EventRecorder, pod *corev1.Pod, node *corev1.Node, reason, note string) {
+	if recorder == nil {
+		return
+	}
+	recorder.Eventf(pod, node, corev1.EventTypeNormal, reason, "Drain", note)
 }
 
 func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params DrainParameters) (bool, error) {
@@ -99,6 +109,9 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		}
 		if len(podsToForceDelete) > 0 {
 			log.Info("Force deleting pods that exceeded grace period", "count", len(podsToForceDelete), "node", node.Name)
+			for i := range podsToForceDelete {
+				recordDrainEvent(params.Recorder, &podsToForceDelete[i], node, "ForceDeleting", "Force deleting pod that exceeded grace period during node drain")
+			}
 			gracePeriodZero := int64(0)
 			err = deletePods(ctx, params.Client, podsToForceDelete, &gracePeriodZero)
 			if err != nil {
@@ -111,6 +124,9 @@ func EnsureDrain(ctx context.Context, node *corev1.Node, log logr.Logger, params
 		version, err := fetchEvictionVersion(params.Clientset)
 		if err != nil {
 			return false, err
+		}
+		for i := range active {
+			recordDrainEvent(params.Recorder, &active[i], node, "Evicting", "Evicting pod during node drain")
 		}
 		if version == none {
 			log.Info("Going to delete pods from node.", "count", len(active), "node", node.Name)
