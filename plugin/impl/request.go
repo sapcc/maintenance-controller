@@ -2,13 +2,10 @@ package impl
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -19,23 +16,17 @@ import (
 
 // Request is a trigger plugin that sends an HTTP request to a configured endpoint.
 type Request struct {
-	URL      string
-	Method   string
-	Body     string
-	CertFile string
-	KeyFile  string
-	CAFile   string
+	URL    string
+	Method string
+	Body   string
 }
 
 // New creates a new Request instance with the given config.
 func (r *Request) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 	conf := struct {
-		URL      string `config:"url" validate:"required"`
-		Method   string `config:"method"`
-		Body     string `config:"body"`
-		CertFile string `config:"certFile"`
-		KeyFile  string `config:"keyFile"`
-		CAFile   string `config:"caFile"`
+		URL    string `config:"url" validate:"required"`
+		Method string `config:"method"`
+		Body   string `config:"body"`
 	}{
 		Method: "POST", // Default to POST for backward compatibility
 	}
@@ -43,12 +34,9 @@ func (r *Request) New(config *ucfgwrap.Config) (plugin.Trigger, error) {
 		return nil, err
 	}
 	return &Request{
-		URL:      conf.URL,
-		Method:   conf.Method,
-		Body:     conf.Body,
-		CertFile: conf.CertFile,
-		KeyFile:  conf.KeyFile,
-		CAFile:   conf.CAFile,
+		URL:    conf.URL,
+		Method: conf.Method,
+		Body:   conf.Body,
 	}, nil
 }
 
@@ -65,17 +53,7 @@ func (r *Request) Trigger(params plugin.Parameters) error {
 	// Replace placeholders in body
 	body := r.replacePlaceholders(r.Body, params)
 
-	// Create HTTP client with TLS if certificates provided
 	client := &http.Client{Timeout: 30 * time.Second}
-	if r.CertFile != "" && r.KeyFile != "" {
-		tlsConfig, err := r.createTLSConfig()
-		if err != nil {
-			return fmt.Errorf("failed to create TLS config: %w", err)
-		}
-		client.Transport = &http.Transport{
-			TLSClientConfig: tlsConfig,
-		}
-	}
 
 	// Create request
 	var req *http.Request
@@ -141,32 +119,6 @@ func (r *Request) replacePlaceholders(s string, params plugin.Parameters) string
 	}
 	
 	return s
-}
-
-// createTLSConfig creates a TLS configuration with client certificates.
-func (r *Request) createTLSConfig() (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(r.CertFile, r.KeyFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load client certificate: %w", err)
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
-
-	if r.CAFile != "" {
-		caCert, err := os.ReadFile(r.CAFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
-		}
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("failed to parse CA certificate")
-		}
-		tlsConfig.RootCAs = caCertPool
-	}
-
-	return tlsConfig, nil
 }
 
 // extractAndStoreSilenceID extracts the silence ID from AlertManager response and stores it as a node label.
