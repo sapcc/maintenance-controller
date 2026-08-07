@@ -11,9 +11,9 @@ require (
 	github.com/gophercloud/gophercloud/v2 v2.13.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
-	github.com/prometheus/client_golang v1.24.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
-	github.com/sapcc/go-bits v0.0.0-20260723170232-89c8670b5841
+	github.com/sapcc/go-bits v0.0.0-20260807114049-ed453da227d5
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.23.1
 	github.com/vmware/govmomi v0.52.0
