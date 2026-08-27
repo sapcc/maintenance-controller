@@ -67,7 +67,7 @@ func (m *Mail) Notify(params plugin.Parameters) error {
 	}
 	var auth smtp.Auth
 	if m.Auth {
-		server := strings.Split(m.Address, ":")[0]
+		server, _, _ := strings.Cut(m.Address, ":")
 		auth = smtp.PlainAuth(m.Identity, m.User, m.Password, server)
 	}
 	err = smtp.SendMail(m.Address, auth, m.From, m.To, []byte(theMessage))
