@@ -1,6 +1,6 @@
 module github.com/sapcc/maintenance-controller
 
-go 1.26.0
+go 1.27
 
 require (
 	github.com/PaesslerAG/gval v1.2.4
@@ -8,12 +8,12 @@ require (
 	github.com/cobaltcore-dev/openstack-hypervisor-operator v1.2.3
 	github.com/elastic/go-ucfg v0.9.1
 	github.com/go-logr/logr v1.4.3
-	github.com/gophercloud/gophercloud/v2 v2.13.0
+	github.com/gophercloud/gophercloud/v2 v2.14.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
-	github.com/sapcc/go-bits v0.0.0-20260818140528-75bdd20c7867
+	github.com/sapcc/go-bits v0.0.0-20260827091731-7669cbdb53fb
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.23.1
 	github.com/vmware/govmomi v0.52.0
