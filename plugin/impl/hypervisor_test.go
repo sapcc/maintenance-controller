@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("The hypervisor plugin", func() {
 	var k8sclient client.Client
-	var testNode = &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}}
+	var testNode = &v1.Node{Name: "test-node"}
 
 	BeforeEach(func() {
 		By("Initializing fake k8s client")
@@ -69,8 +69,8 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("succeeds if the hypervisor matches the expected fields", func(ctx SpecContext) {
 			By("Running the check with a matching hypervisor")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
-				Status:     kvmv1.HypervisorStatus{Evicted: true},
+				Name:   "test-node",
+				Status: kvmv1.HypervisorStatus{Evicted: true},
 			}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 
@@ -87,7 +87,7 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("fails if the field doesn't exist", func(ctx SpecContext) {
 			By("Running the check with a non-existing field")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Name: "test-node",
 			}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 
@@ -103,7 +103,7 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("doesn't panic if the type of f is not equal to the type of v", func(ctx SpecContext) {
 			By("Running the check with a field type mismatch")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Name: "test-node",
 			}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 
@@ -133,7 +133,7 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("fails if the field value doesn't match", func(ctx SpecContext) {
 			By("Running the check with a non-matching hypervisor")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Name: "test-node",
 				Status: kvmv1.HypervisorStatus{
 					Evicted:      false,
 					Aggregates:   []kvmv1.Aggregate{{Name: "agg1"}, {Name: "agg2"}},
@@ -199,7 +199,7 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("succeeds if the hypervisor matches the expected fields", func(ctx SpecContext) {
 			By("Running the check with a matching hypervisor")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Name: "test-node",
 				Status: kvmv1.HypervisorStatus{
 					Conditions: []metav1.Condition{
 						{Type: "Ready", Status: metav1.ConditionTrue},
@@ -222,7 +222,7 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("not passes if the field doesn't exist", func(ctx SpecContext) {
 			By("Running the check with a non-existing field")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
+				Name: "test-node",
 			}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 
@@ -272,7 +272,7 @@ var _ = Describe("The hypervisor plugin", func() {
 
 		It("Fails when given an unsupported field type", func(ctx SpecContext) {
 			By("Running the trigger with an unsupported field type")
-			hypervisor := &kvmv1.Hypervisor{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}}
+			hypervisor := &kvmv1.Hypervisor{Name: "test-node"}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 
 			trigger := &AlterHypervisor{Fields: &map[string]any{"UnsupportedField": 3.14}}
@@ -305,8 +305,8 @@ var _ = Describe("The hypervisor plugin", func() {
 		It("alters the hypervisor fields as expected", func(ctx SpecContext) {
 			By("Running the trigger to alter hypervisor fields")
 			hypervisor := &kvmv1.Hypervisor{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-node"},
-				Spec:       kvmv1.HypervisorSpec{Maintenance: "false"},
+				Name: "test-node",
+				Spec: kvmv1.HypervisorSpec{Maintenance: "false"},
 			}
 			Expect(k8sclient.Create(ctx, hypervisor)).To(Succeed())
 

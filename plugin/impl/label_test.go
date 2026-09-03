@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -31,9 +30,7 @@ var _ = Describe("The HasLabel plugin", func() {
 	Context("with label key=value", func() {
 		params := plugin.Parameters{
 			Node: &corev1.Node{
-				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{"key": "value"},
-				},
+				Labels: map[string]string{"key": "value"},
 			},
 			Client: nil,
 			Log:    GinkgoLogr,
@@ -110,9 +107,7 @@ var _ = Describe("The AlterLabel plugin", func() {
 		BeforeEach(func() {
 			params = plugin.Parameters{
 				Node: &corev1.Node{
-					ObjectMeta: v1.ObjectMeta{
-						Labels: map[string]string{"key": "value"},
-					},
+					Labels: map[string]string{"key": "value"},
 				},
 				Client: nil,
 				Log:    GinkgoLogr,

@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -31,9 +30,7 @@ var _ = Describe("The HasAnnotation plugin", func() {
 	Context("with annotation key=value", func() {
 		params := plugin.Parameters{
 			Node: &corev1.Node{
-				ObjectMeta: v1.ObjectMeta{
-					Annotations: map[string]string{"key": "value"},
-				},
+				Annotations: map[string]string{"key": "value"},
 			},
 			Client: nil,
 			Log:    GinkgoLogr,
@@ -93,9 +90,7 @@ var _ = Describe("The AlterAnnotation plugin", func() {
 		BeforeEach(func() {
 			params = plugin.Parameters{
 				Node: &corev1.Node{
-					ObjectMeta: v1.ObjectMeta{
-						Annotations: map[string]string{"key": "value"},
-					},
+					Annotations: map[string]string{"key": "value"},
 				},
 				Client: nil,
 				Log:    GinkgoLogr,

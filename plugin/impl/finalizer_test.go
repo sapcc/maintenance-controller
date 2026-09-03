@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sapcc/maintenance-controller/plugin"
 )
@@ -49,17 +48,16 @@ var _ = Describe("The Finalizer plugin", func() {
 			addFinalizer, err := base.New(&config)
 			Expect(err).To(Not(HaveOccurred()))
 
-			testNode := &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}}
+			testNode := &v1.Node{Name: "test-node"}
 			err = addFinalizer.Trigger(plugin.Parameters{Node: testNode})
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(testNode.Finalizers).To(ContainElement("test.com/finalizer"))
 		})
 
 		It("removes finalizer when present", func() {
-			testNode := &v1.Node{ObjectMeta: metav1.ObjectMeta{
+			testNode := &v1.Node{
 				Name:       "test-node",
-				Finalizers: []string{"test.com/finalizer"},
-			}}
+				Finalizers: []string{"test.com/finalizer"}}
 
 			config, err := ucfgwrap.FromYAML([]byte("key: test.com/finalizer\nremove: true"))
 			Expect(err).To(Succeed())

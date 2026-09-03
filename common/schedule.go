@@ -237,17 +237,17 @@ type WaitParameters struct {
 func evictPod(ctx context.Context, ki kubernetes.Interface, pod corev1.Pod, version evictionVersion, gracePeriodSeconds *int64) error {
 	var err error
 	if version == v1beta1 {
-		eviction := policyv1beta1.Eviction{}
-		eviction.Name = pod.Name
-		eviction.Namespace = pod.Namespace
-		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		eviction := policyv1beta1.Eviction{
+			Name:                       pod.Name,
+			Namespace:                  pod.Namespace,
+			DeletionGracePeriodSeconds: gracePeriodSeconds}
 		err = ki.CoreV1().Pods(pod.Namespace).EvictV1beta1(ctx, &eviction)
 	}
 	if version == v1 {
-		eviction := policyv1.Eviction{}
-		eviction.Name = pod.Name
-		eviction.Namespace = pod.Namespace
-		eviction.DeletionGracePeriodSeconds = gracePeriodSeconds
+		eviction := policyv1.Eviction{
+			Name:                       pod.Name,
+			Namespace:                  pod.Namespace,
+			DeletionGracePeriodSeconds: gracePeriodSeconds}
 		err = ki.CoreV1().Pods(pod.Namespace).EvictV1(ctx, &eviction)
 	}
 	return err
