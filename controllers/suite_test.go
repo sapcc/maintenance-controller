@@ -26,7 +26,6 @@ import (
 	"github.com/sapcc/maintenance-controller/cache"
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/event"
 	"github.com/sapcc/maintenance-controller/metrics"
 	// +kubebuilder:scaffold:imports
 )
@@ -160,8 +159,7 @@ var _ = BeforeSuite(func() {
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
 		},
-		EventBroadcaster: event.NewNodeBroadcaster(),
-		Cache:            common.DefaultKubernetesCacheOpts(),
+		Cache: common.DefaultKubernetesCacheOpts(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 

@@ -20,6 +20,7 @@ maintenance_config.yaml
 
 # IDEs
 .vscode
+.idea
 
 .DS_Store
 

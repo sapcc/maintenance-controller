@@ -24,7 +24,6 @@ import (
 
 	"github.com/sapcc/maintenance-controller/common"
 	"github.com/sapcc/maintenance-controller/constants"
-	"github.com/sapcc/maintenance-controller/event"
 )
 
 const cloudprovider string = `
@@ -84,9 +83,8 @@ var _ = BeforeSuite(func() {
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
 		},
-		EventBroadcaster: event.NewNodeBroadcaster(),
-		Logger:           GinkgoLogr,
-		Cache:            common.DefaultKubernetesCacheOpts(),
+		Logger: GinkgoLogr,
+		Cache:  common.DefaultKubernetesCacheOpts(),
 	})
 	Expect(err).ToNot(HaveOccurred())
 

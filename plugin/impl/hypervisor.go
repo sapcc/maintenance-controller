@@ -72,7 +72,7 @@ func (i *CheckHypervisor) Check(params plugin.Parameters) (plugin.CheckResult, e
 				return plugin.Failed(nil), nil
 			}
 		case []string:
-			fieldSlice, ok := f.Interface().([]string)
+			fieldSlice, ok := reflect.TypeAssert[[]string](f)
 			if !ok {
 				return plugin.Failed(nil), fmt.Errorf("field %s is not of type []string", key)
 			}
@@ -80,7 +80,7 @@ func (i *CheckHypervisor) Check(params plugin.Parameters) (plugin.CheckResult, e
 				return plugin.Failed(nil), nil
 			}
 		case int:
-			fieldInt, ok := f.Interface().(int)
+			fieldInt, ok := reflect.TypeAssert[int](f)
 			if !ok {
 				return plugin.Failed(nil), fmt.Errorf("field %s is not of type int", key)
 			}
@@ -218,7 +218,7 @@ func mapToStructFields(fields map[string]any, t reflect.Type) (map[string]any, e
 	// Validate that all provided fields exist in HypervisorSpec and map json tag names to struct field names
 	var jsonToStructField = make(map[string]string, t.NumField())
 	for f := range t.Fields() {
-		jsonName := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
+		jsonName, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 		jsonToStructField[jsonName] = f.Name
 	}
 

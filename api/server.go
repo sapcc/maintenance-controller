@@ -159,7 +159,7 @@ func (s *Server) fetchInfo(w http.ResponseWriter) {
 		return
 	}
 	holder := *lease.Spec.HolderIdentity
-	leader := strings.Split(holder, "_")[0]
+	leader, _, _ := strings.Cut(holder, "_")
 	var pod corev1.Pod
 	err = s.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: leader}, &pod)
 	if err != nil {

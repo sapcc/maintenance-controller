@@ -18,7 +18,7 @@ func TestPlugins(t *testing.T) {
 	RunSpecs(t, "Plugin Suite")
 }
 
-var _ = Describe("CheckError", func() {
+var _ = Describe("ChainError", func() {
 	chainErr := ChainError{
 		Message: "msg",
 		Err:     errors.New("err"),
@@ -32,6 +32,25 @@ var _ = Describe("CheckError", func() {
 	It("should unwrap the root error", func() {
 		err := chainErr.Unwrap()
 		Expect(err.Error()).To(Equal("err"))
+	})
+})
+
+var _ = Describe("RetryError", func() {
+	It("is extractable via errors.As through ChainError wrapping", func() {
+		retryErr := &RetryError{Message: "drain still in progress"}
+		wrapped := &ChainError{Message: "trigger chain failed", Err: retryErr}
+
+		var extracted *RetryError
+		Expect(errors.As(wrapped, &extracted)).To(BeTrue())
+		Expect(extracted.Message).To(Equal("drain still in progress"))
+	})
+
+	It("is not matched by errors.Is with a different instance", func() {
+		retryErr := &RetryError{Message: "some error"}
+		wrapped := &ChainError{Message: "trigger chain failed", Err: retryErr}
+
+		// errors.Is uses pointer identity for types without Is() method
+		Expect(errors.Is(wrapped, &RetryError{})).To(BeFalse())
 	})
 })
 

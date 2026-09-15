@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/sapcc/maintenance-controller/constants"
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -73,9 +72,7 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 	It("filters out not matching profiles", func() {
 		nodes := []corev1.Node{
 			{
-				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{constants.ProfileLabelKey: "profile"},
-				},
+				Labels: map[string]string{constants.ProfileLabelKey: "profile"},
 			},
 			{},
 		}
@@ -100,10 +97,8 @@ var _ = Describe("The MaxMaintenance plugin", func() {
 			Expect(err).To(Succeed())
 			nodes = []corev1.Node{
 				{
-					ObjectMeta: v1.ObjectMeta{
-						Labels:      map[string]string{constants.ProfileLabelKey: "profile"},
-						Annotations: map[string]string{constants.DataAnnotationKey: string(json)},
-					},
+					Labels:      map[string]string{constants.ProfileLabelKey: "profile"},
+					Annotations: map[string]string{constants.DataAnnotationKey: string(json)},
 				},
 			}
 		})

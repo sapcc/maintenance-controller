@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/sapcc/maintenance-controller/common"
@@ -23,12 +24,13 @@ import (
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core,resources=events,verbs=create;update;patch
+// +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;update;patch
 
 type Runnable struct {
 	client.Client
-	Log  logr.Logger
-	Conf *rest.Config
+	Log      logr.Logger
+	Conf     *rest.Config
+	Recorder events.EventRecorder
 }
 
 func (r *Runnable) NeedLeaderElection() bool {
@@ -178,6 +180,7 @@ func (r *Runnable) ShutdownNodes(ctx context.Context, conf *Config, esx *Host) e
 				},
 				ForceEviction:      conf.Intervals.PodEviction.Force,
 				GracePeriodSeconds: nodeGracePeriod(node),
+				Recorder:           r.Recorder,
 			},
 		)
 		if err != nil {

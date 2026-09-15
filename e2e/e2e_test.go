@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	coordiantionv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -167,10 +168,10 @@ var _ = Describe("The maintenance controller", func() {
 	})
 
 	It("should generate events for the maintained node", func() {
-		eventList := &corev1.EventList{}
+		eventList := &eventsv1.EventList{}
 		err := k8sClient.List(context.Background(), eventList, client.MatchingFields{
-			"involvedObject.name": maintainedKey.Name,
-			"reason":              "ChangedMaintenanceState",
+			"regarding.name": maintainedKey.Name,
+			"reason":         "ChangedMaintenanceState",
 		})
 		Expect(err).To(Succeed())
 		Expect(eventList.Items).To(HaveLen(3))

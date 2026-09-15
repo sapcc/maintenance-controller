@@ -14,7 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sapcc/ucfgwrap"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/sapcc/maintenance-controller/plugin"
@@ -66,9 +65,7 @@ var _ = Describe("The slack webhook plugin", func() {
 		params := plugin.Parameters{
 			Ctx: context.Background(),
 			Node: &corev1.Node{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "targetnode",
-				},
+				Name: "targetnode",
 			},
 			State: string(state.Operational),
 		}
