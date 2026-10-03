@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.71.0
-	github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9
+	github.com/sapcc/go-bits v0.0.0-20261001170337-e86369bc8beb
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
 	github.com/slack-go/slack v0.29.0
 	github.com/vmware/govmomi v0.56.0
