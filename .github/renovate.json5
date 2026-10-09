@@ -23,6 +23,16 @@
   ],
   "packageRules": [
     {
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "matchDatasources": [
+        "github-releases",
+        "github-tags"
+      ],
+      "changelogUrl": "https://github.com/{{packageName}}/compare/{{currentDigest}}..{{newDigest}}"
+    },
+    {
       "matchPackageNames": [
         "/.*/"
       ],
