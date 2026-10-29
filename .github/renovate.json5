@@ -7,11 +7,8 @@
     "docker:pinDigests",
     "mergeConfidence:all-badges"
   ],
-  "assignees": [
-    "Nuckal777",
-    "SuperSandro2000"
-  ],
   "commitMessageAction": "Renovate: Update",
+  "minimumReleaseAge": "3 days",
   "constraints": {
     "go": "1.27"
   },
