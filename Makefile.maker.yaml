@@ -51,9 +51,6 @@ reuse:
 
 renovate:
   enabled: true
-  assignees:
-    - Nuckal777
-    - SuperSandro2000
 
 testPackages:
   except: e2e

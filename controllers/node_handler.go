@@ -82,7 +82,7 @@ func ApplyProfiles(ctx context.Context, params reconcileParameters, data *state.
 		if err == nil {
 			continue
 		}
-		if _, ok := errors.AsType[*plugin.RetryError](err); ok { //nolint:errcheck // false positive
+		if _, ok := errors.AsType[*plugin.RetryError](err); ok {
 			profilesWithRetryError[ps.Profile.Name] = struct{}{}
 		} else {
 			errs = append(errs, err)
