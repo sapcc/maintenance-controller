@@ -53,12 +53,15 @@ func (pi *PrometheusInstant) Check(params plugin.Parameters) (plugin.CheckResult
 		return plugin.Failed(info), fmt.Errorf("failed to create prometheus client for %s: %w", pi.URL, err)
 	}
 	promAPI := v1.NewAPI(promClient)
-	result, warns, err := promAPI.Query(params.Ctx, pi.Query, time.Now())
+	result, warns, infos, err := promAPI.Query(params.Ctx, pi.Query, time.Now())
 	if err != nil {
 		return plugin.Failed(info), fmt.Errorf("failed to query prometheus %s: %w", pi.URL, err)
 	}
 	if len(warns) > 0 {
 		info["warns"] = warns
+	}
+	if len(infos) > 0 {
+		info["infos"] = infos
 	}
 	vector, ok := result.(model.Vector)
 	if !ok {
