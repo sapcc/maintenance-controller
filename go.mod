@@ -9,14 +9,14 @@ require (
 	github.com/elastic/go-ucfg v0.9.2
 	github.com/go-logr/logr v1.4.4
 	github.com/gophercloud/gophercloud/v2 v2.15.0
-	github.com/onsi/ginkgo/v2 v2.33.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/common v0.73.1
 	github.com/sapcc/go-bits v0.0.0-20261105181628-13886743d3a7
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
-	github.com/slack-go/slack v0.29.0
-	github.com/vmware/govmomi v0.56.0
+	github.com/slack-go/slack v0.35.0
+	github.com/vmware/govmomi v0.56.2
 	go.uber.org/zap v1.28.0
 	gopkg.in/ini.v1 v1.67.3
 	k8s.io/api v0.37.2
