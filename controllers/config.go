@@ -194,6 +194,7 @@ func addPluginsToRegistry(registry *plugin.Registry) {
 		&impl.AlterHypervisor{},
 		&impl.AlterLabel{},
 		&impl.Eviction{},
+		&impl.Request{},
 	}
 	for _, trigger := range triggers {
 		registry.TriggerPlugins[trigger.ID()] = trigger
