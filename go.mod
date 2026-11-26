@@ -15,10 +15,10 @@ require (
 	github.com/prometheus/common v0.74.0
 	github.com/sapcc/go-bits v0.0.0-20261126170205-c4438fd89447
 	github.com/sapcc/ucfgwrap v0.0.0-20221123134804-375b5fb88359
-	github.com/slack-go/slack v0.29.0
-	github.com/vmware/govmomi v0.56.0
+	github.com/slack-go/slack v0.36.0
+	github.com/vmware/govmomi v0.56.2
 	go.uber.org/zap v1.28.0
-	gopkg.in/ini.v1 v1.67.3
+	gopkg.in/ini.v1 v1.68.0
 	k8s.io/api v0.37.2
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
@@ -69,7 +69,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.5 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/oauth2 v0.38.0 // indirect
